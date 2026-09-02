@@ -92,6 +92,9 @@ main.tscn              ルートは Node2D 1 つだけ。中身はすべてコ�
 image/
   title.png            タイトル絵
   kami/<id>.jpg        神々の絵（契約の確認画面で表示。Midjourney で生成、640×960）
+  familiar/<id>.jpg    使い魔の絵（開始時の選択カード）
+  boss/<key>.jpg       ボスの登場絵（名乗りの帯）：aratama / dodomeki / orochi
+  scene/clear.jpg      踏破の一枚絵、scene/gameover.jpg ゲームオーバーの一枚絵
   player_walk.png      walk.gif から抽出した歩行スプライトシート（10 フレーム、ピンポン再生）
   walk.gif             元素材（ゲームでは未使用）
 music/

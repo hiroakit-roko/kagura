@@ -356,7 +356,7 @@ func _start_wave() -> void:
 		world.add_child(b)
 		boss = b
 		_minion_t = 5.0
-		ui.boss_intro(b.boss_name, b.title_text(), b.is_final)
+		ui.boss_intro(b.boss_name, b.title_text(), b.is_final, ["aratama", "dodomeki", "orochi"][mini(b.tier - 1, 2)])
 		if b.is_final:
 			Music.play("lastboss")
 			Fx.flash(Color(1, 0.2, 0.3, 0.4), 0.6)

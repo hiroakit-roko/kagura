@@ -96,6 +96,32 @@ static func pattern(ci: CanvasItem, rect: Rect2, col: Color, step := 46.0, t := 
 		row += 1
 
 
+## 絵があれば読み込む（無ければ null）
+## 絵はここで参照を保持する（_draw 内で load するだけだと毎フレーム作り直されて白く出る）
+static var _art_cache: Dictionary = {}
+
+
+static func art(name: String) -> Texture2D:
+	if _art_cache.has(name):
+		return _art_cache[name]
+	var path := "res://image/%s.jpg" % name
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	_art_cache[name] = tex
+	return tex
+
+
+## 絵を枠いっぱいに敷く（cover。中心寄せ、上寄せ率 focus_y）
+static func draw_cover(ci: CanvasItem, tex: Texture2D, r: Rect2, a := 1.0, focus_y := 0.35) -> void:
+	if tex == null:
+		return
+	var tw := float(tex.get_width())
+	var th := float(tex.get_height())
+	var scale := maxf(r.size.x / tw, r.size.y / th)
+	var sw := r.size.x / scale
+	var sh := r.size.y / scale
+	ci.draw_texture_rect_region(tex, r, Rect2((tw - sw) * 0.5, (th - sh) * focus_y, sw, sh), Color(1, 1, 1, a))
+
+
 ## 漆の板：暗い地に金の細縁と角飾り
 static func panel(ci: CanvasItem, r: Rect2, col := GOLD, a := 1.0, fill_a := 0.85) -> void:
 	ci.draw_rect(r.grow(2.0), Color(0, 0, 0, 0.35 * a))
@@ -256,11 +282,12 @@ func banner(text: String, sub := "", col := Color(1, 1, 1)) -> void:
 
 
 ## ボスの名乗り：縦書きの名前と二つ名を数秒見せる
-func boss_intro(name: String, title: String, final: bool) -> void:
+func boss_intro(name: String, title: String, final: bool, key := "") -> void:
 	hud.intro_name = name
 	hud.intro_title = title
+	hud.intro_key = key
 	hud.intro_final = final
-	hud.intro_t = 3.2
+	hud.intro_t = 3.6
 
 
 ## 小さな告知（詠唱名など）：画面下寄りに短く
@@ -440,6 +467,7 @@ class HudView:
 	var small_t := 0.0
 	var intro_name := ""
 	var intro_title := ""
+	var intro_key := ""
 	var intro_final := false
 	var intro_t := 0.0
 	var _t := 0.0
@@ -669,6 +697,17 @@ class HudView:
 		var k := intro_t / 3.2
 		var a := clampf(minf(k * 6.0, (1.0 - k) * 6.0), 0.0, 1.0)
 		var col := Color(1, 0.3, 0.35) if intro_final else Color(1, 0.6, 0.65)
+		var tex := Ui.art("boss/" + intro_key)
+		if tex != null:
+			# 絵：画面上部に帯として敷き、下端を暗く落とす
+			var pr := Rect2(0, 100, Cfg.W, 300)
+			draw_rect(pr.grow(4), Color(0, 0, 0, 0.5 * a))
+			Ui.draw_cover(self, tex, pr, a, 0.3)
+			for gi in 8:
+				var kk := float(gi) / 8.0
+				draw_rect(Rect2(0, pr.end.y - 120.0 + kk * 120.0, Cfg.W, 120.0 / 8.0 + 1.0), Color(0.03, 0.02, 0.06, 0.9 * kk * a))
+			draw_rect(Rect2(0, pr.position.y, Cfg.W, 2), Cfg.with_a(col, a))
+			draw_rect(Rect2(0, pr.end.y - 2, Cfg.W, 2), Cfg.with_a(col, a))
 		var x := Cfg.W - 90.0
 		draw_rect(Rect2(x - 46, 110, 92, 330), Color(0, 0, 0, 0.55 * a))
 		draw_rect(Rect2(x - 46, 110, 92, 330), Cfg.with_a(col, 0.7 * a), false, 1.5)
@@ -850,10 +889,18 @@ class FamiliarView:
 			var a := pop
 			var x0 := rr.position.x + 14.0
 			var w := rr.size.x - 28.0
-			# 使い魔の姿（実演）
+			# 使い魔の姿（絵があれば絵、無ければ実演）
 			var c := Vector2(rr.position.x + rr.size.x * 0.5, rr.position.y + 70.0)
-			draw_circle(c, 40.0, Cfg.with_a(col, 0.10 * a))
-			Emblem.familiar_preview(self, String(f["id"]), c, _t, col, a)
+			var tex := Ui.art("familiar/" + String(f["id"]))
+			if tex != null:
+				var pr := Rect2(rr.position.x + 4, rr.position.y + 4, rr.size.x - 8, 124)
+				Ui.draw_cover(self, tex, pr, a, 0.3)
+				for gi in 6:
+					var kk := float(gi) / 6.0
+					draw_rect(Rect2(pr.position.x, pr.end.y - 40.0 + kk * 40.0, pr.size.x, 40.0 / 6.0 + 1.0), Color(0.08, 0.06, 0.12, 0.85 * kk * a))
+			else:
+				draw_circle(c, 40.0, Cfg.with_a(col, 0.10 * a))
+				Emblem.familiar_preview(self, String(f["id"]), c, _t, col, a)
 			Ui.txt(self, ui.font_display, Vector2(rr.position.x, rr.position.y + 142), String(f["name"]), 26, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 			Ui.txt(self, ui.font, Vector2(rr.position.x, rr.position.y + 160), String(f["kana"]), 10, Cfg.with_a(col, 0.9 * a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 			draw_rect(Rect2(x0, rr.position.y + 172, w, 20), Cfg.with_a(col, 0.18 * a))
@@ -1276,6 +1323,12 @@ class OverlayView:
 
 	func _clear() -> void:
 		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.03, 0.02, 0.06, 0.82))
+		var tex := Ui.art("scene/clear")
+		if tex != null:
+			Ui.draw_cover(self, tex, Rect2(0, 0, Cfg.W, Cfg.H), 0.55, 0.3)
+			for gi in 10:
+				var kk := float(gi) / 10.0
+				draw_rect(Rect2(0, 260.0 + kk * (Cfg.H - 260.0), Cfg.W, (Cfg.H - 260.0) / 10.0 + 1.0), Color(0.03, 0.02, 0.06, 0.85 * minf(1.0, kk * 2.0)))
 		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Cfg.with_a(Cfg.C_GOLD, 0.06), 52.0, _t)
 		var c := Vector2(Cfg.W * 0.5, 150.0)
 		for i in 16:
@@ -1356,6 +1409,12 @@ class OverlayView:
 
 	func _over() -> void:
 		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.01, 0.05, 0.8))
+		var tex := Ui.art("scene/gameover")
+		if tex != null:
+			Ui.draw_cover(self, tex, Rect2(0, 0, Cfg.W, Cfg.H), 0.5, 0.3)
+			for gi in 10:
+				var kk := float(gi) / 10.0
+				draw_rect(Rect2(0, 240.0 + kk * (Cfg.H - 240.0), Cfg.W, (Cfg.H - 240.0) / 10.0 + 1.0), Color(0.02, 0.01, 0.05, 0.88 * minf(1.0, kk * 2.0)))
 		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Color(1, 0.3, 0.4, 0.04), 52.0, _t)
 		Ui.txt(self, ui.font_display, Vector2(0, 200), "討たれた", 58, Color(1, 0.3, 0.4),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
