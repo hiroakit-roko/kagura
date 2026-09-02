@@ -5,7 +5,7 @@ extends RefCounted
 ##
 ## 仕組み（シューティングとして分かりやすい形）：
 ##   - 神を迎えると、その神の「神器」（自動で発射される武器）がすぐに追加される。
-##     主神は 100%、副神は 50% の威力。神は 3 柱まで（主神 1 + 副神 2）。
+##     主神も副神も神器の威力は同じ。詠唱・神招きだけ主神のもの。神は 3 柱まで（主神 1 + 副神 2）。
 ##   - 神ごとに「神格」レベルがあり、その神器が与えたダメージで神徳（経験値）が溜まって自動で強くなる。
 ##     節目のレベルで弾数や大きさが増える（Weapon を参照）。神酒は神格を 1 上げる。
 ##   - レベルアップで提示される恩恵は、神器の形を変える具体的な強化（幅・本数・射程…）。
@@ -84,7 +84,7 @@ const LIST := [
 		"weapon": "狐火", "weapon_desc": "敵を追う狐火を次々に放つ。1 発は軽いが、外れない",
 		"cast": "狐火乱舞", "cast_desc": "追尾する狐火を一斉に放つ",
 		"call": "九尾の狐火", "call_desc": "敵を追う 9 つの大きな狐火を放つ",
-		"status": "狐憑き", "status_desc": "印を付けられた敵への次の一撃は必ず会心（橙の狐面）",
+		"status": "狐憑き", "status_desc": "会心が出た敵に狐の印。次の一撃は必ず会心（橙の狐面）",
 		"cost": "狐が供物を先に啄み、勾玉が遠のく（勾玉の吸引範囲 -20%）", "flavor": "油揚げが食べられなくなる。稲荷寿司を見ると涙が出る", "mark": "契約の刻印：耳の後ろの狐の毛",
 		"intro": "コン。狐火は嘘をつかぬ。狙った獲物は、必ず射抜く。",
 		"lines": ["眷属の狐が、汝を援護しよう。", "外れぬ矢は、数を撃てばよい。", "稲穂は実る。汝の一撃もまた。"],
@@ -134,15 +134,16 @@ const LIST := [
 #   maxlv : 重ねて取れる回数
 #   rar   : 伝説・双神は固定
 # ---------------------------------------------------------------------------
+## 説明文の「威力 N%」は、自機の基礎攻撃 × その神の神格倍率 に対する割合（位や神格で伸びる）
 const BOONS := [
 	# ===== 天照大神：日輪光線 =====
 	{"id": "ama_u1", "kami": "ama", "tier": Cfg.Rar.COMMON, "name": "日輪の広がり", "desc": "光線の幅 +{v}", "base": 40.0, "fmt": "pct", "maxlv": 3},
 	{"id": "ama_u2", "kami": "ama", "tier": Cfg.Rar.COMMON, "name": "灼熱の光", "desc": "光線のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 4},
-	{"id": "ama_u6", "kami": "ama", "tier": Cfg.Rar.COMMON, "name": "白日", "desc": "照覧の持続時間 +{v}", "base": 2.0, "fmt": "sec", "maxlv": 3},
-	{"id": "ama_u8", "kami": "ama", "tier": Cfg.Rar.COMMON, "name": "日輪の恵み", "desc": "照覧された敵を倒すと HP {v} 回復", "base": 1.0, "fmt": "num", "maxlv": 3},
+	{"id": "ama_u6", "kami": "ama", "tier": Cfg.Rar.COMMON, "name": "灼き付く光", "desc": "光線に触れている敵は動きが {v} 遅くなる", "base": 25.0, "fmt": "pct", "maxlv": 3},
+	{"id": "ama_u8", "kami": "ama", "tier": Cfg.Rar.COMMON, "name": "日輪の恵み", "desc": "照覧された敵を倒すと {v} の確率で HP 1 回復", "base": 35.0, "fmt": "pct", "maxlv": 3},
 	{"id": "ama_u4", "kami": "ama", "tier": Cfg.Rar.RARE, "name": "照覧の眼", "desc": "照覧された敵への全ダメージ +{v}", "base": 25.0, "fmt": "pct", "maxlv": 3},
-	{"id": "ama_u7", "kami": "ama", "tier": Cfg.Rar.RARE, "name": "陽炎", "desc": "光線に触れた敵弾が {v} の確率で蒸発する", "base": 35.0, "fmt": "pct", "maxlv": 3},
-	{"id": "ama_u9", "kami": "ama", "tier": Cfg.Rar.RARE, "name": "暁の熱", "desc": "同じ敵に当て続けると光線の威力が上がる（2 秒で最大 +{v}）", "base": 50.0, "fmt": "pct", "maxlv": 3},
+	{"id": "ama_u7", "kami": "ama", "tier": Cfg.Rar.RARE, "name": "陽炎", "desc": "{v} ごとに光線が閃き、その瞬間に光線に触れている敵弾を蒸発させる", "base": 4.0, "fmt": "sec_down", "maxlv": 3},
+	{"id": "ama_u9", "kami": "ama", "tier": Cfg.Rar.RARE, "name": "暁の熱", "desc": "同じ敵に当て続けると光線の威力が上がる（2 秒で最大 +{v}）", "base": 40.0, "fmt": "pct", "maxlv": 3},
 	{"id": "ama_u3", "kami": "ama", "tier": Cfg.Rar.EPIC, "name": "三光", "desc": "斜めに伸びる光線 +{v} 本", "base": 1.0, "fmt": "num", "maxlv": 2},
 	{"id": "ama_u5", "kami": "ama", "tier": Cfg.Rar.EPIC, "name": "鏡の護り", "desc": "被弾を一度防ぐ光の鏡を纏う。{v} ごとに再生成", "base": 14.0, "fmt": "sec_down", "maxlv": 3},
 	{"id": "ama_leg", "kami": "ama", "name": "日食", "rar": Cfg.Rar.LEGENDARY,
@@ -155,11 +156,11 @@ const BOONS := [
 	{"id": "susa_u6", "kami": "susa", "tier": Cfg.Rar.COMMON, "name": "早潮", "desc": "大波の間隔 -{v}", "base": 15.0, "fmt": "pct", "maxlv": 3},
 	{"id": "susa_u4", "kami": "susa", "tier": Cfg.Rar.RARE, "name": "裂傷の波", "desc": "押し戻された敵は裂傷を負い、動くたび {v} のダメージ", "base": 4.0, "fmt": "num", "maxlv": 3},
 	{"id": "susa_u8", "kami": "susa", "tier": Cfg.Rar.RARE, "name": "重い波", "desc": "押し戻す力 +{v}", "base": 40.0, "fmt": "pct", "maxlv": 3},
-	{"id": "susa_u5", "kami": "susa", "tier": Cfg.Rar.RARE, "name": "荒れ狂う海", "desc": "押し戻された敵が壁や仲間にぶつかると {v} のダメージ", "base": 30.0, "fmt": "num", "maxlv": 3},
+	{"id": "susa_u5", "kami": "susa", "tier": Cfg.Rar.RARE, "name": "荒れ狂う海", "desc": "押し戻された敵が壁や仲間にぶつかると威力 {v} のダメージ", "base": 250.0, "fmt": "pct", "maxlv": 3},
 	{"id": "susa_u7", "kami": "susa", "tier": Cfg.Rar.EPIC, "name": "潮騒", "desc": "大波が触れた敵弾を消す。1 発消すごとに神招きゲージ +{v}", "base": 1.5, "fmt": "pct", "maxlv": 2},
 	{"id": "susa_u9", "kami": "susa", "tier": Cfg.Rar.EPIC, "name": "怒りの海", "desc": "画面の敵 1 体ごとに大波のダメージ +{v}（10 体まで）", "base": 6.0, "fmt": "pct", "maxlv": 3},
 	{"id": "susa_leg", "kami": "susa", "name": "八岐大蛇殺し", "rar": Cfg.Rar.LEGENDARY,
-		"desc": "大波が 2 連になり、触れた敵弾をすべて消す。押し戻した敵に {v} の追加ダメージ", "base": 60.0, "fmt": "num", "maxlv": 2},
+		"desc": "大波が 2 連になり、触れた敵弾をすべて消す。押し戻した敵に威力 {v} の追加ダメージ", "base": 400.0, "fmt": "pct", "maxlv": 2},
 
 	# ===== 建御雷神：神鳴り =====
 	{"id": "take_u1", "kami": "take", "tier": Cfg.Rar.COMMON, "name": "雷帯", "desc": "雷のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 4},
@@ -167,10 +168,10 @@ const BOONS := [
 	{"id": "take_u6", "kami": "take", "tier": Cfg.Rar.COMMON, "name": "天罰", "desc": "大妖（ボス）への雷のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 3},
 	{"id": "take_u8", "kami": "take", "tier": Cfg.Rar.COMMON, "name": "雷の加護", "desc": "雷が命中するたび神招きゲージ +{v}", "base": 1.0, "fmt": "pct", "maxlv": 3},
 	{"id": "take_u3", "kami": "take", "tier": Cfg.Rar.RARE, "name": "双雷", "desc": "雷の連鎖 +{v}", "base": 1.0, "fmt": "num", "maxlv": 3},
-	{"id": "take_u4", "kami": "take", "tier": Cfg.Rar.RARE, "name": "帯電の呪", "desc": "雷を受けた敵は帯電し、攻撃するたび {v} のダメージ", "base": 25.0, "fmt": "num", "maxlv": 3},
+	{"id": "take_u4", "kami": "take", "tier": Cfg.Rar.RARE, "name": "帯電の呪", "desc": "雷を受けた敵は帯電し、攻撃するたび威力 {v} の雷を受ける", "base": 200.0, "fmt": "pct", "maxlv": 3},
 	{"id": "take_u9", "kami": "take", "tier": Cfg.Rar.RARE, "name": "遠雷", "desc": "雷が {v} の確率でもう 1 体にも同時に落ちる", "base": 30.0, "fmt": "pct", "maxlv": 3},
 	{"id": "take_u5", "kami": "take", "tier": Cfg.Rar.EPIC, "name": "落雷の広がり", "desc": "雷が落ちた周囲 {v} の敵にも半分のダメージ", "base": 70.0, "fmt": "num", "maxlv": 3},
-	{"id": "take_u7", "kami": "take", "tier": Cfg.Rar.EPIC, "name": "雷雲", "desc": "雷が落ちた所に {v} のあいだ雷雲が残り、近くの敵に落雷を続ける", "base": 1.5, "fmt": "sec", "maxlv": 3},
+	{"id": "take_u7", "kami": "take", "tier": Cfg.Rar.EPIC, "name": "雷雲", "desc": "雷が落ちた所に {v} のあいだ雷雲が残り、近くの敵に小さな落雷を続ける", "base": 1.0, "fmt": "sec", "maxlv": 3},
 	{"id": "take_leg", "kami": "take", "name": "神鳴りの矛", "rar": Cfg.Rar.LEGENDARY,
 		"desc": "雷が命中するたび {v} の確率で別の敵にも雷が落ちる", "base": 35.0, "fmt": "pct", "maxlv": 2},
 
@@ -178,7 +179,7 @@ const BOONS := [
 	{"id": "tsuki_u5", "kami": "tsuki", "tier": Cfg.Rar.COMMON, "name": "月光の刃", "desc": "刃のダメージ +{v}", "base": 35.0, "fmt": "pct", "maxlv": 4},
 	{"id": "tsuki_u4", "kami": "tsuki", "tier": Cfg.Rar.COMMON, "name": "遠い月", "desc": "刃の軌道半径 +{v}", "base": 25.0, "fmt": "pct", "maxlv": 3},
 	{"id": "tsuki_u2", "kami": "tsuki", "tier": Cfg.Rar.COMMON, "name": "月の満ち欠け", "desc": "宿命の爆発ダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 4},
-	{"id": "tsuki_u6", "kami": "tsuki", "tier": Cfg.Rar.COMMON, "name": "速い月", "desc": "刃の回る速さ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 3},
+	{"id": "tsuki_u6", "kami": "tsuki", "tier": Cfg.Rar.COMMON, "name": "速い月", "desc": "刃の回る速さ +{v}（当たる間隔も短くなる）", "base": 30.0, "fmt": "pct", "maxlv": 3},
 	{"id": "tsuki_u3", "kami": "tsuki", "tier": Cfg.Rar.RARE, "name": "宵闇の加護", "desc": "宿命の爆発範囲 +{v}", "base": 40.0, "fmt": "pct", "maxlv": 3},
 	{"id": "tsuki_u9", "kami": "tsuki", "tier": Cfg.Rar.RARE, "name": "月華", "desc": "宿命の爆発が {v} の確率で会心になる", "base": 25.0, "fmt": "pct", "maxlv": 3},
 	{"id": "tsuki_u7", "kami": "tsuki", "tier": Cfg.Rar.RARE, "name": "新月の影", "desc": "宿命が爆ぜて敵が倒れると、{v} の確率で近くの敵に宿命が移る", "base": 40.0, "fmt": "pct", "maxlv": 3},
@@ -196,7 +197,7 @@ const BOONS := [
 	{"id": "uzume_u4", "kami": "uzume", "tier": Cfg.Rar.RARE, "name": "誘いの舞", "desc": "扇が触れた敵を {v} の確率で 3 秒魅了する", "base": 12.0, "fmt": "pct", "maxlv": 3},
 	{"id": "uzume_u8", "kami": "uzume", "tier": Cfg.Rar.RARE, "name": "帰り扇", "desc": "戻ってくる扇のダメージ +{v}", "base": 50.0, "fmt": "pct", "maxlv": 3},
 	{"id": "uzume_u1", "kami": "uzume", "tier": Cfg.Rar.EPIC, "name": "二枚扇", "desc": "投げる扇 +{v}", "base": 1.0, "fmt": "num", "maxlv": 2},
-	{"id": "uzume_u9", "kami": "uzume", "tier": Cfg.Rar.EPIC, "name": "舞い手の護り", "desc": "扇が手元に戻るたび HP {v} 回復", "base": 1.0, "fmt": "num", "maxlv": 3},
+	{"id": "uzume_u9", "kami": "uzume", "tier": Cfg.Rar.EPIC, "name": "舞い手の護り", "desc": "扇が手元に戻ると HP {v} 回復（3 秒に 1 度まで）", "base": 1.0, "fmt": "num", "maxlv": 3},
 	{"id": "uzume_leg", "kami": "uzume", "name": "八百万の宴", "rar": Cfg.Rar.LEGENDARY,
 		"desc": "弱体した敵を倒すと {v} の確率で HP が 6 回復する", "base": 35.0, "fmt": "pct", "maxlv": 2},
 
@@ -207,11 +208,11 @@ const BOONS := [
 	{"id": "inari_u9", "kami": "inari", "tier": Cfg.Rar.COMMON, "name": "九尾の追い火", "desc": "狐火の速さと誘導 +{v}", "base": 25.0, "fmt": "pct", "maxlv": 3},
 	{"id": "inari_u5", "kami": "inari", "tier": Cfg.Rar.RARE, "name": "稲穂の実り", "desc": "会心ダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 3},
 	{"id": "inari_u7", "kami": "inari", "tier": Cfg.Rar.RARE, "name": "狐火の連鎖", "desc": "狐火が敵を倒すと {v} の確率で次の敵へ跳ぶ", "base": 40.0, "fmt": "pct", "maxlv": 3},
-	{"id": "inari_u8", "kami": "inari", "tier": Cfg.Rar.RARE, "name": "油揚げの供物", "desc": "敵を倒すと {v} の確率で勾玉が余分に落ちる", "base": 20.0, "fmt": "pct", "maxlv": 3},
-	{"id": "inari_u1", "kami": "inari", "tier": Cfg.Rar.EPIC, "name": "狐火の群れ", "desc": "一度に放つ狐火 +{v} 本", "base": 1.0, "fmt": "num", "maxlv": 3},
+	{"id": "inari_u8", "kami": "inari", "tier": Cfg.Rar.RARE, "name": "油揚げの供物", "desc": "敵を倒すと {v} の確率で勾玉が余分に落ちる", "base": 30.0, "fmt": "pct", "maxlv": 3},
+	{"id": "inari_u1", "kami": "inari", "tier": Cfg.Rar.EPIC, "name": "狐火の群れ", "desc": "一度に放つ狐火 +{v} 本", "base": 1.0, "fmt": "num", "maxlv": 2},
 	{"id": "inari_u4", "kami": "inari", "tier": Cfg.Rar.EPIC, "name": "眷属の狐", "desc": "自機の周りを回り狐火を放つ眷属 +{v}", "base": 1.0, "fmt": "num", "maxlv": 2},
 	{"id": "inari_leg", "kami": "inari", "name": "白狐の加護", "rar": Cfg.Rar.LEGENDARY,
-		"desc": "会心が出るたび、近くの敵へ {v} のダメージの狐火が飛ぶ", "base": 30.0, "fmt": "num", "maxlv": 2},
+		"desc": "会心が出るたび、近くの敵へ威力 {v} の狐火が飛ぶ", "base": 250.0, "fmt": "pct", "maxlv": 2},
 
 	# ===== 少名毘古那神：酒霧の瓢 =====
 	{"id": "suku_u1", "kami": "suku", "tier": Cfg.Rar.COMMON, "name": "大瓢箪", "desc": "霧の大きさ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 3},
@@ -222,22 +223,22 @@ const BOONS := [
 	{"id": "suku_u5", "kami": "suku", "tier": Cfg.Rar.RARE, "name": "薬師の加護", "desc": "毎秒 HP が {v} 回復する", "base": 1.0, "fmt": "x", "maxlv": 4},
 	{"id": "suku_u9", "kami": "suku", "tier": Cfg.Rar.RARE, "name": "百薬の長", "desc": "酩酊した敵を倒すと {v} の確率で酒気の霧が残る", "base": 35.0, "fmt": "pct", "maxlv": 3},
 	{"id": "suku_u4", "kami": "suku", "tier": Cfg.Rar.EPIC, "name": "深酔い", "desc": "酩酊の最大段階 +{v}", "base": 2.0, "fmt": "num", "maxlv": 2},
-	{"id": "suku_u7", "kami": "suku", "tier": Cfg.Rar.EPIC, "name": "薬酒", "desc": "自機が霧の中にいると毎秒 HP {v} 回復し、被ダメージ -20%", "base": 2.0, "fmt": "num", "maxlv": 3},
+	{"id": "suku_u7", "kami": "suku", "tier": Cfg.Rar.EPIC, "name": "薬酒", "desc": "自機が霧の中にいると毎秒 HP {v} 回復し、被ダメージ -20%", "base": 1.0, "fmt": "num", "maxlv": 3},
 	{"id": "suku_leg", "kami": "suku", "name": "常世の妙薬", "rar": Cfg.Rar.LEGENDARY,
 		"desc": "HP が 3 割を切ると HP の {v} を即座に回復する（60 秒に 1 度）", "base": 50.0, "fmt": "pct", "maxlv": 2},
 
 	# ===== 伊邪那美命：氷柱 =====
 	{"id": "iza_u2", "kami": "iza", "tier": Cfg.Rar.COMMON, "name": "鋭い氷柱", "desc": "氷柱のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 4},
 	{"id": "iza_u6", "kami": "iza", "tier": Cfg.Rar.COMMON, "name": "早い氷", "desc": "氷柱の間隔 -{v}", "base": 15.0, "fmt": "pct", "maxlv": 3},
-	{"id": "iza_u7", "kami": "iza", "tier": Cfg.Rar.COMMON, "name": "黄泉の冷気", "desc": "氷柱が与える冷気 +{v} 段階", "base": 1.0, "fmt": "num", "maxlv": 2},
+	{"id": "iza_u7", "kami": "iza", "tier": Cfg.Rar.COMMON, "name": "黄泉の冷気", "desc": "氷柱が与える冷気 +{v} 段階（砕けるのが早くなる）", "base": 1.0, "fmt": "num", "maxlv": 1},
 	{"id": "iza_u5", "kami": "iza", "tier": Cfg.Rar.COMMON, "name": "凍土の加護", "desc": "冷気を受けた敵への与ダメージ +{v}", "base": 15.0, "fmt": "pct", "maxlv": 3},
-	{"id": "iza_u3", "kami": "iza", "tier": Cfg.Rar.RARE, "name": "氷砕", "desc": "冷気が 10 段階に達して砕けたとき {v} のダメージ", "base": 50.0, "fmt": "num", "maxlv": 3},
+	{"id": "iza_u3", "kami": "iza", "tier": Cfg.Rar.RARE, "name": "氷砕", "desc": "冷気が 10 段階に達して砕けたとき威力 {v} のダメージ", "base": 400.0, "fmt": "pct", "maxlv": 3},
 	{"id": "iza_u4", "kami": "iza", "tier": Cfg.Rar.RARE, "name": "凍土", "desc": "砕けた所に {v} のあいだ凍土が残り、中の敵を遅くする", "base": 2.0, "fmt": "sec", "maxlv": 3},
 	{"id": "iza_u8", "kami": "iza", "tier": Cfg.Rar.RARE, "name": "氷の棘", "desc": "氷柱が敵を {v} 体貫く", "base": 1.0, "fmt": "num", "maxlv": 2},
 	{"id": "iza_u1", "kami": "iza", "tier": Cfg.Rar.EPIC, "name": "氷柱の広がり", "desc": "撒く氷柱 +{v} 方向", "base": 2.0, "fmt": "num", "maxlv": 2},
 	{"id": "iza_u9", "kami": "iza", "tier": Cfg.Rar.EPIC, "name": "黄泉の門", "desc": "砕けた敵から氷柱が {v} 本飛び散る", "base": 4.0, "fmt": "num", "maxlv": 2},
 	{"id": "iza_leg", "kami": "iza", "name": "黄泉比良坂", "rar": Cfg.Rar.LEGENDARY,
-		"desc": "砕けた敵は爆ぜて周囲の敵を凍結させ、{v} のダメージを与える", "base": 80.0, "fmt": "num", "maxlv": 2},
+		"desc": "砕けた敵は爆ぜて周囲の敵を凍結させ、威力 {v} のダメージを与える", "base": 600.0, "fmt": "pct", "maxlv": 2},
 
 	# ===== 猿田彦大神：神風の刃 =====
 	{"id": "saru_u1", "kami": "saru", "tier": Cfg.Rar.COMMON, "name": "先駈け", "desc": "刃の連射 +{v}", "base": 20.0, "fmt": "pct", "maxlv": 4},
@@ -247,7 +248,7 @@ const BOONS := [
 	{"id": "saru_u4", "kami": "saru", "tier": Cfg.Rar.RARE, "name": "疾風の御業", "desc": "疾走の間隔 -{v}", "base": 20.0, "fmt": "pct", "maxlv": 3},
 	{"id": "saru_u7", "kami": "saru", "tier": Cfg.Rar.RARE, "name": "追い風", "desc": "疾走してから 3 秒は刃のダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 3},
 	{"id": "saru_u9", "kami": "saru", "tier": Cfg.Rar.RARE, "name": "道開き", "desc": "かすってから 3 秒は刃の連射 +{v}", "base": 30.0, "fmt": "pct", "maxlv": 3},
-	{"id": "saru_u5", "kami": "saru", "tier": Cfg.Rar.EPIC, "name": "神足", "desc": "詠唱の再充填 -{v}。詠唱の弾数 +1", "base": 25.0, "fmt": "pct", "maxlv": 2},
+	{"id": "saru_u5", "kami": "saru", "tier": Cfg.Rar.EPIC, "name": "神風二列", "desc": "刃の同時発射 +{v} 列", "base": 1.0, "fmt": "num", "maxlv": 1},
 	{"id": "saru_u8", "kami": "saru", "tier": Cfg.Rar.EPIC, "name": "疾風の刃", "desc": "疾走すると周囲へ風の刃を {v} 本放つ", "base": 6.0, "fmt": "num", "maxlv": 2},
 	{"id": "saru_leg", "kami": "saru", "name": "大導き", "rar": Cfg.Rar.LEGENDARY,
 		"desc": "敵弾のすれすれを抜ける（かすり）たび、神招きのゲージが {v} 溜まる", "base": 4.0, "fmt": "pct", "maxlv": 2},
@@ -262,13 +263,13 @@ const BOONS := [
 	{"id": "duo_uzume_suku", "kami": "uzume", "kami2": "suku", "name": "宴と舞", "rar": Cfg.Rar.DUO,
 		"desc": "酩酊した敵は弱体も受ける。弱体の敵の与ダメージがさらに -{v}", "base": 20.0, "fmt": "pct", "maxlv": 2},
 	{"id": "duo_take_suku", "kami": "take", "kami2": "suku", "name": "雷酔", "rar": Cfg.Rar.DUO,
-		"desc": "酩酊した敵に雷が落ちると、酩酊の段階ごとに {v} の追加ダメージ", "base": 12.0, "fmt": "num", "maxlv": 2},
+		"desc": "酩酊した敵に雷が落ちると、酩酊の段階ごとに威力 {v} の追加ダメージ", "base": 100.0, "fmt": "pct", "maxlv": 2},
 	{"id": "duo_iza_tsuki", "kami": "iza", "kami2": "tsuki", "name": "黄泉の月", "rar": Cfg.Rar.DUO,
 		"desc": "宿命が爆ぜた敵は {v} 凍結する", "base": 1.5, "fmt": "sec", "maxlv": 2},
 	{"id": "duo_ama_uzume", "kami": "ama", "kami2": "uzume", "name": "艶光", "rar": Cfg.Rar.DUO,
 		"desc": "弱体した敵は照覧も受ける。弱体の敵からの被ダメージ -{v}", "base": 20.0, "fmt": "pct", "maxlv": 2},
 	{"id": "duo_susa_take", "kami": "susa", "kami2": "take", "name": "嵐雷", "rar": Cfg.Rar.DUO,
-		"desc": "大波に押し戻された敵に {v} の雷が落ちる", "base": 30.0, "fmt": "num", "maxlv": 2},
+		"desc": "大波に押し戻された敵に威力 {v} の雷が落ちる", "base": 250.0, "fmt": "pct", "maxlv": 2},
 	{"id": "duo_inari_saru", "kami": "inari", "kami2": "saru", "name": "風狐", "rar": Cfg.Rar.DUO,
 		"desc": "風の刃が命中するたび {v} の確率で狐火が追加で飛ぶ", "base": 25.0, "fmt": "pct", "maxlv": 2},
 	{"id": "duo_ama_inari", "kami": "ama", "kami2": "inari", "name": "光狐", "rar": Cfg.Rar.DUO,
@@ -309,12 +310,21 @@ static func curse(id: String) -> Dictionary:
 
 ## 神格レベルアップに必要な神徳（その段階で必要な量）
 static func kami_xp_need(lv: int) -> float:
-	return 300.0 * pow(float(lv), 1.6)
+	return 480.0 * pow(float(lv), 1.6)
+
+
+## 神格 1 段ごとの神器の伸び。近距離の神器は使いにくい見返りとして伸びが大きい
+## （後半になるほど強くなる）。それ以外は 12%
+const GROWTH := {"tsuki": 0.18, "uzume": 0.18, "susa": 0.15}
+
+
+static func growth_of(kami_id: String) -> float:
+	return float(GROWTH.get(kami_id, 0.12))
 
 
 ## 神格レベルによる神器の倍率
-static func kami_power(lv: int) -> float:
-	return 1.0 + 0.12 * float(lv - 1)
+static func kami_power(lv: int, growth := 0.12) -> float:
+	return 1.0 + growth * float(lv - 1)
 
 
 # ---------------------------------------------------------------------------

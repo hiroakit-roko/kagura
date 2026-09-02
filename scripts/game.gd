@@ -43,6 +43,7 @@ var _tut_t := 0.0
 var endless := false
 var best := {"score": 0, "wave": 0, "clears": 0}   # Records.best への参照
 var run_id := -1                                     # 今回の走りの識別子（記録の置き換えに使う）
+var _pick_reason := "miki"                           # 神を選ぶ画面の用途：miki / level / boss
 
 const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6,
 	"spirit": 0.5, "lantern": 2.0, "kite": 1.2, "oni": 3.6, "caster": 3.0, "bomber": 1.5}
@@ -268,10 +269,15 @@ func _process(delta: float) -> void:
 		if Boons.recruit_due(player):
 			_open_kami_choice()
 		else:
-			_open_boons("level", Cfg.Rar.COMMON, "")
+			_open_level_pick("level")
 		return
 
 	_tick_wave(delta)
+
+
+## いまタッチ操作か（スマホ・タブレット）。説明文の出し分けに使う
+func is_touch() -> bool:
+	return Touch.inst != null and Touch.inst.active
 
 
 ## 序盤の導線：最初の 1 分だけ、状況に合わせて短い案内を出す
@@ -292,7 +298,10 @@ func _tutorial(delta: float) -> void:
 		2:
 			if _tut_t > 9.0:
 				_tut_step = 3
-				ui.banner("Z で詠唱、X で神招き", "主神を迎えると使えるようになる。敵弾の間を抜けると「かすり」でゲージが溜まる", Color(0.9, 0.9, 1.0))
+				if is_touch():
+					ui.banner("右下の「詠唱」「神招き」", "主神を迎えると押せるようになる。敵弾の間を抜けると「かすり」でゲージが溜まる", Color(0.9, 0.9, 1.0))
+				else:
+					ui.banner("Z で詠唱、X で神招き", "主神を迎えると使えるようになる。敵弾の間を抜けると「かすり」でゲージが溜まる", Color(0.9, 0.9, 1.0))
 
 
 ## ヒットストップ：dur 秒（実時間）だけ時間の流れを scale に落とす。
@@ -398,7 +407,7 @@ func _clear_wave() -> void:
 		add_score(50 * wave + player.grazes)
 	if _boss_reward:
 		_boss_reward = false
-		_open_boons("boss", Cfg.Rar.EPIC, player.main_god())
+		_open_level_pick("boss")
 		return
 	ui.banner("祓い清め", "+%d" % (50 * wave), Cfg.C_HP)
 	Sfx.play("suzu", -10.0)
@@ -600,7 +609,7 @@ func _on_kami_chosen(id: String) -> void:
 	if main:
 		ui.banner(String(k["weapon"]) + " を授かった", String(k["weapon_desc"]), k["color"])
 	else:
-		ui.banner(String(k["name"]) + " が副神となった", String(k["weapon"]) + "（半分の威力）が加わった", k["color"])
+		ui.banner(String(k["name"]) + " が副神となった", String(k["weapon"]) + " が加わった（威力は主神と同じ）", k["color"])
 	player.pending_levels = maxi(0, player.pending_levels - 1)
 	_close_choice()
 
@@ -661,6 +670,25 @@ func _on_boon_chosen(idx: int) -> void:
 	_close_choice()
 
 
+## レベルアップ／討伐の褒賞：神格を上げる神を自分で選び、その神の能力を抽選する
+##   reason "level" → 凡以上の 3 枚、"boss" → 秀を優先した 3 枚
+func _open_level_pick(reason: String) -> void:
+	_pick_reason = reason
+	if player.gods.size() <= 1:
+		# 1 柱しかいなければ選ぶ余地がないので、そのまま神格を上げて抽選へ
+		_level_pick_done(player.main_god())
+		return
+	_pause_for_choice(St.MIKI)
+	Sfx.play("levelup", -8.0)
+	ui.show_miki(player.gods.duplicate(), reason)
+
+
+func _level_pick_done(id: String) -> void:
+	if id != "" and int(player.kami_lv.get(id, 1)) < 10:
+		Boons.miki_apply(player, id)
+	_open_boons(_pick_reason, Cfg.Rar.EPIC if _pick_reason == "boss" else Cfg.Rar.COMMON, id)
+
+
 func on_miki_picked() -> void:
 	if state != St.PLAY:
 		return
@@ -669,13 +697,18 @@ func on_miki_picked() -> void:
 		player.heal(30.0, true)
 		ui.banner("神酒", "神格を上げられる神がいないので HP を回復した", Cfg.C_GOLD)
 		return
+	_pick_reason = "miki"
 	_pause_for_choice(St.MIKI)
 	Sfx.play("miki", -4.0)
-	ui.show_miki(targets)
+	ui.show_miki(targets, "miki")
 
 
 func _on_miki_chosen(id: String) -> void:
 	if state != St.MIKI:
+		return
+	if _pick_reason == "level" or _pick_reason == "boss":
+		Sfx.play("suzu", -8.0, 1.2)
+		_level_pick_done(id)
 		return
 	Boons.miki_apply(player, id)
 	Sfx.play("miki", -4.0, 1.1)

@@ -27,7 +27,8 @@ var _eclipse_t := 0.0
 var _fans: Array = []      # 舞扇：飛んでいる扇（Bullet）
 var _alt := 0
 var _focus := {}           # 天照：敵ごとに光線を当て続けた秒数（暁の熱）
-var _erased := {}          # 天照：陽炎の判定をすでに行った敵弾
+var _flare_t := 0.0        # 天照：陽炎の閃きまでの秒数
+var flare_fx := 0.0        # 天照：閃きの余光（描画用）
 var _spin := 0.0           # 月読：刃の回転角
 
 
@@ -80,7 +81,7 @@ func _enemies() -> Array:
 # ---------------------------------------------------------------------------
 
 func beam_width() -> float:
-	return (14.0 + 3.0 * float(p.kami_lv.get(kami, 1) / 3)) * (1.0 + p.val("ama_u1") * 0.01) * (1.0 if p.is_main(kami) else 0.75)
+	return (14.0 + 3.0 * float(p.kami_lv.get(kami, 1) / 3)) * (1.0 + p.val("ama_u1") * 0.01)
 
 
 func beam_dirs() -> Array:
@@ -118,6 +119,8 @@ func _beam(delta: float) -> void:
 				hit_any = true
 				var id: int = e.get_instance_id()
 				hit_ids[id] = true
+				if p.has("ama_u6"):
+					e.st["sunslow"] = 0.25   # 灼き付く光：光線の中にいる間は遅い
 				var dmg_e := dmg
 				if focus_max > 0.0:
 					# 暁の熱：同じ敵に当て続けるほど威力が上がる（2 秒で最大）
@@ -130,24 +133,30 @@ func _beam(delta: float) -> void:
 		for id in _focus.keys():
 			if not hit_ids.has(id):
 				_focus.erase(id)
-	# 陽炎：光線に触れた敵弾が蒸発する
+	# 陽炎：一定間隔で光線が閃き、その瞬間に光線の中にある敵弾を蒸発させる（常時消弾ではない）
+	flare_fx = maxf(0.0, flare_fx - 0.1)
 	if p.has("ama_u7"):
-		var chance := p.val("ama_u7") * 0.01
-		for eb in get_tree().get_nodes_in_group("ebullet"):
-			if not is_instance_valid(eb) or _erased.has(eb.get_instance_id()):
-				continue
-			for d0 in dirs:
-				var d: Vector2 = d0
-				var rel: Vector2 = eb.position - origin
-				if rel.dot(d) < 0.0 or absf(rel.dot(d.orthogonal())) > w * 0.5 + 4.0:
+		_flare_t += 0.1
+		if _flare_t >= p.val("ama_u7"):
+			_flare_t = 0.0
+			flare_fx = 0.35
+			var n_erased := 0
+			for eb in get_tree().get_nodes_in_group("ebullet"):
+				if not is_instance_valid(eb):
 					continue
-				_erased[eb.get_instance_id()] = true
-				if randf() < chance:
+				for d0 in dirs:
+					var d: Vector2 = d0
+					var rel: Vector2 = eb.position - origin
+					if rel.dot(d) < 0.0 or absf(rel.dot(d.orthogonal())) > w * 0.5 + 6.0:
+						continue
 					Fx.sparks(eb.position, Vector2.UP, col, 3, 200.0)
 					eb.vanish()
-				break
-		if _erased.size() > 400:
-			_erased.clear()
+					n_erased += 1
+					break
+			Fx.ring(origin, col, 8.0, 60.0, 0.25, 3.0)
+			Sfx.play("hit_light", -10.0, 1.4, 0.05)
+			if n_erased > 0:
+				Fx.number(origin + Vector2(0, -30), "陽炎", col, 12.0)
 	if hit_any and randf() < 0.5:
 		Sfx.play("hit_light", -22.0, randf_range(0.9, 1.1), 0.08)
 	# 日食（伝説）
@@ -238,7 +247,7 @@ func _lightning() -> void:
 	# 雷雲：落ちた所に雲が残り、落雷を続ける
 	if p.has("take_u7"):
 		var z := Zone.new()
-		z.setup(tpos + Vector2(0, -40), "cloud", 90.0, p.val("take_u7"), dmg * 0.45, col)
+		z.setup(tpos + Vector2(0, -40), "cloud", 90.0, p.val("take_u7"), dmg * 0.3, col)
 		Game.inst.spawn_deferred(z)
 	Fx.flash(Cfg.with_a(col, 0.08), 0.08)
 
@@ -288,7 +297,7 @@ func _blades(delta: float) -> void:
 			var a := spin + TAU * float(i) / float(n)
 			var bp := p.position + Vector2(cos(a), sin(a)) * r
 			if bp.distance_to(e.position) <= br + e.radius:
-				_blade_hit[id] = t + 0.28
+				_blade_hit[id] = t + 0.28 / (1.0 + p.val("tsuki_u6") * 0.01)
 				Combat.hit(e, dmg, e.position, {"tag": "blade", "kami": "tsuki", "dir": (e.position - p.position).normalized(),
 						"crit": randf() < p.crit_chance(), "doom": doom})
 				Fx.slash(e.position, a + PI * 0.5, 22.0, col, 2.0, 0.15, 5.0)
@@ -419,7 +428,7 @@ func _wind() -> void:
 	var dmg := base_dmg() * 0.45 * power() * (1.0 + p.val("saru_u2") * 0.01)
 	if p.has("saru_u7") and p.dash_buff_t > 0.0:
 		dmg *= 1.0 + p.val("saru_u7") * 0.01     # 追い風：疾走直後は威力が高い
-	var n := 1 + lv / 4
+	var n := 1 + lv / 4 + (int(round(p.val("saru_u5"))) if p.has("saru_u5") else 0)   # 神風二列
 	var pierce := int(round(p.val("saru_u6"))) if p.has("saru_u6") else 0
 	_alt = (_alt + 1) % 2
 	for i in n:
@@ -449,6 +458,11 @@ func _draw() -> void:
 			var w := beam_width()
 			var origin := p.position + Vector2(0, -30)
 			var flick := 0.85 + 0.15 * sin(t * 40.0)
+			if flare_fx > 0.0:
+				# 陽炎の閃き：光線が一瞬太く白く光る
+				for d0 in beam_dirs():
+					var d: Vector2 = d0
+					draw_line(origin, origin + d * 1400.0, Color(1, 1, 1, flare_fx * 1.6), w * 2.6 * (0.5 + flare_fx), true)
 			for d0 in beam_dirs():
 				var d: Vector2 = d0
 				var far: Vector2 = origin + d * 1400.0

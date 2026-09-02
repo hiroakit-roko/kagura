@@ -267,6 +267,11 @@ func _flow_test() -> void:
 		g.player.level += 1
 		g.player.pending_levels = 1
 		await _wait(0.3)
+		if g.state == Game.St.MIKI:
+			var pick := String(g.ui.miki_view.ids[randi() % g.ui.miki_view.ids.size()])
+			print("[flow] lv%d PICK(%s) ids=%s -> %s" % [g.player.level, g.ui.miki_view.mode, str(g.ui.miki_view.ids), pick])
+			g._on_miki_chosen(pick)
+			await _wait(0.3)
 		if g.state == Game.St.KAMI:
 			print("[flow] lv%d KAMI role=%s ids=%s" % [g.player.level, g.ui.kami_view.role, str(g.ui.kami_view.ids)])
 			g._on_kami_chosen(String(g.ui.kami_view.ids[0]))
@@ -280,7 +285,7 @@ func _flow_test() -> void:
 		else:
 			print("[flow] lv%d state=%d" % [g.player.level, g.state])
 		await _wait(0.3)
-		print("[flow]   -> state=%d gods=%s" % [g.state, str(g.player.gods)])
+		print("[flow]   -> state=%d gods=%s kami_lv=%s" % [g.state, str(g.player.gods), str(g.player.kami_lv)])
 	print("[flow] done")
 	get_tree().quit()
 

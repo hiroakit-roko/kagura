@@ -37,6 +37,14 @@ static func _val(id: String) -> float:
 	return p.val(id) if p != null else 0.0
 
 
+## 「威力 N%」：自機の基礎攻撃 × 神格倍率 × N/100（固定値だと後半に埃をかぶるので割合にする）
+static func scaled(id: String, kami: String) -> float:
+	var p := _p()
+	if p == null:
+		return 0.0
+	return p.base_damage() * p.kami_power(kami) * _val(id) * 0.01
+
+
 # ---------------------------------------------------------------------------
 # 命中
 # ---------------------------------------------------------------------------
@@ -108,7 +116,7 @@ static func hit(e: Node2D, dmg: float, at: Vector2, opts: Dictionary = {}) -> fl
 		if _has("inari_leg") and tag != "foxfire":
 			var other := nearest_enemy(en.position, 260.0, en)
 			if other != null:
-				p.spawn_foxfire(en.position, other, _val("inari_leg"), "foxfire")
+				p.spawn_foxfire(en.position, other, scaled("inari_leg", "inari"), "foxfire")
 
 	var kb := float(opts.get("kb", 0.0))
 	if kb > 0.0:
@@ -174,7 +182,8 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, _di
 				if tag == "fan" and _has("duo_take_uzume") and randf() < _val("duo_take_uzume") * 0.01:
 					lightning(en, p.base_damage() * 2.0 * p.kami_power("take"), at + Vector2(0, -80), 0)
 		"inari":
-			if tag == "cast":
+			# 狐憑き：詠唱（主神のみ）か、狐火の会心で印が付く（副神でも神威が働く）
+			if tag == "cast" or (tag == "foxfire" and bool(opts.get("crit", false))):
 				if not en.st["marked"]:
 					Fx.ring(en.position, kc, en.radius * 0.5, en.radius * 2.2, 0.3, 2.5)
 				en.mark()
@@ -270,7 +279,7 @@ static func lightning(en: Enemy, dmg: float, from: Vector2, chains: int, used: D
 	Sfx.play("hit_thunder", -12.0, randf_range(0.9, 1.2), 0.04)
 	var bonus := 0.0
 	if _has("duo_take_suku"):
-		bonus = _val("duo_take_suku") * float(en.st["hangover"]["stacks"])
+		bonus = scaled("duo_take_suku", "take") * float(en.st["hangover"]["stacks"])
 	var p := _p()
 	var crit := p != null and randf() < p.crit_chance()
 	hit(en, dmg + bonus, en.position, {"tag": "lightning", "kami": "take", "crit": crit})
@@ -298,7 +307,7 @@ static func lightning(en: Enemy, dmg: float, from: Vector2, chains: int, used: D
 
 
 static func jolt_trigger(en: Enemy) -> void:
-	var d := _val("take_u4")
+	var d := scaled("take_u4", "take")
 	if d <= 0.0:
 		d = 15.0
 	Fx.bolt(en.position + Vector2(randf_range(-40, 40), -70), en.position, Color(1.0, 0.97, 0.7), 0.14)
@@ -358,15 +367,15 @@ static func knockback(en: Enemy, v: Vector2, at: Vector2) -> void:
 	en.knockback(v)
 	Fx.cone(at, v.normalized(), Color(0.35, 0.82, 0.95), 4, 260.0, 0.5, 3.0, 0.25)
 	if _has("duo_susa_take"):
-		lightning(en, _val("duo_susa_take"), at + Vector2(0, -70), 0)
+		lightning(en, scaled("duo_susa_take", "take"), at + Vector2(0, -70), 0)
 	if _has("susa_leg"):
-		hit(en, _val("susa_leg"), en.position, {"tag": "wave", "kami": "susa", "quiet": true})
+		hit(en, scaled("susa_leg", "susa"), en.position, {"tag": "wave", "kami": "susa", "quiet": true})
 
 
 static func collide(en: Enemy, other: Enemy) -> void:
 	if not _has("susa_u5"):
 		return
-	var d := _val("susa_u5")
+	var d := scaled("susa_u5", "susa")
 	Fx.ring(en.position, Color(0.35, 0.82, 0.95), 4.0, 40.0, 0.2, 3.0)
 	Sfx.play("hit_storm", -12.0, 0.8, 0.05)
 	hit(en, d, en.position, {"tag": "collide", "kami": "susa"})
@@ -385,10 +394,8 @@ static func shatter(en: Enemy) -> void:
 	Fx.rays(en.position, col, 8, 4.0, 40.0, 0.25)
 	Sfx.play("hit_ice", -6.0, 0.7)
 	Game.inst.hitstop(0.05, 0.05)
-	var d := _val("iza_u3") if _has("iza_u3") else 25.0
 	var p := _p()
-	if p != null and p.gods.has("iza"):
-		d *= p.kami_power("iza")
+	var d := scaled("iza_u3", "iza") if _has("iza_u3") else (p.base_damage() * 2.0 * p.kami_power("iza") if p != null else 25.0)
 	en.freeze(0.8)
 	hit(en, d, en.position, {"tag": "shatter", "kami": "iza"})
 	if _has("iza_u4"):
@@ -412,7 +419,7 @@ static func shatter(en: Enemy) -> void:
 			b.setup(en.position + Vector2(cos(a), sin(a)) * 12.0, Vector2(cos(a), sin(a)) * 520.0, sd, true)
 			Game.inst.spawn_deferred(b)
 	if _has("iza_leg"):
-		var ld := _val("iza_leg")
+		var ld := scaled("iza_leg", "iza")
 		for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
 			if o == en or not is_instance_valid(o):
 				continue
@@ -432,8 +439,8 @@ static func on_kill(en: Enemy) -> void:
 	if _has("uzume_leg") and en.st["weak"] > 0.0 and randf() < _val("uzume_leg") * 0.01:
 		p.heal(6.0, true)
 	# 日輪の恵み：照覧された敵を倒すと回復
-	if _has("ama_u8") and en.st["exposed"] > 0.0:
-		p.heal(_val("ama_u8"), false)
+	if _has("ama_u8") and en.st["exposed"] > 0.0 and randf() < _val("ama_u8") * 0.01:
+		p.heal(1.0, false)
 		Fx.sparks(en.position, Vector2.UP, Color(1.0, 0.84, 0.42), 3, 160.0)
 	# 狐火の連鎖：狐火で倒すと次の敵へ跳ぶ
 	if _has("inari_u7") and en.last_tag == "foxfire" and randf() < _val("inari_u7") * 0.01:
@@ -462,7 +469,8 @@ static func on_fan_return(_b: Bullet) -> void:
 	var p := _p()
 	if p == null:
 		return
-	if _has("uzume_u9") and p.hp < float(p.stats["max_hp"]):
+	if _has("uzume_u9") and p.hp < float(p.stats["max_hp"]) and p.fan_heal_cd <= 0.0:
+		p.fan_heal_cd = 3.0
 		p.heal(_val("uzume_u9"), false)
 		Fx.petals(p.position, Color(1.0, 0.58, 0.78), 3, 60.0)
 

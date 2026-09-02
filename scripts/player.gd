@@ -3,7 +3,7 @@ extends Area2D
 
 ## 自機（魔法少女）。walk.gif から抜き出した後ろ姿のスプライトで歩く。
 ##   - 基本の弾（巫矢）は常に自動で撃つ
-##   - 迎えた神ごとに Weapon（神器）が付く。主神は 100%、副神は 50%
+##   - 迎えた神ごとに Weapon（神器）が付く。主神も副神も同じ威力（差は詠唱・神招きだけ）
 ##   - 神ごとに神格レベル（kami_lv）があり、神器のダメージで神徳（kami_xp）が溜まる
 ##   - Z：詠唱（主神の技、2 発まで）  X：神招き（主神の技、ゲージ 1/4 以上）  Space：疾走（無敵）
 
@@ -72,6 +72,7 @@ var dash_mult := 1.0         # 疾走の距離倍率（神の強化で伸ばす�
 var dash_buff_t := 0.0       # 疾走してからの猶予（猿田彦：追い風）
 var graze_buff_t := 0.0      # かすってからの猶予（猿田彦：道開き）
 var _fog_t := 0.0            # 霧の中の回復の刻み（少名毘古那：薬酒）
+var fan_heal_cd := 0.0       # 舞い手の護りの間隔
 var _dash_ready_ping := true
 var _contact_cd := 0.0
 var _ghost_t := 0.0
@@ -169,7 +170,8 @@ func kami_color(kami_id: String) -> Color:
 ## 神器の威力倍率：主神 1.0 / 副神 0.5 × 神格レベル
 func kami_power(kami_id: String) -> float:
 	var lv: int = kami_lv.get(kami_id, 1)
-	return (1.0 if is_main(kami_id) else 0.5) * Kami.kami_power(lv) * (1.3 if has("curse_fire") else 1.0)
+	# 主神と副神で威力の差はない（差は詠唱・神招きが主神のものである点だけ）
+	return Kami.kami_power(lv, Kami.growth_of(kami_id)) * (1.3 if has("curse_fire") else 1.0)
 
 
 ## 基本のダメージ（位で少しずつ伸びる）
@@ -226,9 +228,10 @@ func kami_level_up(kami_id: String) -> void:
 	Sfx.play("suzu", -8.0, 1.1)
 	Fx.ring(position, k["color"], 20.0, 140.0, 0.5, 4.0)
 	Fx.petals(position, k["color"], 14, 200.0)
-	var note := "神器の威力 +12%"
+	var g := int(round(Kami.growth_of(kami_id) * 100.0))
+	var note := "神器の威力 +%d%%" % g
 	if lv % 3 == 0 or lv % 4 == 0 or lv % 5 == 0:
-		note = "神器の威力 +12%。節目：弾数や大きさが増えた"
+		note = "神器の威力 +%d%%。節目：弾数や大きさが増えた" % g
 	Game.inst.ui.banner(String(k["name"]) + "　神格 %d" % lv, String(k["weapon"]) + "　" + note, k["color"])
 	on_boons_changed()
 
@@ -736,6 +739,7 @@ func in_fog() -> bool:
 func _upkeep(delta: float) -> void:
 	dash_buff_t = maxf(0.0, dash_buff_t - delta)
 	graze_buff_t = maxf(0.0, graze_buff_t - delta)
+	fan_heal_cd = maxf(0.0, fan_heal_cd - delta)
 	if has("suku_u7"):
 		_fog_t += delta
 		if _fog_t >= 1.0:

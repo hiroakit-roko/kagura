@@ -99,6 +99,16 @@ static func pattern(ci: CanvasItem, rect: Rect2, col: Color, step := 46.0, t := 
 
 
 ## 絵があれば読み込む（無ければ null）
+## 選択の操作ヒント（タッチ操作中はキー表記を出さない）
+static func pick_hint(verb: String, n := 3) -> String:
+	if Game.inst != null and Game.inst.is_touch():
+		return "タップで" + verb
+	var keys := ""
+	for i in n:
+		keys += "[%d] " % (i + 1)
+	return keys + "またはタップで" + verb
+
+
 ## 絵はここで参照を保持する（_draw 内で load するだけだと毎フレーム作り直されて白く出る）
 static var _art_cache: Dictionary = {}
 
@@ -250,9 +260,11 @@ func show_boons(kami_id: String, offers: Array, rerolls: int, title: String) -> 
 	boons_view.visible = true
 
 
-func show_miki(ids: Array) -> void:
+## 神を 1 柱選ぶ画面。mode: "miki"（神酒）/ "level"（位上がり）/ "boss"（討伐の褒賞）
+func show_miki(ids: Array, mode := "miki") -> void:
 	hide_cards()
 	miki_view.ids = ids
+	miki_view.mode = mode
 	miki_view.anim = 0.0
 	miki_view.hover = -1
 	miki_view.visible = true
@@ -561,7 +573,7 @@ class HudView:
 					Cfg.with_a(Color(1, 0.9, 0.7) if main else Color(0.85, 0.85, 1.0), 0.8))
 			Ui.txt(self, ui.font_display, Vector2(c.x + r + 12.0, y + 30.0), String(k["name"]), 14 if main else 12,
 					Cfg.with_a(k["color"], 0.95))
-			Ui.txt(self, ui.font, Vector2(c.x + r + 12.0, y + 43.0 if main else y + 40.0), String(k["weapon"]) + ("" if main else "（半）"), 9,
+			Ui.txt(self, ui.font, Vector2(c.x + r + 12.0, y + 43.0 if main else y + 40.0), String(k["weapon"]), 9,
 					Color(1, 1, 1, 0.7))
 			y += r * 2.0 + 22.0
 		# 次に神を迎える位（枠が残っているとき）
@@ -820,13 +832,17 @@ class ConfirmView:
 		Ui.panel(self, Rect2(x0 - 8, y - 6, w + 16, 190), col, a, 0.8)
 		Ui.txt(self, ui.font_bold, Vector2(x0 + 6, y + 14), "得意　" + String(k["role"]), 12, Cfg.with_a(col.lightened(0.2), a))
 		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 36), "神器", 10, Color(1, 0.9, 0.7, a * 0.85))
-		Ui.txt(self, ui.font_display, Vector2(x0 + 36, y + 38), String(k["weapon"]) + ("（半分の威力）" if role == "副神" else ""), 15, Color(1, 1, 1, a))
+		Ui.txt(self, ui.font_display, Vector2(x0 + 36, y + 38), String(k["weapon"]), 15, Color(1, 1, 1, a))
+		var gr := int(round(Kami.growth_of(String(k["id"])) * 100.0))
+		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 38), ("神格ごとの伸び +%d%%（近距離の見返り）" % gr) if gr > 12 else ("神格ごとの伸び +%d%%" % gr), 10,
+				Cfg.with_a(Cfg.C_GOLD if gr > 12 else Color(1, 1, 1), a * 0.85), HORIZONTAL_ALIGNMENT_RIGHT, w - 12)
 		Ui.para(self, ui.font, Vector2(x0 + 6, y + 56), String(k["weapon_desc"]), w - 12, 11, 2, Color(0.9, 0.92, 1.0, a * 0.9))
 		if role == "主神":
 			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 96), "詠唱 Z　" + String(k["cast"]) + "：" + String(k["cast_desc"]), 10, Color(0.9, 0.92, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
 			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 112), "神招き X　" + String(k["call"]) + "：" + String(k["call_desc"]), 10, Color(0.9, 0.92, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
 		else:
-			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 96), "副神は神器のみ加わる。詠唱と神招きは主神の技のまま", 10, Color(0.9, 0.92, 1.0, a * 0.85))
+			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 96), "副神の神器は主神と同じ威力。詠唱と神招きだけは主神のものが使われる", 10, Color(0.9, 0.92, 1.0, a * 0.85))
+			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 112), "（この神の詠唱・神招きは付かない。神威と能力はすべて働く）", 10, Color(0.9, 0.92, 1.0, a * 0.6))
 		var st := String(k["status"])
 		if st != "":
 			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 134), "神威 " + st + "：" + String(k["status_desc"]), 10, Color(0.85, 0.9, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
@@ -858,7 +874,8 @@ class ConfirmView:
 			draw_rect(r, Cfg.with_a(bc, (1.0 if sel else 0.55) * a), false, 2.0 if sel else 1.2)
 			if sel:
 				draw_rect(r, Cfg.with_a(bc, 0.12 * a))
-			var label := "契約する　[1] / Enter" if i == 0 else "考え直す　[2] / Esc"
+			var touch := Game.inst != null and Game.inst.is_touch()
+			var label := ("契約する" if touch else "契約する　[1] / Enter") if i == 0 else ("考え直す" if touch else "考え直す　[2] / Esc")
 			Ui.txt(self, ui.font_display if i == 0 else ui.font_bold, Vector2(r.position.x, r.position.y + 31), label, 15 if i == 0 else 13,
 					Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 
@@ -953,17 +970,17 @@ class KamiChoiceView:
 		backdrop(Cfg.C_GOLD)
 		Ui.txt(self, ui.font_display, Vector2(0, 104), "主神を選べ" if main else "副神を迎えよ", 44, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		var l1 := "選んだ瞬間に、その神の神器（自動で撃つ武器）が付く。伝説の恩恵は主神からのみ。" if main \
-				else "迎えた瞬間に、その神の神器が半分の威力で加わる。迎えること自体が今回の報酬。"
+		var l1 := "選んだ瞬間に、その神の神器（自動で撃つ武器）が付く。詠唱・神招き・伝説は主神のもの。" if main \
+				else "迎えた瞬間に、その神の神器が加わる（威力は主神と同じ）。迎えること自体が今回の報酬。"
 		var l2 := "位 4 と位 7 で新たな神が現れ、副神として 2 柱まで迎えられる。" if main \
-				else "詠唱と神招きは主神の技のまま。副神の神器も当てるほど神格が上がる。"
+				else "詠唱と神招きだけは主神のもの。神威と能力はすべて働く。"
 		Ui.txt(self, ui.font, Vector2(0, 134), l1, 12,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		Ui.txt(self, ui.font, Vector2(0, 152), l2, 12,
 				Color(0.9, 0.9, 1.0, 0.7 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		for i in ids.size():
 			_draw_card(i)
-		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30), "[1] [2] [3] またはタップで選ぶ", 14,
+		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30), Ui.pick_hint("選ぶ"), 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		if hover >= 0 and hover < ids.size():
 			var k := Kami.kami(ids[hover])
@@ -979,10 +996,10 @@ class KamiChoiceView:
 		Ui.panel(self, r, Cfg.C_GOLD, a, 0.85)
 		Ui.txt(self, ui.font_display, Vector2(r.position.x + 14, r.position.y + 22), "仕組み", 14, Cfg.with_a(Cfg.C_GOLD, a))
 		var lines := [
-			"① 神を迎えると神器（自動発射の武器）が付く。主神は 100%、副神は 50% の威力。",
+			"① 神を迎えると神器（自動発射の武器）が付く。主神も副神も同じ威力。詠唱と神招きは主神のもの。",
 			"② 位 2 で主神、位 4 と位 7 で副神を迎える。迎えるだけで報酬になり、他の選択は続かない。",
-			"③ それ以外の位上がりでは神が現れ、能力を 3 枚提示する。神ごとに 9 種（凡 4・稀 3・秀 2）から 3 つまで。",
-			"　 空き枠のぶんが新しい能力、残りは選んだ能力の強化（重ねると数値が伸びる）。",
+			"③ それ以外の位上がりでは神を 1 柱選ぶ。その神の神格が上がり、能力 3 枚（9 種・3 つまで）を示す。",
+			"　 空き枠のぶんが新しい能力、残りは選んだ能力の強化。近距離の神器は神格ごとの伸びが大きい。",
 		]
 		var y := r.position.y + 42.0
 		for l: String in lines:
@@ -1036,15 +1053,22 @@ class KamiChoiceView:
 		else:
 			Ui.para(self, ui.font, Vector2(x0, y + 2), String(k["status_desc"]), w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.85))
 
-		# 詠唱と神招き
+		# 詠唱と神招き（主神のみ）／副神なら神格の伸びを見せる
 		y = rr.position.y + 430.0
 		draw_line(Vector2(x0, y - 8), Vector2(rr.end.x - 14, y - 8), Cfg.with_a(col, 0.4 * a), 1.0)
-		Ui.txt(self, ui.font, Vector2(x0, y + 8), "詠唱 Z", 10, Color(1, 0.9, 0.7, a * 0.85))
-		Ui.txt(self, ui.font_display, Vector2(x0 + 44, y + 9), String(k["cast"]), 13, Color(1, 1, 1, a))
-		Ui.para(self, ui.font, Vector2(x0, y + 26), String(k["cast_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
-		Ui.txt(self, ui.font, Vector2(x0, y + 70), "神招き X", 10, Color(1, 0.9, 0.7, a * 0.85))
-		Ui.txt(self, ui.font_display, Vector2(x0 + 56, y + 71), String(k["call"]), 13, Color(1, 1, 1, a))
-		Ui.para(self, ui.font, Vector2(x0, y + 88), String(k["call_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
+		var gr := int(round(Kami.growth_of(String(k["id"])) * 100.0))
+		if role == "主神":
+			Ui.txt(self, ui.font, Vector2(x0, y + 8), "詠唱", 10, Color(1, 0.9, 0.7, a * 0.85))
+			Ui.txt(self, ui.font_display, Vector2(x0 + 30, y + 9), String(k["cast"]), 13, Color(1, 1, 1, a))
+			Ui.para(self, ui.font, Vector2(x0, y + 26), String(k["cast_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
+			Ui.txt(self, ui.font, Vector2(x0, y + 70), "神招き", 10, Color(1, 0.9, 0.7, a * 0.85))
+			Ui.txt(self, ui.font_display, Vector2(x0 + 42, y + 71), String(k["call"]), 13, Color(1, 1, 1, a))
+			Ui.para(self, ui.font, Vector2(x0, y + 88), String(k["call_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
+		else:
+			Ui.txt(self, ui.font, Vector2(x0, y + 8), "副神として", 10, Color(1, 0.9, 0.7, a * 0.85))
+			Ui.para(self, ui.font, Vector2(x0, y + 26), "神器・神威・能力はすべて働く。詠唱と神招きだけは主神のものが使われる", w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.85))
+		Ui.txt(self, ui.font_bold, Vector2(x0, y + 128), ("神格ごとの伸び +%d%%（近距離の見返り）" % gr) if gr > 12 else ("神格ごとの伸び +%d%%" % gr), 10,
+				Cfg.with_a(Cfg.C_GOLD if gr > 12 else Color(0.85, 0.9, 1.0), a * 0.9))
 
 		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))
 
@@ -1107,9 +1131,9 @@ class BoonsView:
 		for i in offers.size():
 			_draw_card(i)
 
-		var hint := "[1] [2] [3] またはタップで受け取る"
+		var hint := Ui.pick_hint("受け取る")
 		if rerolls > 0:
-			hint += "　　[R] 神籤を引き直す ×%d" % rerolls
+			hint += ("　　[R] 神籤を引き直す ×%d" % rerolls) if not (Game.inst != null and Game.inst.is_touch()) else ("　　神籤 ×%d は下の札で" % rerolls)
 		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30), hint, 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		_draw_pantheon(CY + CH + 52.0)
@@ -1253,11 +1277,12 @@ class BoonsView:
 
 
 # =====================================================================
-## 神酒：神を 1 柱選んで神格を上げる
+## 神を 1 柱選んで神格を上げる（神酒／位上がり／討伐の褒賞）
 class MikiView:
 	extends ChoiceView
 
 	var ids: Array = []
+	var mode := "miki"
 
 	const CW := 190.0
 	const CH := 180.0
@@ -1274,9 +1299,18 @@ class MikiView:
 
 	func _draw() -> void:
 		backdrop(Cfg.C_GOLD)
-		Ui.txt(self, ui.font_display, Vector2(0, 150), "神酒", 48, Cfg.with_a(Cfg.C_GOLD, anim),
+		var title := "神酒"
+		var sub := "神を 1 柱選び、神格を 1 段上げる。神器の威力が上がり、節目では弾数や大きさも増える。"
+		match mode:
+			"level":
+				title = "神との邂逅"
+				sub = "神格を上げる神を選べ。選んだ神が続けて能力を 3 枚示す。"
+			"boss":
+				title = "討伐の褒賞"
+				sub = "神格を上げる神を選べ。選んだ神が続けて秀の能力を示す。"
+		Ui.txt(self, ui.font_display, Vector2(0, 150), title, 48, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 186), "神を 1 柱選び、神格を 1 段上げる。神器の威力が上がり、節目では弾数や大きさも増える。", 13,
+		Ui.txt(self, ui.font, Vector2(0, 186), sub, 13,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		var p := Game.inst.player
 		for i in ids.size():
@@ -1293,12 +1327,17 @@ class MikiView:
 			var lv: int = p.kami_lv.get(id, 1)
 			Ui.kami_ring(self, p, id, rr.position + Vector2(rr.size.x * 0.5, 54), 30.0, _t, pop, false)
 			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 112), String(k["name"]), 16, Color(1, 1, 1, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-			Ui.txt(self, ui.font_bold, rr.position + Vector2(0, 134), "神格 %d → %d" % [lv, lv + 1], 14, Cfg.with_a(Cfg.C_GOLD, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			var capped := lv >= 10
+			Ui.txt(self, ui.font_bold, rr.position + Vector2(0, 134), ("神格 %d（上限）" % lv) if capped else ("神格 %d → %d" % [lv, lv + 1]), 14, Cfg.with_a(Cfg.C_GOLD, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 			Ui.txt(self, ui.font, rr.position + Vector2(0, 152), "%s  威力 ×%.2f → ×%.2f" % [String(k["weapon"]),
-					p.kami_power(id), (1.0 if p.is_main(id) else 0.5) * Kami.kami_power(lv + 1)], 10,
+					p.kami_power(id), Kami.kami_power(mini(lv + 1, 10), Kami.growth_of(id))], 10,
 					Color(0.9, 0.92, 1.0, pop * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			if mode != "miki":
+				var owned := Boons.owned_of(p, id).size()
+				Ui.txt(self, ui.font, rr.position + Vector2(0, 168), "能力 %d/%d　%s" % [owned, Boons.MAX_PER_KAMI, "主神" if p.is_main(id) else "副神"], 10,
+						Cfg.with_a(kc, pop * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 10), "[%d]" % (i + 1), 12, Cfg.with_a(kc, pop))
-		Ui.txt(self, ui.font, Vector2(0, 300.0 + CH + 30.0), "数字キー またはタップで選ぶ", 14,
+		Ui.txt(self, ui.font, Vector2(0, 300.0 + CH + 30.0), Ui.pick_hint("選ぶ"), 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 
@@ -1412,9 +1451,10 @@ class OverlayView:
 		if g != null and g.player != null and is_instance_valid(g.player):
 			ui.hud._draw_build_on(self, g.player, y + 16.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 96.0), "タップ / ENTER で更に登る（祟りの参道）", 20,
+		var touch := Game.inst != null and Game.inst.is_touch()
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 96.0), "タップで更に登る（祟りの参道）" if touch else "タップ / ENTER で更に登る（祟りの参道）", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 66.0), "R で最初から　　ESC で題目へ", 13,
+		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 66.0), "右上の「休」から題目へ戻れる" if touch else "R で最初から　　ESC で題目へ", 13,
 				Color(0.9, 0.9, 1.0, 0.8), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _title() -> void:
@@ -1448,7 +1488,11 @@ class OverlayView:
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 		var y := Cfg.H - 254.0
+		var touch := Game.inst != null and Game.inst.is_touch()
 		var lines := [
+			["移動", "画面のどこでも指をなぞる（速度が高いほど大きく追従）"], ["疾走", "短くなぞってすぐ離す（無敵）"], ["詠唱", "右下の「詠唱」札（主神の技・2 発）"],
+			["神招き", "右下の「招」札（ゲージ 1/4 以上）"], ["小休止", "右上の「休」"], ["名前", "結果画面の「名を刻む」"],
+		] if touch else [
 			["移動", "WASD / 矢印　　スマホ：なぞる（速度が高いほど指に大きく追従）"], ["疾走", "Space（無敵）　　スマホ：指を弾く"], ["詠唱", "Z / J（主神の技・2 発）"],
 			["神招き", "X / K（ゲージ 1/4 以上）"], ["低速", "Shift"], ["小休止 / 音", "P / M"],
 		]
@@ -1469,7 +1513,7 @@ class OverlayView:
 					Cfg.with_a(Cfg.C_GOLD, 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		ui.name_box.place_title(ry + rh + 4.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップ / ENTER で はじめる", 22,
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップで はじめる" if touch else "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _over() -> void:
@@ -1502,7 +1546,7 @@ class OverlayView:
 		if g != null and g.player != null and is_instance_valid(g.player):
 			ui.hud._draw_build_on(self, g.player, y + 16.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップ / ENTER でもう一度　　ESC で題目へ", 20,
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップでもう一度" if (Game.inst != null and Game.inst.is_touch()) else "タップ / ENTER でもう一度　　ESC で題目へ", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 

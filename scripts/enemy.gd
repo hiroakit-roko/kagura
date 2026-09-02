@@ -41,6 +41,7 @@ var st := {
 	"doom": {},          # {"t": 残り秒, "dmg": float}
 	"hangover": {"stacks": 0, "t": 0.0, "dps": 0.0},
 	"chill": {"stacks": 0, "t": 0.0},
+	"sunslow": 0.0,      # 灼き付く光：光線の中にいる間の減速（残り秒）
 }
 var _last_pos := Vector2.ZERO
 var last_tag := ""          # 最後に受けた攻撃の種類（撃破時の派生に使う）
@@ -247,7 +248,7 @@ func _physics_process(delta: float) -> void:
 # ---------- 神威 ----------
 
 func _tick_status(delta: float) -> void:
-	for key in ["exposed", "rupture", "jolted", "weak", "charm", "frozen"]:
+	for key in ["exposed", "rupture", "jolted", "weak", "charm", "frozen", "sunslow"]:
 		if st[key] > 0.0:
 			st[key] = maxf(0.0, st[key] - delta)
 
@@ -284,6 +285,10 @@ func speed_mult() -> float:
 		m *= 1.0 - Combat.hangover_slow()
 	if st["charm"] > 0.0:
 		m *= 0.6
+	if st["sunslow"] > 0.0:
+		var pl := Game.inst.player if Game.inst != null else null
+		if pl != null and is_instance_valid(pl):
+			m *= 1.0 - minf(pl.val("ama_u6") * 0.01, 0.5 if not is_boss else 0.25)
 	return m
 
 
