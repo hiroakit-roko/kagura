@@ -182,8 +182,8 @@ func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player) or not player.alive:
 		return
 
-	# レベルアップが溜まっていれば、波を祓ったあと（戦闘の合間）に神との邂逅へ
-	if player.pending_levels > 0 and not _wave_active:
+	# レベルアップした瞬間に時間を止めて神との邂逅へ（敵も弾も止まる）
+	if player.pending_levels > 0:
 		if player.gods.is_empty():
 			_open_kami_choice()
 		else:
@@ -248,11 +248,8 @@ func _on_leveled_up() -> void:
 	if player == null or not is_instance_valid(player):
 		return
 	Sfx.play("suzu", -10.0, 1.2)
-	Fx.ring(player.position, Cfg.C_GOLD, 10.0, 90.0, 0.4, 3.0)
-	if player.gods.is_empty():
-		ui.banner("位 %d" % player.level, "この波を祓うと、神々が姿を見せる", Cfg.C_GOLD)
-	else:
-		ui.banner("位 %d" % player.level, "この波を祓うと、神が恩恵を授けに現れる", Cfg.C_GOLD)
+	Fx.ring(player.position, Cfg.C_GOLD, 10.0, 120.0, 0.5, 4.0)
+	Fx.flash(Cfg.with_a(Cfg.C_GOLD, 0.25), 0.3)
 
 
 func _clear_wave() -> void:
@@ -266,8 +263,6 @@ func _clear_wave() -> void:
 		_boss_reward = false
 		_open_boons("boss", Cfg.Rar.EPIC, player.main_god())
 		return
-	if player.pending_levels > 0:
-		return   # 続けて神との邂逅が開く（_process 側）
 	ui.banner("祓い清め", "+%d" % (50 * wave), Cfg.C_HP)
 	Sfx.play("suzu", -10.0)
 	# 3 波ごとに神酒が降りてくる

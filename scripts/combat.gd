@@ -141,12 +141,16 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, dir
 	var slot := int(opts.get("slot", Cfg.Slot.ATTACK))
 	var boon_id: String = p.slots.get(slot, "")
 	var v := p.val(boon_id) if boon_id != "" else 0.0
+	var kc: Color = Kami.kami(kami)["color"]
 	match kami:
 		"ama":
+			if en.st["exposed"] <= 0.0:
+				Fx.rays(en.position, kc, 6, en.radius * 0.6, 26.0, 0.25)
 			en.add_exposed(EXPOSED_T)
 		"susa":
 			if tag == "cast" or tag == "dash":
 				en.add_rupture(RUPTURE_T)
+				Fx.slash(en.position, randf() * TAU, en.radius * 1.3, kc, 2.0, 0.18, 6.0)
 		"take":
 			match slot:
 				Cfg.Slot.ATTACK:
@@ -164,25 +168,31 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, dir
 		"uzume":
 			match slot:
 				Cfg.Slot.ATTACK, Cfg.Slot.SPECIAL, Cfg.Slot.DASH:
+					if en.st["weak"] <= 0.0:
+						Fx.petals(en.position, kc, 5, 90.0)
 					apply_weak(en)
 				Cfg.Slot.CAST:
 					en.add_charm(v)
 					Sfx.play("charm", -10.0)
 		"inari":
 			if slot == Cfg.Slot.SPECIAL:
+				if not en.st["marked"]:
+					Fx.ring(en.position, kc, en.radius * 0.5, en.radius * 2.2, 0.3, 2.5)
 				en.mark()
 		"suku":
 			match slot:
 				Cfg.Slot.ATTACK:
+					Fx.burst(at, kc, 3, 90.0, 2.5, 0.35, true)
 					apply_hangover(en, 1, v)
 				Cfg.Slot.SPECIAL:
 					apply_hangover(en, 2, v)
 		"iza":
+			Fx.sparks(at, Vector2.UP, Color(0.85, 0.95, 1.0), 3, 220.0)
 			match slot:
 				Cfg.Slot.ATTACK:
 					en.add_chill(1)
 				Cfg.Slot.SPECIAL:
-					en.add_chill(3)
+					en.add_chill(2)
 				Cfg.Slot.DASH:
 					en.add_chill(2)
 
@@ -341,14 +351,15 @@ static func doom_trigger(en: Enemy, dmg: float) -> void:
 			en.add_exposed(EXPOSED_T)
 		if _has("duo_iza_tsuki"):
 			en.freeze(_val("duo_iza_tsuki"))
-	# 宵闇：周囲に拡散
-	if _has("tsuki_p2"):
-		var r := _val("tsuki_p2")
-		for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
-			if o == en or not is_instance_valid(o):
-				continue
-			if o.position.distance_to(pos) <= r:
-				hit(o, dmg * 0.5 * mult, o.position, {"tag": "doom", "kami": "tsuki"})
+	# 範囲爆発：周囲の敵にも半分のダメージ（宵闇の加護で範囲が広がる）
+	var r := 72.0 * (1.0 + _val("tsuki_p2") * 0.01)
+	Fx.ring(pos, col, 10.0, r, 0.35, 6.0)
+	Fx.zone(pos, r, col, 0.35)
+	for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
+		if o == en or not is_instance_valid(o):
+			continue
+		if o.position.distance_to(pos) <= r:
+			hit(o, dmg * 0.5 * mult, o.position, {"tag": "doom", "kami": "tsuki"})
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +368,7 @@ static func doom_trigger(en: Enemy, dmg: float) -> void:
 
 static func knockback(en: Enemy, v: Vector2, at: Vector2) -> void:
 	en.knockback(v)
+	Fx.cone(at, v.normalized(), Color(0.35, 0.82, 0.95), 4, 260.0, 0.5, 3.0, 0.25)
 	if _has("duo_susa_take"):
 		lightning(en, _val("duo_susa_take"), at + Vector2(0, -70), 0)
 	if _has("duo_susa_iza"):
@@ -423,11 +435,13 @@ static func on_kill(en: Enemy) -> void:
 	# 黄泉の穢れ
 	if _has("iza_p2"):
 		var r := _val("iza_p2")
+		Fx.ring(en.position, Color(0.58, 0.82, 1.0), 8.0, r, 0.4, 3.0)
 		for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
 			if o == en or not is_instance_valid(o):
 				continue
 			if o.position.distance_to(en.position) <= r:
 				o.add_chill(2)
+				Fx.sparks(o.position, Vector2.UP, Color(0.85, 0.95, 1.0), 3, 200.0)
 	# 八百万の宴
 	if _has("uzume_leg") and en.st["weak"] > 0.0 and randf() < _val("uzume_leg") * 0.01:
 		p.heal(6.0, true)

@@ -570,10 +570,10 @@ class KamiChoiceView:
 				Color(0.9, 0.9, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		draw_line(Vector2(rr.position.x + 24, rr.position.y + 246), Vector2(rr.end.x - 24, rr.position.y + 246), Cfg.with_a(col, 0.4 * a), 1.0)
 
-		# 神威
+		# 得意と神威
 		var st := String(k["status"])
-		Ui.txt(self, ui.font, Vector2(rr.position.x + 16, rr.position.y + 270), "司るもの　" + String(k["domain"]), 12,
-				Color(0.85, 0.85, 1.0, a * 0.9))
+		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 16, rr.position.y + 268), "得意　" + String(k["style"]), 12,
+				Cfg.with_a(col, a))
 		if st != "":
 			draw_rect(Rect2(rr.position.x + 16, rr.position.y + 282, 62, 20), Cfg.with_a(col, 0.25 * a))
 			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 16, rr.position.y + 297), "神威 " + st, 12,
@@ -657,7 +657,9 @@ class BoonsView:
 					HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 			Ui.txt(self, ui.font, Vector2(0, 246), String(k["kana"]) + "　・　" + String(k["title"]) + "　［" + role + "］", 12,
 					Cfg.with_a(col, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-			Ui.txt(self, ui.font, Vector2(0, 280), "「" + quote + "」", 14,
+			Ui.txt(self, ui.font_bold, Vector2(0, 262), "得意　" + String(k["style"]), 12,
+					Color(1, 0.95, 0.85, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			Ui.txt(self, ui.font, Vector2(0, 284), "「" + quote + "」", 14,
 					Color(0.95, 0.93, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 		for i in offers.size():

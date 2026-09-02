@@ -291,9 +291,14 @@ func _start_dash(dir: Vector2) -> void:
 					v * (1.0 + val("tsuki_p3") * 0.01), col)
 			Game.inst.spawn_deferred(z2)
 		"uzume":
-			Fx.petals(position, col, 12, 160.0)
+			Fx.petals(position, col, 16, 180.0)
+			Fx.ring(position, col, 10.0, 130.0, 0.3, 3.0)
 			for e in _enemies_within(150.0):
 				Combat.apply_weak(e)
+			for eb in get_tree().get_nodes_in_group("ebullet"):
+				if is_instance_valid(eb) and eb.position.distance_to(position) <= 130.0:
+					Fx.petals(eb.position, col, 2, 60.0)
+					eb.vanish()
 		"inari":
 			_crit_window = 1.5
 			Fx.burst(position, col, 8, 140.0, 3.0, 0.3, true)
@@ -372,7 +377,7 @@ func shot_damage(slot: int) -> float:
 func crit_chance(slot: int) -> float:
 	var c: float = stats["crit"]
 	if slot == Cfg.Slot.ATTACK and has("inari_atk"):
-		c += val("inari_atk") * 0.01
+		c += 0.10
 	if slot == Cfg.Slot.CAST and has("inari_cast"):
 		c += val("inari_cast") * 0.01
 	if _crit_window > 0.0 and has("inari_dash"):
@@ -426,26 +431,59 @@ func _new_bullet(slot: int) -> Bullet:
 	return b
 
 
+func bullet_speed() -> float:
+	return float(stats["bullet_speed"]) * (1.0 + val("saru_p2") * 0.01)
+
+
 func _fire_main() -> void:
 	var nose := position + Vector2(0, -34.0)
 	var kami := slot_kami(Cfg.Slot.ATTACK)
-	var b := _new_bullet(Cfg.Slot.ATTACK)
-	b.radius = 5.0
-	b.trail_len = 22.0
-	if kami == "susa":
-		b.kb = 260.0
+	var dmg := shot_damage(Cfg.Slot.ATTACK)
 	var spread := deg_to_rad(randf_range(-2.0, 2.0) * (0.4 if focus else 1.0))
-	b.setup(nose, Vector2(cos(-PI * 0.5 + spread), sin(-PI * 0.5 + spread)) * float(stats["bullet_speed"]),
-			shot_damage(Cfg.Slot.ATTACK), true)
-	Game.inst.world.add_child(b)
+	var col := Cfg.C_PBULLET
+	match kami:
+		"susa":
+			# 3 方向に広がる荒波。1 発ごとのダメージは値（%）で決まる
+			var base_d: float = stats["damage"] * (1.0 + float(level - 1) * 0.03)
+			var each := base_d * val("susa_atk") * 0.01
+			for i in 3:
+				var b := _new_bullet(Cfg.Slot.ATTACK)
+				b.radius = 6.0
+				b.trail_len = 18.0
+				b.kb = 260.0
+				var a := -PI * 0.5 + (float(i) - 1.0) * deg_to_rad(13.0) + spread
+				b.setup(nose + Vector2((float(i) - 1.0) * 10.0, 0), Vector2(cos(a), sin(a)) * bullet_speed(), each, true)
+				Game.inst.world.add_child(b)
+				col = b.color
+		"ama":
+			# 貫通する光線
+			var b := _new_bullet(Cfg.Slot.ATTACK)
+			b.radius = 5.5
+			b.trail_len = 46.0
+			b.pierce = 2
+			b.setup(nose, Vector2(cos(-PI * 0.5 + spread), sin(-PI * 0.5 + spread)) * bullet_speed() * 1.15, dmg, true)
+			Game.inst.world.add_child(b)
+			col = b.color
+		_:
+			var b := _new_bullet(Cfg.Slot.ATTACK)
+			b.radius = 5.0
+			b.trail_len = 22.0
+			b.setup(nose, Vector2(cos(-PI * 0.5 + spread), sin(-PI * 0.5 + spread)) * bullet_speed(), dmg, true)
+			Game.inst.world.add_child(b)
+			col = b.color
 
-	# 狐の加勢
-	if has("inari_p1") and randf() < val("inari_p1") * 0.01:
-		var target := Combat.nearest_enemy(position, 520.0)
+	# 稲荷：攻撃のたびに追尾する狐火
+	if kami == "inari":
+		var target := Combat.nearest_enemy(position, 600.0)
 		if target != null:
-			spawn_foxfire(nose, target, shot_damage(Cfg.Slot.ATTACK) * 0.6)
+			spawn_foxfire(nose + Vector2(randf_range(-14, 14), 0), target, dmg * val("inari_atk") * 0.01)
+	# 狐の加勢（加護）
+	if has("inari_p1") and randf() < val("inari_p1") * 0.01:
+		var target2 := Combat.nearest_enemy(position, 520.0)
+		if target2 != null:
+			spawn_foxfire(nose, target2, dmg * 0.6)
 
-	Fx.cone(nose, Vector2.UP, b.color, 2, 90.0, 0.4, 2.0, 0.12)
+	Fx.cone(nose, Vector2.UP, col, 2, 90.0, 0.4, 2.0, 0.12)
 	Sfx.play("shoot", -20.0, randf_range(0.95, 1.1), 0.035)
 
 
@@ -477,12 +515,24 @@ func _fire_special() -> void:
 		match kami:
 			"ama":
 				b.eraser = true
+			"uzume":
+				b.eraser = true
+				b.radius = 12.0
+			"inari":
+				b.homing = 6.5
 			"tsuki":
 				b.zone_kind = "moon"
 				b.zone_r = 52.0
 				b.zone_life = 2.2 * (1.0 + val("tsuki_p3") * 0.01)
 				b.zone_dmg = val("tsuki_spc") * (1.0 + val("tsuki_p3") * 0.01)
-		b.setup(from + Vector2((float(i) - 0.5) * 24.0, 0), Vector2(cos(a), sin(a)) * 620.0, dmg, true)
+			"suku":
+				b.zone_kind = "fog"
+				b.zone_r = 58.0
+				b.zone_life = 2.6
+				b.zone_dmg = 0.0
+			"iza":
+				b.split_on_hit = 4
+		b.setup(from + Vector2((float(i) - 0.5) * 24.0, 0), Vector2(cos(a), sin(a)) * 620.0 * (1.0 + val("saru_p2") * 0.01), dmg, true)
 		Game.inst.world.add_child(b)
 	Sfx.play("clap", -16.0, randf_range(0.95, 1.1), 0.1)
 
@@ -555,7 +605,8 @@ func spawn_foxfire(from: Vector2, target: Node2D, dmg: float) -> void:
 	b.crit_chance = crit_chance(Cfg.Slot.ATTACK)
 	var dir := (target.global_position - from).normalized() if target != null else Vector2.UP
 	b.setup(from, dir * 520.0, dmg, true)
-	Game.inst.world.add_child(b)
+	# 当たり判定のシグナル処理中（会心の派生など）からも呼ばれるので遅延追加
+	Game.inst.spawn_deferred(b)
 	Sfx.play("fox", -18.0, randf_range(0.9, 1.2), 0.05)
 
 

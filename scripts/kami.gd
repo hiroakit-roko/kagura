@@ -20,7 +20,7 @@ const LIST := [
 	{
 		"id": "ama", "name": "天照大神", "kana": "アマテラス", "title": "日輪の女神",
 		"color": Color(1.0, 0.84, 0.42), "color2": Color(1.0, 0.55, 0.25),
-		"domain": "光と鏡", "status": "照覧",
+		"domain": "光と鏡", "style": "貫通光線・敵弾の反射", "status": "照覧",
 		"status_desc": "照覧を受けた敵は受けるダメージが増える",
 		"emblem": "sun",
 		"intro": "闇に呑まれるな。わたしの光が、汝の行く道を照らそう。",
@@ -33,7 +33,7 @@ const LIST := [
 	{
 		"id": "susa", "name": "須佐之男命", "kana": "スサノオ", "title": "荒ぶる嵐の神",
 		"color": Color(0.35, 0.82, 0.95), "color2": Color(0.20, 0.45, 0.85),
-		"domain": "嵐と海", "status": "裂傷",
+		"domain": "嵐と海", "style": "3 方向拡散・押し戻し", "status": "裂傷",
 		"status_desc": "裂傷を受けた敵は動くほどダメージを受ける",
 		"emblem": "storm",
 		"intro": "小娘、退屈しておったところだ。荒波に乗せて敵を蹴散らせ！",
@@ -46,7 +46,7 @@ const LIST := [
 	{
 		"id": "take", "name": "建御雷神", "kana": "タケミカヅチ", "title": "雷鳴の武神",
 		"color": Color(1.0, 0.95, 0.50), "color2": Color(0.70, 0.60, 1.0),
-		"domain": "雷と剣", "status": "帯電",
+		"domain": "雷と剣", "style": "連鎖する雷・落雷", "status": "帯電",
 		"status_desc": "帯電した敵は攻撃するたび雷のダメージを受ける",
 		"emblem": "thunder",
 		"intro": "雷は理を問わぬ。ただ、当たった者すべてを焼く。",
@@ -59,7 +59,7 @@ const LIST := [
 	{
 		"id": "tsuki", "name": "月読命", "kana": "ツクヨミ", "title": "夜を統べる神",
 		"color": Color(0.78, 0.72, 1.0), "color2": Color(0.45, 0.40, 0.85),
-		"domain": "月と宿命", "status": "宿命",
+		"domain": "月と宿命", "style": "時限爆発・範囲攻撃", "status": "宿命",
 		"status_desc": "宿命を刻まれた敵は、少し遅れて大きなダメージを受ける",
 		"emblem": "moon",
 		"intro": "……結末はすでに決まっている。ただ、いつ訪れるかだけだ。",
@@ -72,7 +72,7 @@ const LIST := [
 	{
 		"id": "uzume", "name": "天宇受売命", "kana": "アメノウズメ", "title": "舞と歓喜の女神",
 		"color": Color(1.0, 0.58, 0.78), "color2": Color(0.85, 0.30, 0.60),
-		"domain": "舞と魅惑", "status": "弱体",
+		"domain": "舞と魅惑", "style": "敵弾の消去・敵の寝返り", "status": "弱体",
 		"status_desc": "弱体した敵は与えるダメージが減る",
 		"emblem": "fan",
 		"intro": "あら、可愛い子。さぁ踊りましょう、敵も味方も巻き込んで！",
@@ -85,7 +85,7 @@ const LIST := [
 	{
 		"id": "inari", "name": "宇迦之御魂神", "kana": "ウカノミタマ", "title": "狐火の稲荷神",
 		"color": Color(1.0, 0.62, 0.30), "color2": Color(1.0, 0.35, 0.20),
-		"domain": "狐火と豊穣", "status": "狐憑き",
+		"domain": "狐火と豊穣", "style": "誘導弾・眷属（オプション）", "status": "狐憑き",
 		"status_desc": "狐憑きの敵への次の一撃は必ず会心になる",
 		"emblem": "fox",
 		"intro": "コン。狐火は嘘をつかぬ。急所を、確かに射抜くのみ。",
@@ -98,7 +98,7 @@ const LIST := [
 	{
 		"id": "suku", "name": "少名毘古那神", "kana": "スクナビコナ", "title": "酒と薬の小神",
 		"color": Color(0.62, 1.0, 0.55), "color2": Color(0.30, 0.75, 0.40),
-		"domain": "神酒と医薬", "status": "酩酊",
+		"domain": "神酒と医薬", "style": "毒霧の領域・回復", "status": "酩酊",
 		"status_desc": "酩酊は重なるほど毎秒ダメージが増える",
 		"emblem": "gourd",
 		"intro": "やあやあ、一杯どうだい？　敵にはもっと飲ませてやろう。",
@@ -111,7 +111,7 @@ const LIST := [
 	{
 		"id": "iza", "name": "伊邪那美命", "kana": "イザナミ", "title": "黄泉の大神",
 		"color": Color(0.58, 0.82, 1.0), "color2": Color(0.30, 0.35, 0.75),
-		"domain": "黄泉と冷気", "status": "冷気",
+		"domain": "黄泉と冷気", "style": "減速・凍結・氷片の拡散", "status": "冷気",
 		"status_desc": "冷気は重なるほど敵を遅くし、限界に達すると砕ける",
 		"emblem": "gate",
 		"intro": "生ける者よ。黄泉の冷たさを、汝の敵に分けてやろう。",
@@ -124,7 +124,7 @@ const LIST := [
 	{
 		"id": "saru", "name": "猿田彦大神", "kana": "サルタヒコ", "title": "道開きの神",
 		"color": Color(0.72, 1.0, 0.98), "color2": Color(0.35, 0.70, 0.75),
-		"domain": "導きと俊足", "status": "",
+		"domain": "導きと俊足", "style": "機動力・連射・弾速", "status": "",
 		"status_desc": "神威は持たないが、身のこなしを高める加護を多く授ける",
 		"emblem": "road",
 		"intro": "道は開ける。速く、迷わず、まっすぐに進めばよい。",
@@ -148,7 +148,7 @@ const LIST := [
 const BOONS := [
 	# ===== 天照大神 =====
 	{"id": "ama_atk", "kami": "ama", "slot": Cfg.Slot.ATTACK, "name": "日輪の矢",
-		"desc": "攻撃が敵に照覧を与え、攻撃のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 5},
+		"desc": "攻撃が敵を貫く光線になる（2 体まで貫通）。命中した敵に照覧を与え、攻撃のダメージ +{v}", "base": 25.0, "fmt": "pct", "maxlv": 5},
 	{"id": "ama_spc", "kami": "ama", "slot": Cfg.Slot.SPECIAL, "name": "八咫の御札",
 		"desc": "御札が触れた敵弾を消し飛ばし、照覧を与える。特技のダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 5},
 	{"id": "ama_cast", "kami": "ama", "slot": Cfg.Slot.CAST, "name": "鏡の詠唱",
@@ -169,7 +169,7 @@ const BOONS := [
 
 	# ===== 須佐之男命 =====
 	{"id": "susa_atk", "kami": "susa", "slot": Cfg.Slot.ATTACK, "name": "荒波の矢",
-		"desc": "攻撃が敵を押し戻し、攻撃のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 5},
+		"desc": "攻撃が 3 方向に広がる荒波になり、敵を押し戻す。1 発ごとのダメージは通常の {v}", "base": 55.0, "fmt": "pct", "maxlv": 5},
 	{"id": "susa_spc", "kami": "susa", "slot": Cfg.Slot.SPECIAL, "name": "大波の御札",
 		"desc": "御札が横に広い大波となって敵を大きく押し戻す。特技のダメージ +{v}", "base": 50.0, "fmt": "pct", "maxlv": 5},
 	{"id": "susa_cast", "kami": "susa", "slot": Cfg.Slot.CAST, "name": "渦の詠唱",
@@ -211,11 +211,11 @@ const BOONS := [
 
 	# ===== 月読命 =====
 	{"id": "tsuki_atk", "kami": "tsuki", "slot": Cfg.Slot.ATTACK, "name": "宿命の矢",
-		"desc": "攻撃が敵に宿命を刻み、少し遅れて {v} のダメージ", "base": 40.0, "fmt": "num", "maxlv": 5},
+		"desc": "攻撃が敵に宿命を刻む。1.1 秒後に爆ぜ、周囲の敵も巻き込んで {v} のダメージ", "base": 40.0, "fmt": "num", "maxlv": 5},
 	{"id": "tsuki_spc", "kami": "tsuki", "slot": Cfg.Slot.SPECIAL, "name": "月輪の御札",
 		"desc": "御札が命中した地点に回転する月輪を残し、触れた敵に {v} のダメージを与え続ける", "base": 12.0, "fmt": "num", "maxlv": 5},
 	{"id": "tsuki_cast", "kami": "tsuki", "slot": Cfg.Slot.CAST, "name": "新月の詠唱",
-		"desc": "詠唱弾が命中した敵に強い宿命を刻み、遅れて {v} のダメージ", "base": 120.0, "fmt": "num", "maxlv": 5},
+		"desc": "詠唱弾が命中した敵に大きな宿命を刻む。1.1 秒後に広く爆ぜて {v} のダメージ", "base": 120.0, "fmt": "num", "maxlv": 5},
 	{"id": "tsuki_dash", "kami": "tsuki", "slot": Cfg.Slot.DASH, "name": "月影の疾走",
 		"desc": "疾走の軌跡に月輪を残し、触れた敵に {v} のダメージ", "base": 20.0, "fmt": "num", "maxlv": 5},
 	{"id": "tsuki_call", "kami": "tsuki", "slot": Cfg.Slot.CALL, "name": "常世の月",
@@ -223,7 +223,7 @@ const BOONS := [
 	{"id": "tsuki_p1", "kami": "tsuki", "slot": Cfg.Slot.PASSIVE, "name": "月の満ち欠け",
 		"desc": "宿命のダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 5},
 	{"id": "tsuki_p2", "kami": "tsuki", "slot": Cfg.Slot.PASSIVE, "name": "宵闇の加護",
-		"desc": "宿命が成るとき、周囲 {v} の敵にも半分のダメージ", "base": 90.0, "fmt": "num", "maxlv": 4},
+		"desc": "宿命の爆発範囲 +{v}", "base": 50.0, "fmt": "pct", "maxlv": 4},
 	{"id": "tsuki_p3", "kami": "tsuki", "slot": Cfg.Slot.PASSIVE, "name": "月光の刃",
 		"desc": "月輪のダメージと持続時間 +{v}", "base": 50.0, "fmt": "pct", "maxlv": 5},
 	{"id": "tsuki_leg", "kami": "tsuki", "slot": Cfg.Slot.PASSIVE, "name": "月読の裁定", "rar": Cfg.Rar.LEGENDARY,
@@ -234,11 +234,11 @@ const BOONS := [
 	{"id": "uzume_atk", "kami": "uzume", "slot": Cfg.Slot.ATTACK, "name": "艶舞の矢",
 		"desc": "攻撃が敵を弱体させ、攻撃のダメージ +{v}", "base": 45.0, "fmt": "pct", "maxlv": 5},
 	{"id": "uzume_spc", "kami": "uzume", "slot": Cfg.Slot.SPECIAL, "name": "舞扇の御札",
-		"desc": "御札が敵を弱体させ、特技のダメージ +{v}", "base": 60.0, "fmt": "pct", "maxlv": 5},
+		"desc": "御札が舞扇となり、触れた敵弾を花弁に変えて消す。敵を弱体させ、特技のダメージ +{v}", "base": 60.0, "fmt": "pct", "maxlv": 5},
 	{"id": "uzume_cast", "kami": "uzume", "slot": Cfg.Slot.CAST, "name": "魅惑の詠唱",
 		"desc": "詠唱弾が命中した敵を {v} 魅了する。魅了された敵は仲間を攻撃する", "base": 4.0, "fmt": "sec", "maxlv": 5},
 	{"id": "uzume_dash", "kami": "uzume", "slot": Cfg.Slot.DASH, "name": "舞の疾走",
-		"desc": "疾走時に近くの敵を弱体させる。弱体した敵から受けるダメージ -{v}", "base": 20.0, "fmt": "pct", "maxlv": 4},
+		"desc": "疾走時に周囲の敵弾を花弁に変えて消し、近くの敵を弱体させる。弱体した敵から受けるダメージ -{v}", "base": 20.0, "fmt": "pct", "maxlv": 4},
 	{"id": "uzume_call", "kami": "uzume", "slot": Cfg.Slot.CALL, "name": "天鈿女の舞",
 		"desc": "神招き：舞によって画面中の敵を {v} 魅了し、互いに争わせる", "base": 4.0, "fmt": "sec", "maxlv": 5},
 	{"id": "uzume_p1", "kami": "uzume", "slot": Cfg.Slot.PASSIVE, "name": "艶やかな加護",
@@ -253,9 +253,9 @@ const BOONS := [
 
 	# ===== 宇迦之御魂神（稲荷） =====
 	{"id": "inari_atk", "kami": "inari", "slot": Cfg.Slot.ATTACK, "name": "狐火の矢",
-		"desc": "攻撃の会心率 +{v}", "base": 15.0, "fmt": "pct", "maxlv": 5},
+		"desc": "攻撃のたびに敵を追う狐火を放つ（攻撃の {v} のダメージ）。会心率 +10%", "base": 45.0, "fmt": "pct", "maxlv": 5},
 	{"id": "inari_spc", "kami": "inari", "slot": Cfg.Slot.SPECIAL, "name": "狐面の御札",
-		"desc": "御札が命中した敵に狐憑きを与え、次の一撃を必ず会心にする。特技のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 5},
+		"desc": "御札が強く敵を追尾するようになり、命中した敵に狐憑き（次の一撃が必ず会心）を与える。特技のダメージ +{v}", "base": 30.0, "fmt": "pct", "maxlv": 5},
 	{"id": "inari_cast", "kami": "inari", "slot": Cfg.Slot.CAST, "name": "稲荷の詠唱",
 		"desc": "詠唱弾が敵を追う狐火となり貫通する。詠唱の会心率 +{v}", "base": 30.0, "fmt": "pct", "maxlv": 5},
 	{"id": "inari_dash", "kami": "inari", "slot": Cfg.Slot.DASH, "name": "狐の疾走",
@@ -276,7 +276,7 @@ const BOONS := [
 	{"id": "suku_atk", "kami": "suku", "slot": Cfg.Slot.ATTACK, "name": "酔いの矢",
 		"desc": "攻撃が敵を酩酊させ、重なるごとに毎秒 {v} のダメージ", "base": 4.0, "fmt": "num", "maxlv": 5},
 	{"id": "suku_spc", "kami": "suku", "slot": Cfg.Slot.SPECIAL, "name": "酒盃の御札",
-		"desc": "御札が敵を 2 段階酩酊させ、重なるごとに毎秒 {v} のダメージ", "base": 5.0, "fmt": "num", "maxlv": 5},
+		"desc": "御札が命中した所に酒気の霧を残す。霧の中の敵は酩酊し、重なるごとに毎秒 {v} のダメージ", "base": 5.0, "fmt": "num", "maxlv": 5},
 	{"id": "suku_cast", "kami": "suku", "slot": Cfg.Slot.CAST, "name": "宴の詠唱",
 		"desc": "詠唱弾が酒気の霧を残し、中の敵を酩酊させ続ける。霧の持続 {v}", "base": 4.0, "fmt": "sec", "maxlv": 5},
 	{"id": "suku_dash", "kami": "suku", "slot": Cfg.Slot.DASH, "name": "千鳥足",
@@ -297,7 +297,7 @@ const BOONS := [
 	{"id": "iza_atk", "kami": "iza", "slot": Cfg.Slot.ATTACK, "name": "黄泉の矢",
 		"desc": "攻撃が敵に冷気を与え、攻撃のダメージ +{v}", "base": 20.0, "fmt": "pct", "maxlv": 5},
 	{"id": "iza_spc", "kami": "iza", "slot": Cfg.Slot.SPECIAL, "name": "氷柱の御札",
-		"desc": "御札が敵に 3 段階の冷気を与え、特技のダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 5},
+		"desc": "御札が氷柱となり、命中すると 4 つの氷片に砕けて周囲の敵へ冷気を撒く。特技のダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 5},
 	{"id": "iza_cast", "kami": "iza", "slot": Cfg.Slot.CAST, "name": "黄泉の詠唱",
 		"desc": "詠唱弾が凍土を残し、中の敵を遅くしながら毎秒 {v} のダメージ", "base": 22.0, "fmt": "num", "maxlv": 5},
 	{"id": "iza_dash", "kami": "iza", "slot": Cfg.Slot.DASH, "name": "黄泉路の疾走",
@@ -318,7 +318,7 @@ const BOONS := [
 	{"id": "saru_p1", "kami": "saru", "slot": Cfg.Slot.PASSIVE, "name": "道開きの加護",
 		"desc": "移動速度 +{v}", "base": 15.0, "fmt": "pct", "maxlv": 4},
 	{"id": "saru_p2", "kami": "saru", "slot": Cfg.Slot.PASSIVE, "name": "先駈けの加護",
-		"desc": "攻撃と特技の発射速度 +{v}", "base": 15.0, "fmt": "pct", "maxlv": 5},
+		"desc": "攻撃と特技の発射速度、弾速 +{v}", "base": 15.0, "fmt": "pct", "maxlv": 5},
 	{"id": "saru_p3", "kami": "saru", "slot": Cfg.Slot.PASSIVE, "name": "疾風の御業",
 		"desc": "疾走の間隔 -{v}", "base": 20.0, "fmt": "pct", "maxlv": 4},
 	{"id": "saru_p4", "kami": "saru", "slot": Cfg.Slot.PASSIVE, "name": "導きの加護",

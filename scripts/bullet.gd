@@ -30,6 +30,7 @@ var zone_dmg := 10.0
 var kb := 0.0              # 押し戻しの強さ
 var mode := ""             # "cloud": 一定距離で止まり雷雲になる  "vortex": 敵を引き寄せる
 var charmed := false       # 魅了された敵が撃った弾
+var split_on_hit := 0      # 命中時にこの数の小弾に砕ける（伊邪那美の氷柱）
 var travel := 0.0
 
 var _hit: Dictionary = {}
@@ -172,6 +173,9 @@ func _on_area(a: Area2D) -> void:
 		if zone_kind != "":
 			_leave_zone(global_position)
 			zone_kind = ""
+		if split_on_hit > 0:
+			_split(split_on_hit)
+			split_on_hit = 0
 		Fx.cone(global_position, -vel.normalized(), color, 4, 150.0, 0.9, 2.5, 0.22)
 		if shape_kind == 4:
 			pierce = 999
@@ -183,6 +187,25 @@ func _on_area(a: Area2D) -> void:
 		pierce -= 1
 	else:
 		queue_free()
+
+
+## 氷片に砕ける：周囲へ小さな弾を撒く
+func _split(n: int) -> void:
+	Fx.burst(global_position, Color(0.85, 0.95, 1.0), 8, 200.0, 3.0, 0.35)
+	Sfx.play("hit_ice", -10.0, 1.2, 0.05)
+	for i in n:
+		var a := -PI * 0.5 + (float(i) - float(n - 1) * 0.5) * (PI / float(n)) + randf_range(-0.15, 0.15)
+		var b := Bullet.new()
+		b.radius = 4.0
+		b.color = Color(0.85, 0.95, 1.0)
+		b.kami = kami
+		b.slot = Cfg.Slot.ATTACK      # 氷片 1 つにつき冷気 1 段階
+		b.tag = "attack"
+		b.trail_len = 10.0
+		b.life = 0.7
+		b.crit_chance = crit_chance
+		b.setup(global_position, Vector2(cos(a), sin(a)) * 420.0, dmg * 0.4, true)
+		Game.inst.world.add_child.call_deferred(b)
 
 
 ## 敵弾を自機弾に変える（天照の反射）
