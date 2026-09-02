@@ -110,6 +110,9 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--flowtest"):
 		await _flow_test()
 		return
+	if OS.get_cmdline_user_args().has("--fantest"):
+		await _fan_test()
+		return
 	for a in OS.get_cmdline_user_args():
 		if String(a).begins_with("--abilitytest="):
 			await _ability_test(String(a).trim_prefix("--abilitytest=").split(","))
@@ -521,4 +524,38 @@ func _ability_test(gods: Array) -> void:
 		print("[perf] avg proc=%.2fms phys=%.2fms draw_calls=%.0f objs=%.0f nodes=%.0f" % [perf_acc["proc"] / n, perf_acc["phys"] / n, perf_acc["draw"] / n, perf_acc["obj"] / n, perf_acc["nodes"] / n])
 	print("[ability] done wave=%d score=%d cast_charges=%d orbs_on_field=%d" % [g.wave, g.score, p.cast_charges,
 			get_tree().get_nodes_in_group("pickup").filter(func(x): return x.kind == Pickup.Kind.ORB).size()])
+	get_tree().quit()
+
+
+## 舞扇が手元に戻るかを追跡する
+func _fan_test() -> void:
+	_no_ai = true
+	var g := Game.inst
+	g.start_game()
+	g._on_familiar_chosen("karasu")
+	var p := g.player
+	p.add_god("uzume")
+	p.stats["max_hp"] = 9999.0
+	p.hp = 9999.0
+	await _wait(0.3)
+	var t0 := _t
+	var tracked: Bullet = null
+	var last_state := ""
+	while _t - t0 < 8.0:
+		await _wait(0.1)
+		if tracked == null or not is_instance_valid(tracked):
+			for b in g.world.get_children():
+				if b is Bullet and b.mode == "boomerang" and is_instance_valid(b):
+					if tracked != null and not is_instance_valid(tracked):
+						print("[fan] previous fan freed at t=%.1f" % (_t - t0))
+					tracked = b
+					print("[fan] new fan at t=%.1f pos=%s" % [_t - t0, str(b.position)])
+					break
+		if tracked != null and is_instance_valid(tracked):
+			var st := "return" if tracked._returning else "out"
+			var d := tracked.position.distance_to(p.position)
+			if st != last_state or (tracked._returning and int((_t - t0) * 10.0) % 3 == 0):
+				print("[fan] t=%.1f %s travel=%.0f dist=%.0f life=%.2f pos=%s vel=%s" % [_t - t0, st, tracked.travel, d, tracked.life, str(tracked.position.round()), str(tracked.vel.round())])
+				last_state = st
+	print("[fan] done")
 	get_tree().quit()

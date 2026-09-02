@@ -41,6 +41,7 @@ var return_mult := 1.0     # boomerang: 戻り道のダメージ倍率
 var travel := 0.0
 var _origin := Vector2.ZERO
 var _returning := false
+var _speed := 0.0          # 発射時の速さ（boomerang の戻りに使う。vel の長さは反転の途中で縮むため）
 
 var _hit: Dictionary = {}
 var _target: Node2D = null
@@ -49,6 +50,7 @@ var _t := 0.0
 
 
 func setup(p: Vector2, v: Vector2, d: float, friend: bool) -> void:
+	_speed = v.length()
 	position = p
 	_origin = p
 	vel = v
@@ -114,8 +116,11 @@ func _physics_process(delta: float) -> void:
 			_hit.clear()
 			Sfx.play("clap", -18.0, 1.6, 0.1)
 		if _returning and pl != null and is_instance_valid(pl):
-			var want := (pl.position - position).normalized() * vel.length()
-			vel = vel.lerp(want, clampf(6.0 * delta, 0.0, 1.0))
+			# 向きを自機へ回して戻る（速さは発射時のまま）。ベクトルの補間だと反転の途中で速度がゼロに潰れる
+			var cur := vel.angle() if vel.length() > 1.0 else (pl.position - position).angle()
+			var want_a := (pl.position - position).angle()
+			var na := cur + clampf(wrapf(want_a - cur, -PI, PI), -9.0 * delta, 9.0 * delta)
+			vel = Vector2(cos(na), sin(na)) * _speed
 			if position.distance_to(pl.position) < 26.0:
 				Combat.on_fan_return(self)
 				queue_free()
