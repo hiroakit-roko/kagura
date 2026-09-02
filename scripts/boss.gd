@@ -31,7 +31,7 @@ const TITLES := ["参道を塞ぐ荒ぶる魂", "百の眼で見張る鬼", "八
 func setup_boss(w: int) -> void:
 	wave = w
 	tier = Cfg.stage_of(w)
-	is_final = Cfg.is_final_wave(w)
+	is_final = Cfg.is_final_wave(w) and not Game.inst.endless
 	kind = "boss"
 	is_boss = true
 	boss_name = NAMES[mini(tier - 1, NAMES.size() - 1)]

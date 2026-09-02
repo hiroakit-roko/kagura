@@ -302,7 +302,11 @@ func _clear_test() -> void:
 	print("[cleartest] state=%d (CLEAR=%d) after %.1fs" % [g.state, Game.St.CLEAR, t0])
 	await _wait(3.0)
 	await shot("81_clear.png")
-	print("[cleartest] overlay=%s mode=%d music=%s" % [str(g.ui.overlay.visible), g.ui.overlay.mode, Music.inst._current])
+	print("[cleartest] overlay=%s mode=%d music=%s best=%s" % [str(g.ui.overlay.visible), g.ui.overlay.mode, Music.inst._current, str(g.best)])
+	g.continue_endless()
+	await _wait(4.0)
+	print("[cleartest] endless: state=%d wave=%d stage=%d music=%s" % [g.state, g.wave, Cfg.stage_of(g.wave), Music.inst._current])
+	await shot("82_endless.png")
 	get_tree().quit()
 
 

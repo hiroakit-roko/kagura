@@ -40,6 +40,9 @@ var _kami_choices: Array = []
 var _minion_t := 0.0
 var _tut_step := 0
 var _tut_t := 0.0
+var endless := false
+var best := {"score": 0, "wave": 0, "clears": 0}
+const SAVE_PATH := "user://save.cfg"
 
 const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6,
 	"spirit": 0.5, "lantern": 2.0, "kite": 1.2, "oni": 3.6, "caster": 3.0, "bomber": 1.5}
@@ -104,7 +107,9 @@ func _ready() -> void:
 	ui.miki_chosen.connect(_on_miki_chosen)
 	ui.start_requested.connect(start_game)
 	ui.restart_requested.connect(start_game)
+	ui.continue_requested.connect(continue_endless)
 
+	_load_best()
 	_show_title()
 
 	# 開発用：`godot -- --capture` で自動プレイ＆スクリーンショット
@@ -131,6 +136,48 @@ func _fit_viewport() -> void:
 	if player != null and is_instance_valid(player):
 		var r := Cfg.play_rect()
 		player.position.y = clampf(player.position.y, r.position.y + 60.0, r.end.y - 30.0)
+
+
+## 記録の保存と読み込み（Web では IndexedDB に保存される）
+func _load_best() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(SAVE_PATH) == OK:
+		best["score"] = int(cf.get_value("best", "score", 0))
+		best["wave"] = int(cf.get_value("best", "wave", 0))
+		best["clears"] = int(cf.get_value("best", "clears", 0))
+
+
+func _save_best(cleared: bool) -> void:
+	best["score"] = maxi(int(best["score"]), score)
+	best["wave"] = maxi(int(best["wave"]), wave)
+	if cleared:
+		best["clears"] = int(best["clears"]) + 1
+	var cf := ConfigFile.new()
+	cf.set_value("best", "score", int(best["score"]))
+	cf.set_value("best", "wave", int(best["wave"]))
+	cf.set_value("best", "clears", int(best["clears"]))
+	cf.save(SAVE_PATH)
+
+
+## 功徳の加算（禍神で倍率）
+func add_score(n: int) -> void:
+	var m := 1.5 if (player != null and is_instance_valid(player) and player.has("curse_greed")) else 1.0
+	score += int(round(float(n) * m))
+
+
+## 踏破後に更に登る（エンドレス：祟りの参道）
+func continue_endless() -> void:
+	if state != St.CLEAR:
+		return
+	endless = true
+	ui.overlay.visible = false
+	state = St.PLAY
+	get_tree().paused = false
+	_wave_active = false
+	_between = 2.0
+	Music.play("stage")
+	ui.banner("祟りの参道", "踏破の先へ。穢れはさらに濃くなる。功徳は続けて数えられる", Color(1, 0.5, 0.6))
+	Sfx.play("taiko", -4.0, 0.8)
 
 
 func _show_title() -> void:
@@ -160,6 +207,7 @@ func start_game() -> void:
 	_between = 1.2
 	_boss_reward = false
 	_hitstop = 0.0
+	endless = false
 	Engine.time_scale = 1.0
 	stars.tint = Color(0.45, 0.30, 0.80)
 
@@ -344,7 +392,7 @@ func _clear_wave() -> void:
 	if player != null and is_instance_valid(player):
 		player.heal(6.0, true)
 		player.add_xp(8.0 + float(wave) * 2.5)   # 取りこぼしても必ず成長できるよう保証
-		score += 50 * wave
+		add_score(50 * wave + player.grazes)
 	if _boss_reward:
 		_boss_reward = false
 		_open_boons("boss", Cfg.Rar.EPIC, player.main_god())
@@ -465,7 +513,7 @@ func erase_all_ebullets() -> void:
 
 func on_enemy_killed(e: Enemy) -> void:
 	kills += 1
-	score += e.score
+	add_score(e.score)
 	var xp_mult := 1.0
 	if player != null and is_instance_valid(player) and player.has("susa_p3"):
 		xp_mult += player.val("susa_p3") * 0.01
@@ -477,10 +525,10 @@ func on_enemy_killed(e: Enemy) -> void:
 
 func on_boss_killed(b: Boss) -> void:
 	kills += 1
-	score += b.score
+	add_score(b.score)
 	boss = null
-	if b.is_final:
-		score += 5000
+	if b.is_final and not endless:
+		add_score(5000)
 		Music.stop()
 		hitstop(1.2, 0.1)
 		_on_cleared()
@@ -641,6 +689,7 @@ func _on_cleared() -> void:
 	Sfx.play("flute", 0.0)
 	Sfx.play("suzu", -4.0)
 	Sfx.play("levelup", -4.0)
+	_save_best(true)
 	ui.overlay.mode = 2
 	var god_names := []
 	for g in player.gods:
@@ -663,6 +712,7 @@ func _on_cleared() -> void:
 func _on_player_died() -> void:
 	Music.stop()
 	state = St.OVER
+	_save_best(false)
 	ui.overlay.mode = 1
 	var god_names := []
 	for g in player.gods:

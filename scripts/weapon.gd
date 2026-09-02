@@ -295,7 +295,7 @@ func _gourd() -> void:
 	b.tag = "gourd"
 	b.color = col
 	b.zone_kind = "fog"
-	b.zone_r = 62.0 * (1.0 + p.val("suku_u1") * 0.01) * (1.0 + 0.05 * float(lv / 3))
+	b.zone_r = 62.0 * (1.0 + p.val("suku_u1") * 0.01 + p.val("duo_ama_suku") * 0.01) * (1.0 + 0.05 * float(lv / 3))
 	b.zone_life = 3.0 * (1.0 + p.val("suku_u2") * 0.01)
 	b.zone_dmg = 0.0
 	b.life = clampf(p.position.distance_to(to) / 520.0, 0.25, 1.4)

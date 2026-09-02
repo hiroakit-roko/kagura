@@ -66,6 +66,8 @@ func _apply() -> void:
 		"fog":
 			for e in inside:
 				e.add_hangover(1, Combat.hangover_dps())
+				if Game.inst.player != null and Game.inst.player.has("duo_ama_suku"):
+					e.add_exposed(Combat.EXPOSED_T)
 		"frost":
 			for e in inside:
 				e.add_chill(1)

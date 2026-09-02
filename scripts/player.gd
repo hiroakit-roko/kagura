@@ -166,7 +166,7 @@ func kami_color(kami_id: String) -> Color:
 ## 神器の威力倍率：主神 1.0 / 副神 0.5 × 神格レベル
 func kami_power(kami_id: String) -> float:
 	var lv: int = kami_lv.get(kami_id, 1)
-	return (1.0 if is_main(kami_id) else 0.5) * Kami.kami_power(lv)
+	return (1.0 if is_main(kami_id) else 0.5) * Kami.kami_power(lv) * (1.3 if has("curse_fire") else 1.0)
 
 
 ## 基本のダメージ（位で少しずつ伸びる）
@@ -208,7 +208,7 @@ func add_kami_xp(kami_id: String, amount: float) -> void:
 	var lv: int = kami_lv[kami_id]
 	if lv >= 10:
 		return
-	kami_xp[kami_id] = float(kami_xp[kami_id]) + amount
+	kami_xp[kami_id] = float(kami_xp[kami_id]) + amount * (1.5 if has("curse_haste") else 1.0)
 	kami_dmg[kami_id] = float(kami_dmg.get(kami_id, 0.0)) + amount
 	var need := Kami.kami_xp_need(lv)
 	if float(kami_xp[kami_id]) >= need:
@@ -255,7 +255,8 @@ func cost_mult(kind: String) -> float:
 
 func on_boons_changed() -> void:
 	var base_hp := (100.0 + float(level - 1) * 3.0) * cost_mult("hp")
-	var new_max := base_hp + (val("uzume_u5") if has("uzume_u5") else 0.0)
+	var new_max := base_hp + (val("uzume_u5") if has("uzume_u5") else 0.0) - (20.0 if has("curse_haste") else 0.0)
+	new_max = maxf(new_max, 30.0)
 	var diff := new_max - float(stats["max_hp"])
 	stats["max_hp"] = new_max
 	if diff > 0.0:
@@ -405,7 +406,7 @@ func _animate(delta: float) -> void:
 # ---------- 武装 ----------
 
 func crit_chance() -> float:
-	var c: float = stats["crit"] + val("inari_u3") * 0.01
+	var c: float = stats["crit"] + val("inari_u3") * 0.01 + (0.15 if has("curse_edge") else 0.0)
 	return minf(c, 0.95)
 
 
@@ -471,6 +472,8 @@ func spawn_foxfire(from: Vector2, target: Node2D, dmg: float, tag := "foxfire") 
 	b.kami = "inari"
 	b.tag = tag
 	b.crit_chance = crit_chance()
+	if has("duo_ama_inari"):
+		b.pierce = 1
 	var dir := (target.global_position - from).normalized() if target != null else Vector2.UP.rotated(randf_range(-0.6, 0.6))
 	b.setup(from, dir * 520.0, dmg, true)
 	Game.inst.spawn_deferred(b)
@@ -768,7 +771,7 @@ func take_damage(d: float, _crit := false, _at := Vector2.ZERO, source := "") ->
 		return
 	if source != "":
 		last_hit_by = source
-	d *= cost_mult("taken")
+	d *= cost_mult("taken") * (1.25 if has("curse_fire") else 1.0)
 	if shield > 0:
 		shield -= 1
 		shield_t = val("ama_u5") if has("ama_u5") else 99.0

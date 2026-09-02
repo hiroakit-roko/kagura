@@ -82,7 +82,8 @@ const STAGE_TINT := [Color(0.45, 0.30, 0.80), Color(0.75, 0.30, 0.45), Color(0.2
 
 
 static func stage_of(wave: int) -> int:
-	return clampi(int((wave - 1) / STAGE_LEN) + 1, 1, STAGE_COUNT)
+	# 踏破後（エンドレス）は 3 ステージを巡回する
+	return int((maxi(wave, 1) - 1) / STAGE_LEN) % STAGE_COUNT + 1
 
 
 static func is_boss_wave(wave: int) -> bool:

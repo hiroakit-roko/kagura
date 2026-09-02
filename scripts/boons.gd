@@ -130,6 +130,13 @@ static func offer(p: Player, kami_id: String, count := 3, min_rar := Cfg.Rar.COM
 		var d: Dictionary = duos[randi() % duos.size()]
 		out.append({"type": "duo", "boon": d, "rar": Cfg.Rar.DUO, "kami": String(d["kami"])})
 
+	# 禍神の取引（第 4 波以降、稀に）
+	if Game.inst.wave >= 4 and randf() < 0.14:
+		var avail := Kami.CURSES.filter(func(c): return not p.boons.has(c["id"]))
+		if not avail.is_empty():
+			var c: Dictionary = avail[randi() % avail.size()]
+			out.append({"type": "curse", "boon": c, "rar": Cfg.Rar.HEROIC, "kami": kami_id})
+
 	# 新たな神を迎えるカード（枠があるとき。2 柱目までは出やすい）
 	if p.gods.size() < MAX_KAMI:
 		var chance := 0.75 if p.gods.size() == 1 else 0.55
@@ -162,6 +169,9 @@ static func take(p: Player, o: Dictionary) -> void:
 	match String(o["type"]):
 		"recruit":
 			p.add_god(String(o["kami"]))
+		"curse":
+			p.boons[String(o["boon"]["id"])] = {"rar": Cfg.Rar.HEROIC, "lv": 1}
+			p.on_boons_changed()
 		_:
 			var b: Dictionary = o["boon"]
 			var id := String(b["id"])

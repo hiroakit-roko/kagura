@@ -235,7 +235,40 @@ const BOONS := [
 		"desc": "大波に押し戻された敵に {v} の雷が落ちる", "base": 30.0, "fmt": "num", "maxlv": 2},
 	{"id": "duo_inari_saru", "kami": "inari", "kami2": "saru", "name": "風狐", "rar": Cfg.Rar.DUO,
 		"desc": "風の刃が命中するたび {v} の確率で狐火が追加で飛ぶ", "base": 25.0, "fmt": "pct", "maxlv": 2},
+	{"id": "duo_ama_inari", "kami": "ama", "kami2": "inari", "name": "光狐", "rar": Cfg.Rar.DUO,
+		"desc": "狐火が敵を 1 体貫くようになり、照覧された敵への狐火のダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 2},
+	{"id": "duo_ama_suku", "kami": "ama", "kami2": "suku", "name": "光霧", "rar": Cfg.Rar.DUO,
+		"desc": "酒気の霧の中の敵は照覧も受ける。霧の大きさ +{v}", "base": 20.0, "fmt": "pct", "maxlv": 2},
+	{"id": "duo_take_iza", "kami": "take", "kami2": "iza", "name": "雷氷", "rar": Cfg.Rar.DUO,
+		"desc": "雷が落ちた敵に冷気を 2 段階与える。凍結した敵への雷のダメージ +{v}", "base": 50.0, "fmt": "pct", "maxlv": 2},
+	{"id": "duo_take_uzume", "kami": "take", "kami2": "uzume", "name": "雷舞", "rar": Cfg.Rar.DUO,
+		"desc": "扇が敵に触れるたび {v} の確率で雷が落ちる", "base": 25.0, "fmt": "pct", "maxlv": 2},
+	{"id": "duo_susa_inari", "kami": "susa", "kami2": "inari", "name": "波狐", "rar": Cfg.Rar.DUO,
+		"desc": "大波が敵に触れるたび {v} の確率で狐火が飛ぶ", "base": 35.0, "fmt": "pct", "maxlv": 2},
+	{"id": "duo_tsuki_suku", "kami": "tsuki", "kami2": "suku", "name": "月霧", "rar": Cfg.Rar.DUO,
+		"desc": "宿命が爆ぜた所に {v} のあいだ酒気の霧が残る", "base": 2.0, "fmt": "sec", "maxlv": 2},
 ]
+
+# ---------------------------------------------------------------------------
+# 禍神（まがつかみ）の取引：力と引き換えに代償を負う。稀に提示され、それぞれ一度だけ結べる
+# ---------------------------------------------------------------------------
+const CURSES := [
+	{"id": "curse_fire", "name": "業火の契り", "gain": "すべての神器の威力 +30%", "loss": "受けるダメージ +25%",
+		"desc": "禍つ火を身に宿す。神器は猛るが、身は脆くなる"},
+	{"id": "curse_haste", "name": "早熟の契り", "gain": "神徳（神格の伸び）+50%", "loss": "最大 HP -20",
+		"desc": "命の一部を捧げて、神々との縁を早める"},
+	{"id": "curse_greed", "name": "強欲の契り", "gain": "功徳 ×1.5", "loss": "敵の HP +20%",
+		"desc": "より多くの功徳を求めるほど、穢れは濃くなる"},
+	{"id": "curse_edge", "name": "刃の契り", "gain": "会心率 +15%", "loss": "敵弾の速さ +15%",
+		"desc": "研がれた刃は、敵の刃も研ぐ"},
+]
+
+
+static func curse(id: String) -> Dictionary:
+	for c in CURSES:
+		if c["id"] == id:
+			return c
+	return {}
 
 
 ## 神格レベルアップに必要な神徳（その段階で必要な量）

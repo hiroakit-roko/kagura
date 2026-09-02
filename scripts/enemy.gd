@@ -184,6 +184,9 @@ func setup(k: String, w: int) -> void:
 			xp = 7.0
 			contact_dmg = 18.0
 			color = Color(1.0, 0.62, 0.25)
+	var pl := Game.inst.player if Game.inst != null else null
+	if pl != null and is_instance_valid(pl) and pl.has("curse_greed"):
+		max_hp *= 1.2
 	hp = max_hp
 
 
@@ -533,7 +536,9 @@ func _cool(lo: float, hi: float) -> float:
 
 ## 弾速もウェーブでじわじわ上がる
 func _spd(base: float) -> float:
-	return base * (1.15 + float(wave) * 0.02)
+	var pl := Game.inst.player if Game.inst != null else null
+	var curse := 1.15 if (pl != null and is_instance_valid(pl) and pl.has("curse_edge")) else 1.0
+	return base * (1.15 + float(wave) * 0.02) * curse
 
 
 func _bullet_dmg() -> float:

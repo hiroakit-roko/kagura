@@ -11,6 +11,7 @@ signal reroll_requested
 signal miki_chosen(id: String)
 signal start_requested
 signal restart_requested
+signal continue_requested
 
 var font: Font
 var font_bold: Font
@@ -290,8 +291,13 @@ func _unhandled_input(e: InputEvent) -> void:
 		if overlay.visible and (k == KEY_ENTER or k == KEY_KP_ENTER or k == KEY_SPACE):
 			if overlay.mode == 0:
 				start_requested.emit()
+			elif overlay.mode == 2:
+				continue_requested.emit()
 			else:
 				restart_requested.emit()
+			return
+		if overlay.visible and overlay.mode == 2 and k == KEY_R:
+			restart_requested.emit()
 			return
 	elif e is InputEventMouseButton and e.pressed \
 			and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
@@ -299,6 +305,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		if overlay.visible:
 			if overlay.mode == 0:
 				start_requested.emit()
+			elif overlay.mode == 2:
+				continue_requested.emit()
 			else:
 				restart_requested.emit()
 			return
@@ -534,6 +542,13 @@ class HudView:
 		for id: String in p.boons.keys():
 			var b := Kami.boon(id)
 			if b.is_empty():
+				var cu := Kami.curse(id)
+				if cu.is_empty():
+					continue
+				draw_rect(Rect2(x, y, 20, 20), Color(0.6, 0.1, 0.2, 0.5))
+				draw_rect(Rect2(x, y, 20, 20), Color(1, 0.4, 0.5, 0.9), false, 1.5)
+				Ui.txt(self, ui.font_display, Vector2(x, y + 15), "禍", 12, Color(1, 0.85, 0.9), HORIZONTAL_ALIGNMENT_CENTER, 20)
+				y += 24.0
 				continue
 			var rar := int(p.boons[id]["rar"])
 			var col: Color = Cfg.RAR_COLOR[rar]
@@ -1031,6 +1046,44 @@ class BoonsView:
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		_draw_pantheon(CY + CH + 52.0)
 
+	## 禍神の取引カード
+	func _draw_curse_card(i: int, o: Dictionary, r: Rect2, sel: bool, pop: float) -> void:
+		var c: Dictionary = o["boon"]
+		var col := Color(0.85, 0.25, 0.35)
+		var rr := r.grow((4.0 if sel else 0.0) - (1.0 - pop) * 30.0)
+		var a := pop
+		var x0 := rr.position.x + 14.0
+		var w := rr.size.x - 28.0
+		draw_rect(rr.grow(6.0), Color(0, 0, 0, 0.4 * a))
+		draw_rect(rr, Color(0.10, 0.03, 0.06, 0.97 * a))
+		draw_rect(rr, Cfg.with_a(col, (1.0 if sel else 0.6) * a), false, 2.0 if sel else 1.2)
+		for j in 12:
+			var ang := -_t * 0.4 + TAU * float(j) / 12.0
+			var cc := rr.position + rr.size * 0.5
+			draw_line(cc + Vector2(cos(ang), sin(ang)) * rr.size.x * 0.5, cc + Vector2(cos(ang), sin(ang)) * rr.size.x * 0.72,
+					Cfg.with_a(col, 0.10 * a), 6.0, true)
+		draw_rect(Rect2(rr.position + Vector2(0, 3), Vector2(rr.size.x, 30.0)), Cfg.with_a(col, 0.28 * a))
+		Ui.txt(self, ui.font_display, rr.position + Vector2(12, 25), "禍神の取引", 16, Cfg.with_a(Color(1, 0.7, 0.75), a))
+		Ui.txt(self, ui.font, rr.position + Vector2(104, 24), "力と代償", 10, Color(1, 0.85, 0.9, a * 0.85))
+		# 禍の印：黒い日輪に赤い裂け目
+		var ec := rr.position + Vector2(rr.size.x * 0.5, 76)
+		draw_circle(ec, 30.0, Cfg.with_a(col, 0.15 * a))
+		draw_circle(ec, 22.0, Color(0.05, 0.02, 0.04, a))
+		draw_arc(ec, 22.0, 0, TAU, 32, Cfg.with_a(col, 0.9 * a), 2.0, true)
+		draw_line(ec + Vector2(-6, -14), ec + Vector2(4, 12), Cfg.with_a(col, a), 3.0, true)
+		draw_line(ec + Vector2(-2, -2), ec + Vector2(8, -10), Cfg.with_a(col, a), 2.0, true)
+		Ui.txt(self, ui.font_display, Vector2(ec.x - 20, ec.y + 8), "禍", 22, Cfg.with_a(Color(1, 0.8, 0.85), a), HORIZONTAL_ALIGNMENT_CENTER, 40, false)
+		Ui.txt(self, ui.font_display, rr.position + Vector2(0, 128), String(c["name"]), 19, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+		Ui.para(self, ui.font, Vector2(x0, rr.position.y + 150), String(c["desc"]), w, 11, 2, Color(1, 0.92, 0.94, a * 0.85))
+		draw_rect(Rect2(x0 - 4, rr.position.y + 184, w + 8, 44), Color(0.2, 0.6, 0.35, 0.18 * a))
+		Ui.txt(self, ui.font_bold, Vector2(x0 + 2, rr.position.y + 200), "得", 12, Color(0.6, 1.0, 0.7, a))
+		Ui.para(self, ui.font, Vector2(x0 + 22, rr.position.y + 200), String(c["gain"]), w - 26, 11, 2, Color(0.9, 1.0, 0.92, a))
+		draw_rect(Rect2(x0 - 4, rr.position.y + 232, w + 8, 44), Color(0.7, 0.2, 0.3, 0.18 * a))
+		Ui.txt(self, ui.font_bold, Vector2(x0 + 2, rr.position.y + 248), "失", 12, Color(1.0, 0.6, 0.65, a))
+		Ui.para(self, ui.font, Vector2(x0 + 22, rr.position.y + 248), String(c["loss"]), w - 26, 11, 2, Color(1.0, 0.9, 0.92, a))
+		Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 26), "取り消せない。一度だけ結べる", 10, Cfg.with_a(col, a * 0.85), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))
+
 	## いま迎えている神々と神格
 	func _draw_pantheon(y0: float) -> void:
 		var p := Game.inst.player
@@ -1069,6 +1122,9 @@ class BoonsView:
 		var k := Kami.kami(String(o["kami"]))
 		var kc: Color = k["color"]
 		var col: Color = Cfg.RAR_COLOR[rar] if type != "recruit" else kc
+		if type == "curse":
+			_draw_curse_card(i, o, r, sel, pop)
+			return
 		var rr := r.grow((4.0 if sel else 0.0) - (1.0 - pop) * 30.0)
 		var a := pop
 		var x0 := rr.position.x + 14.0
@@ -1242,8 +1298,10 @@ class OverlayView:
 		if g != null and g.player != null and is_instance_valid(g.player):
 			ui.hud._draw_build_on(self, g.player, y + 20.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップ / ENTER でもう一度　　ESC で題目へ", 20,
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 96.0), "タップ / ENTER で更に登る（祟りの参道）", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 66.0), "R で最初から　　ESC で題目へ", 13,
+				Color(0.9, 0.9, 1.0, 0.8), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _title() -> void:
 		if _tex != null:
@@ -1287,6 +1345,11 @@ class OverlayView:
 
 		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 104.0), "神を迎えれば神器が付く。主神と 2 柱の副神とともに参道を登れ。", 13,
 				Color(0.85, 0.86, 1.0, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		var g := Game.inst
+		if g != null and (int(g.best["score"]) > 0 or int(g.best["clears"]) > 0):
+			Ui.panel(self, Rect2(Cfg.W * 0.5 - 150, Cfg.H - 300, 300, 34), Cfg.C_GOLD, 1.0, 0.7)
+			Ui.txt(self, ui.font, Vector2(Cfg.W * 0.5 - 150, Cfg.H - 278), "最高功徳 %d　　最高到達 第 %d 波　　踏破 %d 回" % [int(g.best["score"]), int(g.best["wave"]), int(g.best["clears"])], 12,
+					Cfg.with_a(Cfg.C_GOLD, 0.95), HORIZONTAL_ALIGNMENT_CENTER, 300)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)

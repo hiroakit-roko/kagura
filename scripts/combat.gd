@@ -67,6 +67,10 @@ static func hit(e: Node2D, dmg: float, at: Vector2, opts: Dictionary = {}) -> fl
 		mult *= 1.0 + _val("duo_ama_take") * 0.01
 	if tag == "wave" and int(en.st["chill"]["stacks"]) > 0 and _has("duo_susa_iza"):
 		mult *= 1.0 + _val("duo_susa_iza") * 0.01
+	if tag == "foxfire" and en.st["exposed"] > 0.0 and _has("duo_ama_inari"):
+		mult *= 1.0 + _val("duo_ama_inari") * 0.01
+	if tag == "lightning" and en.st["frozen"] > 0.0 and _has("duo_take_iza"):
+		mult *= 1.0 + _val("duo_take_iza") * 0.01
 
 	# --- 会心 ---
 	if en.st["marked"] and tag != "doom":
@@ -143,6 +147,9 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, _di
 					Fx.slash(en.position, randf() * TAU, en.radius * 1.3, kc, 2.0, 0.18, 6.0)
 				if _has("duo_susa_iza"):
 					en.add_chill(2)
+				if _has("duo_susa_inari") and randf() < _val("duo_susa_inari") * 0.01:
+					var other := nearest_enemy(en.position, 300.0)
+					p.spawn_foxfire(en.position, other if other != null else en, p.base_damage() * 0.7, "foxfire")
 		"tsuki":
 			var doom := float(opts.get("doom", 0.0))
 			if doom > 0.0:
@@ -157,6 +164,8 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, _di
 				if cc > 0.0 and randf() < cc:
 					en.add_charm(3.0)
 					Sfx.play("charm", -10.0)
+				if tag == "fan" and _has("duo_take_uzume") and randf() < _val("duo_take_uzume") * 0.01:
+					lightning(en, p.base_damage() * 2.0 * p.kami_power("take"), at + Vector2(0, -80), 0)
 		"inari":
 			if tag == "cast":
 				if not en.st["marked"]:
@@ -262,6 +271,8 @@ static func lightning(en: Enemy, dmg: float, from: Vector2, chains: int, used: D
 		return
 	if _has("take_u4"):
 		en.add_jolt(JOLT_T)
+	if _has("duo_take_iza"):
+		en.add_chill(2)
 	if _has("take_u5"):
 		var r := _val("take_u5")
 		for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
@@ -314,6 +325,10 @@ static func doom_trigger(en: Enemy, dmg: float) -> void:
 		hit(en, dmg, pos, {"tag": "doom", "kami": "tsuki", "crit": crit})
 	if is_instance_valid(en) and en.hp > 0.0 and _has("duo_iza_tsuki"):
 		en.freeze(_val("duo_iza_tsuki"))
+	if _has("duo_tsuki_suku"):
+		var z := Zone.new()
+		z.setup(pos, "fog", r * 0.9, _val("duo_tsuki_suku"), 0.0, Color(0.62, 1.0, 0.55))
+		Game.inst.spawn_deferred(z)
 	for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
 		if o == en or not is_instance_valid(o):
 			continue
