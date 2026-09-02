@@ -376,7 +376,7 @@ static func value(b: Dictionary, rar: int, lv: int) -> float:
 
 static func fmt_value(b: Dictionary, v: float) -> String:
 	match String(b["fmt"]):
-		"pct": return "%d%%" % int(round(v))
+		"pct": return ("%.1f%%" % v) if v < 10.0 else ("%d%%" % int(round(v)))
 		"num": return str(int(round(v)))
 		"sec", "sec_down": return "%.1f秒" % v
 		_: return "%.1f" % v

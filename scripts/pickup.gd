@@ -99,6 +99,11 @@ func _draw() -> void:
 	var c := color_of()
 	var pulse := 1.0 + 0.12 * sin(_t * 7.0)
 	draw_circle(Vector2.ZERO, (13.0 if kind != Kind.MIKI else 22.0) * pulse, Cfg.with_a(c, 0.20))
+	Pickup.draw_shape(self, kind, c, _t, pulse)
+
+
+## アイテムの形（案内の絵にも使う）。原点中心に描く
+static func draw_shape(ci: CanvasItem, kind: int, c: Color, t: float, pulse := 1.0) -> void:
 	match kind:
 		Kind.XP:
 			# 勾玉：丸い頭と細くなる尾
@@ -109,27 +114,27 @@ func _draw() -> void:
 				pts.append(Vector2(cos(a), sin(a)) * r)
 			pts.append(Vector2(r * 1.7, r * 1.1))
 			pts.append(Vector2(r * 1.15, r * 0.2))
-			draw_colored_polygon(pts, c)
-			draw_polyline(pts + PackedVector2Array([pts[0]]), Color(1, 1, 1, 0.9), 1.5, true)
-			draw_circle(Vector2(-r * 0.2, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.95))
+			ci.draw_colored_polygon(pts, c)
+			ci.draw_polyline(pts + PackedVector2Array([pts[0]]), Color(1, 1, 1, 0.9), 1.5, true)
+			ci.draw_circle(Vector2(-r * 0.2, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.95))
 		Kind.ORB:
 			# 詠唱の珠：主神の色に光る珠と回る輪
-			draw_circle(Vector2.ZERO, 18.0 * pulse, Cfg.with_a(c, 0.12))
-			draw_arc(Vector2.ZERO, 12.0, _t * 3.0, _t * 3.0 + 4.2, 16, Cfg.with_a(c, 0.8), 1.5, true)
-			draw_circle(Vector2.ZERO, 7.5, Cfg.with_a(c, 0.45))
-			draw_circle(Vector2.ZERO, 5.5, c)
-			draw_circle(Vector2(-1.8, -1.8), 2.0, Color(1, 1, 1, 0.9))
+			ci.draw_circle(Vector2.ZERO, 18.0 * pulse, Cfg.with_a(c, 0.12))
+			ci.draw_arc(Vector2.ZERO, 12.0, t * 3.0, t * 3.0 + 4.2, 16, Cfg.with_a(c, 0.8), 1.5, true)
+			ci.draw_circle(Vector2.ZERO, 7.5, Cfg.with_a(c, 0.45))
+			ci.draw_circle(Vector2.ZERO, 5.5, c)
+			ci.draw_circle(Vector2(-1.8, -1.8), 2.0, Color(1, 1, 1, 0.9))
 		Kind.HEAL:
 			# 御札：縦長の紙と朱印
-			draw_rect(Rect2(-6, -11, 12, 22), Cfg.C_PAPER)
-			draw_rect(Rect2(-6, -11, 12, 22), Cfg.with_a(c, 0.9), false, 1.5)
-			draw_rect(Rect2(-3, -7, 6, 9), Color(0.85, 0.2, 0.25, 0.9))
-			draw_line(Vector2(0, 4), Vector2(0, 9), Cfg.C_INK, 1.5)
+			ci.draw_rect(Rect2(-6, -11, 12, 22), Cfg.C_PAPER)
+			ci.draw_rect(Rect2(-6, -11, 12, 22), Cfg.with_a(c, 0.9), false, 1.5)
+			ci.draw_rect(Rect2(-3, -7, 6, 9), Color(0.85, 0.2, 0.25, 0.9))
+			ci.draw_line(Vector2(0, 4), Vector2(0, 9), Cfg.C_INK, 1.5)
 		_:
 			# 神酒：瓢箪型の徳利
-			draw_circle(Vector2(0, 6), 9.0, Cfg.C_PAPER)
-			draw_circle(Vector2(0, -6), 6.5, Cfg.C_PAPER)
-			draw_rect(Rect2(-2.5, -15, 5, 5), Cfg.with_a(c, 0.95))
-			draw_arc(Vector2(0, 6), 9.0, 0, TAU, 20, Cfg.with_a(c, 0.9), 1.5, true)
-			draw_arc(Vector2(0, -6), 6.5, 0, TAU, 16, Cfg.with_a(c, 0.9), 1.5, true)
-			draw_rect(Rect2(-4, 2, 8, 8), Color(0.85, 0.2, 0.25, 0.85))
+			ci.draw_circle(Vector2(0, 6), 9.0, Cfg.C_PAPER)
+			ci.draw_circle(Vector2(0, -6), 6.5, Cfg.C_PAPER)
+			ci.draw_rect(Rect2(-2.5, -15, 5, 5), Cfg.with_a(c, 0.95))
+			ci.draw_arc(Vector2(0, 6), 9.0, 0, TAU, 20, Cfg.with_a(c, 0.9), 1.5, true)
+			ci.draw_arc(Vector2(0, -6), 6.5, 0, TAU, 16, Cfg.with_a(c, 0.9), 1.5, true)
+			ci.draw_rect(Rect2(-4, 2, 8, 8), Color(0.85, 0.2, 0.25, 0.85))

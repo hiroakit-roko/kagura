@@ -27,6 +27,7 @@ var cd := 0.0
 var t := 0.0
 var _vel := Vector2.ZERO
 var _side := -1.0
+var mirror := false   # 分身：本体と反対側に付く
 
 
 static func info(id: String) -> Dictionary:
@@ -45,7 +46,11 @@ func setup(id: String, player: Player) -> void:
 
 
 func dmg() -> float:
-	return p.base_damage() * 0.55
+	return p.base_damage() * 0.55 * (1.6 if p.has_relic("r_fam_dmg") else 1.0)
+
+
+func _rate(sec: float) -> float:
+	return sec / (1.4 if p.has_relic("r_fam_rate") else 1.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -56,7 +61,8 @@ func _physics_process(delta: float) -> void:
 	# 自機の後ろ・やや横に遅れて付いていく。左右に動くと反対側へ回り込む
 	if absf(p._move_dir.x) > 0.3:
 		_side = -signf(p._move_dir.x)
-	var want := p.position + Vector2(_side * 34.0, 44.0 + sin(t * 3.0) * 3.0)
+	var side := -_side if mirror else _side
+	var want := p.position + Vector2(side * 34.0, 44.0 + sin(t * 3.0) * 3.0)
 	position = position.lerp(want, clampf(7.0 * delta, 0.0, 1.0))
 	cd -= delta
 	if cd <= 0.0:
@@ -68,14 +74,14 @@ func _fire() -> void:
 	var from := position + Vector2(0, -12)
 	match kind:
 		"karasu":
-			cd = 0.22
+			cd = _rate(0.22)
 			var b := _bullet()
 			b.radius = 3.5
 			b.trail_len = 18.0
 			b.setup(from, Vector2(randf_range(-20, 20), -1000.0), dmg(), true)
 			Game.inst.world.add_child(b)
 		"neko":
-			cd = 0.55
+			cd = _rate(0.55)
 			for i in 3:
 				var b := _bullet()
 				b.radius = 3.5
@@ -83,7 +89,7 @@ func _fire() -> void:
 				b.setup(from, Vector2(cos(a), sin(a)) * 720.0, dmg() * 0.7, true)
 				Game.inst.world.add_child(b)
 		"shiki":
-			cd = 0.7
+			cd = _rate(0.7)
 			var target := Combat.nearest_enemy(position, 900.0)
 			var b := _bullet()
 			b.shape_kind = 12

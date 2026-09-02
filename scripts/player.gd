@@ -36,9 +36,12 @@ var kami_xp := {}        # 神 id -> 神徳（現在の段階での蓄積）
 var weapons := {}        # 神 id -> Weapon
 var familiar_id := ""    # 使い魔
 var familiar: Familiar
+var familiar2: Familiar   # 使い魔の分身（神宝）
 var kami_dmg := {}       # 神 id -> 与えたダメージの累計（貢献度の表示用）
 var last_hit_by := ""    # 最後に受けた攻撃の相手（死因の表示用）
 var grazes := 0
+var relics: Array = []   # 神宝（ボスの褒賞）の id
+var _revived := false    # 身代わり人形を使ったか
 
 # ---- 状態 ----
 var hp := 100.0
@@ -173,8 +176,12 @@ func kami_power(kami_id: String) -> float:
 
 
 ## 基本のダメージ（位で少しずつ伸びる）
+func has_relic(id: String) -> bool:
+	return relics.has(id)
+
+
 func base_damage() -> float:
-	return float(stats["damage"]) * (1.0 + float(level - 1) * 0.03)
+	return float(stats["damage"]) * (1.0 + float(level - 1) * 0.03) * (1.10 if has_relic("r_dmg") else 1.0)
 
 
 ## 使い魔を連れる
@@ -259,14 +266,19 @@ func cost_mult(kind: String) -> float:
 
 func on_boons_changed() -> void:
 	var base_hp := (100.0 + float(level - 1) * 3.0) * cost_mult("hp")
-	var new_max := base_hp + (val("uzume_u5") if has("uzume_u5") else 0.0) - (20.0 if has("curse_haste") else 0.0)
+	var new_max := base_hp + (val("uzume_u5") if has("uzume_u5") else 0.0) - (20.0 if has("curse_haste") else 0.0) + (30.0 if has_relic("r_hp") else 0.0)
 	new_max = maxf(new_max, 30.0)
 	var diff := new_max - float(stats["max_hp"])
 	stats["max_hp"] = new_max
 	if diff > 0.0:
 		hp = minf(new_max, hp + diff)
 	hp = minf(hp, new_max)
-	stats["cast_max"] = 2
+	stats["cast_max"] = 2 + (1 if has_relic("r_orb") else 0)
+	if has_relic("r_fam_twin") and familiar_id != "" and (familiar2 == null or not is_instance_valid(familiar2)):
+		familiar2 = Familiar.new()
+		familiar2.setup(familiar_id, self)
+		familiar2.mirror = true
+		Game.inst.world.add_child.call_deferred(familiar2)
 	# 眷属の狐
 	var want := int(round(val("inari_u4"))) if has("inari_u4") else 0
 	if want != _drones.size():
@@ -302,6 +314,8 @@ func move_speed() -> float:
 	var m := 1.0 + val("saru_u3") * 0.01
 	if gods.has("saru"):
 		m += 0.10
+	if has_relic("r_speed"):
+		m += 0.10
 	if familiar_id == "karasu":
 		m += 0.06
 	if haste_t > 0.0:
@@ -310,7 +324,7 @@ func move_speed() -> float:
 
 
 func dash_cd_time() -> float:
-	return float(stats["dash_cd"]) * (1.0 - val("saru_u4") * 0.01) * cost_mult("dash_cd")
+	return float(stats["dash_cd"]) * (1.0 - val("saru_u4") * 0.01) * cost_mult("dash_cd") * (0.75 if has_relic("r_dash") else 1.0)
 
 
 func _touch() -> Touch:
@@ -429,7 +443,7 @@ func _animate(delta: float) -> void:
 # ---------- 武装 ----------
 
 func crit_chance() -> float:
-	var c: float = stats["crit"] + val("inari_u3") * 0.01 + (0.15 if has("curse_edge") else 0.0)
+	var c: float = stats["crit"] + val("inari_u3") * 0.01 + (0.15 if has("curse_edge") else 0.0) + (0.08 if has_relic("r_crit") else 0.0)
 	return minf(c, 0.95)
 
 
@@ -611,7 +625,7 @@ func _cast_bullet(kami: String, shape: int, radius: float) -> Bullet:
 func add_call_gauge(amount: float) -> void:
 	if main_god() == "":
 		return
-	call_gauge = clampf(call_gauge + amount * cost_mult("gauge"), 0.0, 1.0)
+	call_gauge = clampf(call_gauge + amount * cost_mult("gauge") * (1.25 if has_relic("r_gauge") else 1.0), 0.0, 1.0)
 
 
 func _try_call() -> void:
@@ -809,8 +823,7 @@ func _on_area(a: Area2D) -> void:
 				heal(p.value, true)
 				Sfx.play("heal", -12.0)
 			Pickup.Kind.MIKI:
-				Sfx.play("miki", -6.0)
-				Game.inst.on_miki_picked()
+				pass   # 神酒は廃止（残っていても何もしない）
 			Pickup.Kind.ORB:
 				pick_orb()
 		Fx.burst(p.position, p.color_of(), 5, 110.0, 2.5, 0.28, true)
@@ -841,8 +854,20 @@ func take_damage(d: float, _crit := false, _at := Vector2.ZERO, source := "") ->
 		Sfx.play("suzu", -8.0)
 		return
 
+	if hp - d <= 0.0 and has_relic("r_revive") and not _revived:
+		# 身代わり人形：一度だけ致命傷を防ぐ
+		_revived = true
+		d = 0.0
+		hp = float(stats["max_hp"]) * 0.5
+		iframe = 2.0
+		Fx.flash(Color(1, 1, 1, 0.7), 0.5)
+		Fx.ring(position, Cfg.C_GOLD, 10.0, 220.0, 0.6, 6.0)
+		Fx.number(position + Vector2(0, -60), "身代わり", Cfg.C_GOLD, 20.0, true)
+		Sfx.play("levelup", -4.0)
+		Game.inst.hitstop(0.3, 0.05)
+		return
 	hp -= d
-	iframe = 1.0 * (1.25 if familiar_id == "shiki" else 1.0)
+	iframe = 1.0 * (1.25 if familiar_id == "shiki" else 1.0) * (1.4 if has_relic("r_iframe") else 1.0)
 	add_call_gauge(0.12)
 	Fx.shake_add(9.0)
 	Fx.flash(Color(1, 0.3, 0.4, 0.25), 0.15)
@@ -868,7 +893,7 @@ func heal(amount: float, show := true) -> void:
 
 
 func add_xp(amount: float) -> void:
-	xp += amount * float(stats["xp_mult"])
+	xp += amount * float(stats["xp_mult"]) * (1.2 if has_relic("r_xp") else 1.0)
 	while xp >= xp_next:
 		xp -= xp_next
 		level += 1
@@ -880,7 +905,7 @@ func add_xp(amount: float) -> void:
 
 
 func magnet_range() -> float:
-	return float(stats["magnet"]) * (1.35 if familiar_id == "neko" else 1.0) * cost_mult("magnet")
+	return float(stats["magnet"]) * (1.35 if familiar_id == "neko" else 1.0) * cost_mult("magnet") * (1.4 if has_relic("r_magnet") else 1.0)
 
 
 func _die() -> void:

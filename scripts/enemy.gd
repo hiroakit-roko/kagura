@@ -76,7 +76,7 @@ func setup(k: String, w: int) -> void:
 	kind = k
 	wave = w
 	# 後半は神器も強くなるので、HP は二乗で伸ばして終盤ほど厳しくする
-	var hs := 1.5 + float(w) * 0.38 + float(w * w) * 0.022
+	var hs := 1.2 + float(w) * 0.30 + float(w * w) * 0.017
 	var ss := 1.08 + float(w) * 0.03
 	_phase = randf() * TAU
 	_dir = 1.0 if randf() < 0.5 else -1.0

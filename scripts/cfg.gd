@@ -74,8 +74,6 @@ const SLOT_HINT := [
 
 
 # ステージ構成：8 波ごとに 1 ステージ。各ステージの最後の波がボス、第 3 ステージの最後がラスボス
-## スマホでの描画解像度（画面幅に対する比率）。1.0 で等倍。0.75 で画素数は約半分
-const MOBILE_RENDER_SCALE := 0.75
 const STAGE_LEN := 8
 const STAGE_COUNT := 3
 const STAGE_NAME := ["参道", "拝殿", "奥宮"]

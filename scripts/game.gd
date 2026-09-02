@@ -43,7 +43,8 @@ var _tut_t := 0.0
 var endless := false
 var best := {"score": 0, "wave": 0, "clears": 0}   # Records.best への参照
 var run_id := -1                                     # 今回の走りの識別子（記録の置き換えに使う）
-var _pick_reason := "miki"                           # 神を選ぶ画面の用途：miki / level / boss
+var _relic_offers: Array = []                        # 討伐の褒賞（神宝）の候補
+var _seen_items := {}                                # 初めて落ちたアイテムの案内を出したか
 var resetting := false                               # やり直しで world を片付けている間（珠を落とさない）
 static var _en_cache: Array = []
 static var _en_stamp := -1
@@ -128,6 +129,7 @@ func _ready() -> void:
 	ui.boon_chosen.connect(_on_boon_chosen)
 	ui.reroll_requested.connect(_on_reroll)
 	ui.miki_chosen.connect(_on_miki_chosen)
+	ui.relic_chosen.connect(_on_relic_chosen)
 	ui.start_requested.connect(start_game)
 	ui.restart_requested.connect(start_game)
 	ui.continue_requested.connect(continue_endless)
@@ -156,19 +158,8 @@ func _fit_viewport() -> void:
 	else:
 		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 		Cfg.H = Cfg.H_BASE
-	# スマホ（タッチ端末）では端末の解像度いっぱいに描くと発光の後処理で熱くなるので、
-	# 描画解像度を少し落として引き伸ばす（論理座標は 640×H のまま）。PC は等倍のまま
-	# （content_scale_* を書き換えると size_changed が再び飛ぶので、値が変わるときだけ書く）
-	var mode := Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
-	var k := 1.0
-	if DisplayServer.is_touchscreen_available() and size.x > Cfg.W * 1.15:
-		k = clampf(size.x * Cfg.MOBILE_RENDER_SCALE / Cfg.W, 1.0, 2.0)
-		mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-	var want_size := Vector2i(int(round(Cfg.W * k)), int(round(Cfg.H * k)))
-	if win.content_scale_mode != mode:
-		win.content_scale_mode = mode
-	if not is_equal_approx(win.content_scale_factor, k):
-		win.content_scale_factor = k
+	# 文字をぼかさないため描画は常に等倍（content_scale_size を書き換えると size_changed が再び飛ぶので、変わるときだけ）
+	var want_size := Vector2i(int(Cfg.W), int(Cfg.H))
 	if win.content_scale_size != want_size:
 		win.content_scale_size = want_size
 	cam.position = Vector2(Cfg.W * 0.5, Cfg.H * 0.5)
@@ -200,6 +191,8 @@ func _on_name_submitted(n: String) -> void:
 ## 功徳の加算（禍神で倍率）
 func add_score(n: int) -> void:
 	var m := 1.5 if (player != null and is_instance_valid(player) and player.has("curse_greed")) else 1.0
+	if player != null and is_instance_valid(player) and player.has_relic("r_score"):
+		m *= 1.2
 	score += int(round(float(n) * m))
 
 
@@ -262,10 +255,22 @@ func start_game() -> void:
 	Music.play("stage")
 	_tut_step = 0
 	_tut_t = 0.0
+	_seen_items.clear()
 	# まず使い魔を選ぶ（時間は止まったまま）
 	_pause_for_choice(St.FAMILIAR)
 	ui.show_familiar_choice()
 	resetting = false
+
+
+## アイテムが初めて落ちたとき、絵付きで何かを短く案内する
+func _item_hint(kind: int) -> void:
+	if _seen_items.has(kind):
+		return
+	_seen_items[kind] = true
+	match kind:
+		Pickup.Kind.XP: ui.banner("勾玉", "拾うと位が上がる", Cfg.C_XP, kind)
+		Pickup.Kind.HEAL: ui.banner("御札", "拾うと HP 回復", Cfg.C_HP, kind)
+		Pickup.Kind.ORB: ui.banner("詠唱の珠", "拾うと詠唱が戻る", player.kami_color(player.main_god()) if (player != null and player.main_god() != "") else Color(0.8, 0.85, 1.0), kind)
 
 
 ## 詠唱の珠を落とす（詠唱の弾が消えた場所）。拾うと詠唱の回数が 1 戻る
@@ -277,6 +282,7 @@ func drop_orb(pos: Vector2) -> void:
 	var p := Vector2(clampf(pos.x, r.position.x + 16.0, r.end.x - 16.0), clampf(pos.y, 40.0, r.end.y - 60.0))
 	o.setup(p, Pickup.Kind.ORB, 1.0)
 	spawn_deferred(o)
+	_item_hint(Pickup.Kind.ORB)
 	Fx.ring(p, player.kami_color(player.main_god()) if player.main_god() != "" else Color(1, 1, 1), 4.0, 26.0, 0.3, 2.0)
 
 
@@ -461,6 +467,8 @@ func _clear_wave() -> void:
 		player.heal(6.0, true)
 		player.add_xp(8.0 + float(wave) * 2.5)   # 取りこぼしても必ず成長できるよう保証
 		player.cast_charges = int(player.stats["cast_max"])   # 波を越えると詠唱の珠は手元に戻る
+		if player.has_relic("r_heal_wave"):
+			player.heal(float(player.stats["max_hp"]) * 0.08, true)
 		for o in get_tree().get_nodes_in_group("pickup"):
 			if is_instance_valid(o) and o.kind == Pickup.Kind.ORB:
 				Fx.burst(o.position, player.kami_color(player.main_god()) if player.main_god() != "" else Color(1, 1, 1), 5, 120.0, 2.5, 0.3, true)
@@ -468,15 +476,10 @@ func _clear_wave() -> void:
 		add_score(50 * wave + player.grazes)
 	if _boss_reward:
 		_boss_reward = false
-		_open_level_pick("boss")
+		_open_relics()
 		return
-	ui.banner("祓い清め", "+%d" % (50 * wave), Cfg.C_HP)
+	ui.banner("第 %d 波　祓い清め" % wave, "功徳 +%d　HP +6" % (50 * wave), Cfg.C_HP)
 	Sfx.play("suzu", -10.0)
-	# 3 波ごとに神酒が降りてくる
-	if wave % 3 == 0 and not player.boons.is_empty():
-		var m := Pickup.new()
-		m.setup(Vector2(Cfg.W * 0.5, 80.0), Pickup.Kind.MIKI, 0.0)
-		spawn_deferred(m)
 
 
 func _build_wave(w: int) -> Array:
@@ -491,7 +494,8 @@ func _build_wave(w: int) -> Array:
 		kinds.append("grunt")
 	var ki := 0
 
-	var budget := 8.0 + float(w) * 3.0 + float(w * w) * 0.12
+	# 敵の総量。後半の増え方は緩やかに（数より個々の強さで難度を出す）
+	var budget := 8.0 + float(w) * 2.2 + float(w * w) * 0.06
 	var out: Array = []
 	var tt := 0.7
 	var pace := clampf(1.0 - float(w) * 0.02, 0.55, 1.0)   # 後半は間隔が詰まる
@@ -617,9 +621,6 @@ func on_boss_killed(b: Boss) -> void:
 		var p := Pickup.new()
 		p.setup(b.position + Vector2(randf_range(-50, 50), 0), Pickup.Kind.HEAL, 18.0)
 		spawn_deferred(p)
-	var m := Pickup.new()
-	m.setup(b.position, Pickup.Kind.MIKI, 0.0)
-	spawn_deferred(m)
 
 
 
@@ -630,15 +631,17 @@ func _drop(pos: Vector2, xp_total: float) -> void:
 		var p := Pickup.new()
 		p.setup(pos + Vector2(randf_range(-6, 6), randf_range(-6, 6)), Pickup.Kind.XP, xp_total / chance * 0.75)
 		spawn_deferred(p)
+		_item_hint(Pickup.Kind.XP)
 	# 油揚げの供物（稲荷）：余分な勾玉
 	if player != null and is_instance_valid(player) and player.has("inari_u8") and randf() < player.val("inari_u8") * 0.01:
 		var extra := Pickup.new()
 		extra.setup(pos + Vector2(randf_range(-14, 14), randf_range(-8, 8)), Pickup.Kind.XP, xp_total * 0.6)
 		spawn_deferred(extra)
-	if randf() < 0.045:
+	if randf() < (0.09 if (player != null and is_instance_valid(player) and player.has_relic("r_heal_drop")) else 0.045):
 		var h := Pickup.new()
 		h.setup(pos, Pickup.Kind.HEAL, 12.0)
 		spawn_deferred(h)
+		_item_hint(Pickup.Kind.HEAL)
 
 
 # ---------- 神と恩恵 ----------
@@ -688,19 +691,15 @@ func _open_boons(reason: String, min_rar: int, kami_id: String) -> void:
 		# すべて取得済み：神酒で代替
 		player.pending_levels = maxi(0, player.pending_levels - 1)
 		_close_choice()
-		on_miki_picked()
 		return
 	_offer_kami = kid
 	_offers = Boons.offer(player, kid, 3, min_rar)
 	if _offers.is_empty():
 		player.pending_levels = maxi(0, player.pending_levels - 1)
 		_close_choice()
-		on_miki_picked()
 		return
 	Sfx.play("levelup", -8.0)
 	var title := "神との邂逅"
-	if reason == "boss":
-		title = "討伐の褒賞"
 	ui.show_boons(kid, _offers, _rerolls, title)
 
 
@@ -731,48 +730,52 @@ func _on_boon_chosen(idx: int) -> void:
 	_close_choice()
 
 
-## レベルアップ／討伐の褒賞：神格を上げる神を自分で選び、その神の能力を抽選する
-##   reason "level" → 凡以上の 3 枚、"boss" → 秀を優先した 3 枚
-func _open_level_pick(reason: String) -> void:
-	_pick_reason = reason
+## レベルアップ：強化する神を自分で選ぶ → その神の神格が 1 上がり → その神の能力 3 枚を抽選
+func _open_level_pick(_reason: String) -> void:
 	if player.gods.size() <= 1:
 		# 1 柱しかいなければ選ぶ余地がないので、そのまま神格を上げて抽選へ
 		_level_pick_done(player.main_god())
 		return
 	_pause_for_choice(St.MIKI)
 	Sfx.play("levelup", -8.0)
-	ui.show_miki(player.gods.duplicate(), reason)
+	ui.show_miki(player.gods.duplicate())
 
 
 func _level_pick_done(id: String) -> void:
 	if id != "" and int(player.kami_lv.get(id, 1)) < 10:
 		Boons.miki_apply(player, id)
-	_open_boons(_pick_reason, Cfg.Rar.EPIC if _pick_reason == "boss" else Cfg.Rar.COMMON, id)
-
-
-func on_miki_picked() -> void:
-	if state != St.PLAY:
-		return
-	var targets := Boons.miki_targets(player)
-	if targets.is_empty():
-		player.heal(30.0, true)
-		ui.banner("神酒", "HP を回復した", Cfg.C_GOLD)
-		return
-	_pick_reason = "miki"
-	_pause_for_choice(St.MIKI)
-	Sfx.play("miki", -4.0)
-	ui.show_miki(targets, "miki")
+	_open_boons("level", Cfg.Rar.COMMON, id)
 
 
 func _on_miki_chosen(id: String) -> void:
 	if state != St.MIKI:
 		return
-	if _pick_reason == "level" or _pick_reason == "boss":
-		Sfx.play("suzu", -8.0, 1.2)
-		_level_pick_done(id)
+	Sfx.play("suzu", -8.0, 1.2)
+	_level_pick_done(id)
+
+
+## 討伐の褒賞：神宝を 3 つから 1 つ選ぶ
+func _open_relics() -> void:
+	_relic_offers = Relics.offer(player, 3)
+	if _relic_offers.is_empty():
+		player.heal(float(player.stats["max_hp"]) * 0.5, true)
+		ui.banner("討伐の褒賞", "HP を回復した", Cfg.C_GOLD)
 		return
-	Boons.miki_apply(player, id)
-	Sfx.play("miki", -4.0, 1.1)
+	_pause_for_choice(St.BOON)
+	Sfx.play("levelup", -6.0, 0.9)
+	ui.show_relics(_relic_offers)
+
+
+func _on_relic_chosen(idx: int) -> void:
+	if state != St.BOON or idx < 0 or idx >= _relic_offers.size():
+		return
+	var r: Dictionary = _relic_offers[idx]
+	player.relics.append(String(r["id"]))
+	player.on_boons_changed()
+	ui.banner(String(r["name"]), String(r["desc"]), Cfg.C_GOLD)
+	Sfx.play("levelup", -4.0, 1.1)
+	Fx.flash(Cfg.with_a(Cfg.C_GOLD, 0.35), 0.4)
+	_relic_offers = []
 	_close_choice()
 
 

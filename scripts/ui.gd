@@ -9,6 +9,7 @@ signal familiar_chosen(id: String)
 signal boon_chosen(idx: int)
 signal reroll_requested
 signal miki_chosen(id: String)
+signal relic_chosen(idx: int)
 signal start_requested
 signal restart_requested
 signal continue_requested
@@ -24,6 +25,7 @@ var familiar_view: FamiliarView
 var confirm_view: ConfirmView
 var boons_view: BoonsView
 var miki_view: MikiView
+var relic_view: RelicView
 var overlay: OverlayView
 
 const LACQUER := Color(0.07, 0.045, 0.10, 0.92)
@@ -213,6 +215,9 @@ func _ready() -> void:
 	miki_view = MikiView.new()
 	_setup_view(miki_view)
 	miki_view.visible = false
+	relic_view = RelicView.new()
+	_setup_view(relic_view)
+	relic_view.visible = false
 	overlay = OverlayView.new()
 	_setup_view(overlay)
 	overlay.visible = false
@@ -260,11 +265,10 @@ func show_boons(kami_id: String, offers: Array, rerolls: int, title: String) -> 
 	boons_view.visible = true
 
 
-## 神を 1 柱選ぶ画面。mode: "miki"（神酒）/ "level"（位上がり）/ "boss"（討伐の褒賞）
-func show_miki(ids: Array, mode := "miki") -> void:
+## 位上がり：神格を上げる神を 1 柱選ぶ画面
+func show_miki(ids: Array) -> void:
 	hide_cards()
 	miki_view.ids = ids
-	miki_view.mode = mode
 	miki_view.anim = 0.0
 	miki_view.hover = -1
 	miki_view.visible = true
@@ -276,6 +280,16 @@ func hide_cards() -> void:
 	confirm_view.visible = false
 	boons_view.visible = false
 	miki_view.visible = false
+	relic_view.visible = false
+
+
+## 討伐の褒賞：神宝を 3 つから選ぶ
+func show_relics(offers: Array) -> void:
+	hide_cards()
+	relic_view.offers = offers
+	relic_view.anim = 0.0
+	relic_view.hover = -1
+	relic_view.visible = true
 
 
 func choice_visible() -> bool:
@@ -294,11 +308,12 @@ func ask_contract(kami_id: String, role: String, on_ok: Callable) -> void:
 	Sfx.play("descend", -10.0, 1.1)
 
 
-func banner(text: String, sub := "", col := Color(1, 1, 1)) -> void:
+func banner(text: String, sub := "", col := Color(1, 1, 1), icon := -1) -> void:
 	hud.banner_text = text
 	hud.banner_sub = sub
 	hud.banner_col = col
-	hud.banner_t = 2.4
+	hud.banner_icon = icon
+	hud.banner_t = 2.4 if icon < 0 else 3.2
 
 
 ## ボスの名乗り：縦書きの名前と二つ名を数秒見せる
@@ -410,6 +425,13 @@ func _unhandled_input(e: InputEvent) -> void:
 		if idx >= 0 and idx < miki_view.ids.size():
 			Sfx.play("select", -8.0)
 			miki_chosen.emit(String(miki_view.ids[idx]))
+	elif relic_view.visible:
+		if click.x >= 0:
+			idx = relic_view.card_at(click)
+		if idx >= 0 and idx < relic_view.offers.size():
+			Sfx.play("select", -8.0)
+			Fx.shake_add(3.0)
+			relic_chosen.emit(idx)
 
 
 # =====================================================================
@@ -475,6 +497,7 @@ class HudView:
 	var banner_text := ""
 	var banner_sub := ""
 	var banner_col := Color(1, 1, 1)
+	var banner_icon := -1   # Pickup.Kind（アイテムの案内）。-1 なら絵なし
 	var banner_t := 0.0
 	var small_text := ""
 	var small_col := Color(1, 1, 1)
@@ -595,6 +618,18 @@ class HudView:
 	func _draw_chips(p: Player, y0: float) -> void:
 		var x := 16.0
 		var y := y0
+		# 神宝（金の札）
+		for rid: String in p.relics:
+			var rl := Relics.get_relic(rid)
+			if rl.is_empty():
+				continue
+			draw_rect(Rect2(x, y, 20, 20), Color(0.6, 0.45, 0.1, 0.45))
+			draw_rect(Rect2(x, y, 20, 20), Cfg.with_a(Cfg.C_GOLD, 0.95), false, 1.5)
+			Ui.txt(self, ui.font_display, Vector2(x, y + 15), String(rl["mark"]), 12, Color(1, 0.95, 0.8), HORIZONTAL_ALIGNMENT_CENTER, 20)
+			y += 24.0
+			if y > Cfg.H - 200.0:
+				y = y0
+				x += 24.0
 		for id: String in p.boons.keys():
 			var b := Kami.boon(id)
 			if b.is_empty():
@@ -706,7 +741,7 @@ class HudView:
 			draw_circle(Vector2(Cfg.W - 108 + i * 10, 74), 3.5, Color(1, 0.85, 0.4))
 
 	func _draw_banner() -> void:
-		var k := banner_t / 2.4
+		var k := banner_t / (2.4 if banner_icon < 0 else 3.2)
 		var a := clampf(sin(k * PI) * 2.2, 0.0, 1.0)
 		var y := 300.0 - (1.0 - k) * 16.0
 		var c := banner_col
@@ -716,8 +751,16 @@ class HudView:
 		draw_rect(Rect2(0, y + 36, Cfg.W, 2), Color(c.r, c.g, c.b, a * 0.8))
 		draw_rect(Rect2(0, y - 41, Cfg.W, 1), Color(1, 1, 1, a * 0.25))
 		Ui.txt(self, ui.font_display, Vector2(0, y), banner_text, 32, c, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		if banner_icon >= 0:
+			# アイテムの絵を題の左に大きく
+			var tw := ui.font_display.get_string_size(banner_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x
+			var ip := Vector2(Cfg.W * 0.5 - tw * 0.5 - 34.0, y - 12.0)
+			draw_circle(ip, 22.0, Cfg.with_a(c, 0.18))
+			draw_set_transform(ip, 0.0, Vector2(1.7, 1.7))
+			Pickup.draw_shape(self, banner_icon, c, _t, 1.0)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if banner_sub != "":
-			Ui.txt(self, ui.font, Vector2(0, y + 26), banner_sub, 14,
+			Ui.txt(self, ui.font, Vector2(0, y + 26), banner_sub, 15,
 					Color(1, 1, 1, a * 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	## ボスの名乗り
@@ -1278,10 +1321,10 @@ class MikiView:
 	extends ChoiceView
 
 	var ids: Array = []
-	var mode := "miki"
 
 	const CW := 190.0
-	const CH := 180.0
+	const CH := 330.0
+	const CY := 236.0
 
 	func count() -> int:
 		return ids.size()
@@ -1291,22 +1334,13 @@ class MikiView:
 		var gap := 12.0
 		var w := float(total) * CW + float(total - 1) * gap
 		var x := (Cfg.W - w) * 0.5 + float(i) * (CW + gap)
-		return Rect2(x, 300.0, CW, CH)
+		return Rect2(x, CY, CW, CH)
 
 	func _draw() -> void:
 		backdrop(Cfg.C_GOLD)
-		var title := "神酒"
-		var sub := "神を選び、神格を 1 上げる"
-		match mode:
-			"level":
-				title = "神との邂逅"
-				sub = "神格を上げる神を選ぶ"
-			"boss":
-				title = "討伐の褒賞"
-				sub = "神格を上げる神を選ぶ（秀の能力が出る）"
-		Ui.txt(self, ui.font_display, Vector2(0, 150), title, 48, Cfg.with_a(Cfg.C_GOLD, anim),
+		Ui.txt(self, ui.font_display, Vector2(0, 150), "神との邂逅", 48, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 188), sub, 15,
+		Ui.txt(self, ui.font, Vector2(0, 188), "強化する神を選ぶ", 15,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		var p := Game.inst.player
 		for i in ids.size():
@@ -1321,19 +1355,28 @@ class MikiView:
 			var rr := r.grow((3.0 if sel else 0.0) - (1.0 - pop) * 20.0)
 			card_bg(rr, kc, sel, pop)
 			var lv: int = p.kami_lv.get(id, 1)
-			Ui.kami_ring(self, p, id, rr.position + Vector2(rr.size.x * 0.5, 54), 30.0, _t, pop, false)
-			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 112), String(k["name"]), 16, Color(1, 1, 1, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			# 神の絵（能力のカードとは違う選択だと一目で分かるように）
+			var tex := Ui.art("kami/" + id)
+			var pr := Rect2(rr.position.x + 4, rr.position.y + 4, rr.size.x - 8, 190)
+			if tex != null:
+				Ui.draw_cover(self, tex, pr, pop, 0.2)
+				for gi in 6:
+					var kk := float(gi) / 6.0
+					draw_rect(Rect2(pr.position.x, pr.end.y - 60.0 + kk * 60.0, pr.size.x, 60.0 / 6.0 + 1.0), Color(0.08, 0.06, 0.12, 0.9 * kk * pop))
+			else:
+				Ui.kami_ring(self, p, id, pr.get_center(), 40.0, _t, pop, false)
+			Ui.txt(self, ui.font, rr.position + Vector2(10, 22), "主神" if p.is_main(id) else "副神", 11, Color(1, 0.9, 0.7, 0.9 * pop))
+			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 216), String(k["name"]), 19, Color(1, 1, 1, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 			var capped := lv >= 10
-			Ui.txt(self, ui.font_bold, rr.position + Vector2(0, 134), ("神格 %d（上限）" % lv) if capped else ("神格 %d → %d" % [lv, lv + 1]), 14, Cfg.with_a(Cfg.C_GOLD, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-			Ui.txt(self, ui.font, rr.position + Vector2(0, 152), "%s  威力 ×%.2f → ×%.2f" % [String(k["weapon"]),
-					p.kami_power(id), Kami.kami_power(mini(lv + 1, 10), Kami.growth_of(id))], 10,
+			Ui.txt(self, ui.font_bold, rr.position + Vector2(0, 244), ("神格 %d（上限）" % lv) if capped else ("神格 %d → %d" % [lv, lv + 1]), 16, Cfg.with_a(Cfg.C_GOLD, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			Ui.txt(self, ui.font, rr.position + Vector2(0, 266), "%s  威力 ×%.2f → ×%.2f" % [String(k["weapon"]),
+					p.kami_power(id), Kami.kami_power(mini(lv + 1, 10), Kami.growth_of(id))], 11,
 					Color(0.9, 0.92, 1.0, pop * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-			if mode != "miki":
-				var owned := Boons.owned_of(p, id).size()
-				Ui.txt(self, ui.font, rr.position + Vector2(0, 168), "能力 %d/%d　%s" % [owned, Boons.MAX_PER_KAMI, "主神" if p.is_main(id) else "副神"], 10,
-						Cfg.with_a(kc, pop * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			var owned := Boons.owned_of(p, id).size()
+			Ui.txt(self, ui.font, rr.position + Vector2(0, 286), "能力 %d / %d" % [owned, Boons.MAX_PER_KAMI], 12,
+					Cfg.with_a(kc, pop * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 10), "[%d]" % (i + 1), 12, Cfg.with_a(kc, pop))
-		Ui.txt(self, ui.font, Vector2(0, 300.0 + CH + 30.0), Ui.pick_hint("選ぶ"), 14,
+		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30.0), Ui.pick_hint("選ぶ", ids.size()), 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 
@@ -1673,3 +1716,52 @@ class NameBox:
 		ui.name_submitted.emit(text)
 		_layout(_y)
 		Fx.sparks(open_btn.position + open_btn.size * 0.5, Vector2.UP, Cfg.C_GOLD, 8, 200.0)
+
+
+# =====================================================================
+## 討伐の褒賞：神宝を 3 つから 1 つ選ぶ
+class RelicView:
+	extends ChoiceView
+
+	var offers: Array = []
+
+	const CW := 190.0
+	const CH := 250.0
+	const CY := 300.0
+
+	func count() -> int:
+		return offers.size()
+
+	func rect_of(i: int) -> Rect2:
+		var total := offers.size()
+		var gap := 12.0
+		var w := float(total) * CW + float(total - 1) * gap
+		var x := (Cfg.W - w) * 0.5 + float(i) * (CW + gap)
+		return Rect2(x, CY, CW, CH)
+
+	func _draw() -> void:
+		backdrop(Cfg.C_GOLD)
+		Ui.txt(self, ui.font_display, Vector2(0, 150), "討伐の褒賞", 48, Cfg.with_a(Cfg.C_GOLD, anim),
+				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		Ui.txt(self, ui.font, Vector2(0, 188), "神宝を 1 つ選ぶ", 15,
+				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		for i in offers.size():
+			var o: Dictionary = offers[i]
+			var r := rect_of(i)
+			var sel := i == hover
+			var pop := clampf(anim * 1.5 - float(i) * 0.1, 0.0, 1.0)
+			if pop <= 0.0:
+				continue
+			var rr := r.grow((3.0 if sel else 0.0) - (1.0 - pop) * 20.0)
+			card_bg(rr, Cfg.C_GOLD, sel, pop)
+			var c := rr.position + Vector2(rr.size.x * 0.5, 74)
+			# 宝物の印：金の輪と文字
+			draw_circle(c, 40.0 + (4.0 * sin(_t * 3.0) if sel else 0.0), Cfg.with_a(Cfg.C_GOLD, 0.12 * pop))
+			draw_arc(c, 32.0, 0, TAU, 40, Cfg.with_a(Cfg.C_GOLD, 0.9 * pop), 2.0, true)
+			draw_arc(c, 26.0, _t * 1.2, _t * 1.2 + 4.0, 24, Cfg.with_a(Cfg.C_GOLD, 0.5 * pop), 1.0, true)
+			Ui.txt(self, ui.font_display, Vector2(c.x - 30, c.y + 12), String(o["mark"]), 30, Color(1, 0.96, 0.85, pop), HORIZONTAL_ALIGNMENT_CENTER, 60, false)
+			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 148), String(o["name"]), 20, Color(1, 1, 1, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			Ui.para(self, ui.font, Vector2(rr.position.x + 14, rr.position.y + 172), String(o["desc"]), rr.size.x - 28, 13, 3, Color(0.92, 0.94, 1.0, pop * 0.95), HORIZONTAL_ALIGNMENT_CENTER)
+			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 10), "[%d]" % (i + 1), 12, Cfg.with_a(Cfg.C_GOLD, pop))
+		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30.0), Ui.pick_hint("選ぶ"), 14,
+				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)

@@ -150,6 +150,13 @@ func _run() -> void:
 			await shot("02c_contract.png")
 			g.ui.confirm_view.visible = false
 			g._on_kami_chosen(kid)
+		elif g.state == Game.St.BOON and g.ui.relic_view.visible:
+			await _wait(0.8)
+			await shot("05_relic.png")
+			if g._relic_offers.is_empty():
+				g.ui.relic_view.visible = false
+			else:
+				g._on_relic_chosen(randi() % g._relic_offers.size())
 		elif g.state == Game.St.BOON and g.ui.boons_view.visible and not g._offers.is_empty():
 			# 選択画面中に敵と自機が止まっているか
 			var es := get_tree().get_nodes_in_group("enemy")
@@ -269,7 +276,9 @@ func _flow_test() -> void:
 		await _wait(0.3)
 		if g.state == Game.St.MIKI:
 			var pick := String(g.ui.miki_view.ids[randi() % g.ui.miki_view.ids.size()])
-			print("[flow] lv%d PICK(%s) ids=%s -> %s" % [g.player.level, g.ui.miki_view.mode, str(g.ui.miki_view.ids), pick])
+			print("[flow] lv%d PICK ids=%s -> %s" % [g.player.level, str(g.ui.miki_view.ids), pick])
+			await _wait(0.5)
+			await shot("04_pick.png")
 			g._on_miki_chosen(pick)
 			await _wait(0.3)
 		if g.state == Game.St.KAMI:
@@ -286,6 +295,14 @@ func _flow_test() -> void:
 			print("[flow] lv%d state=%d" % [g.player.level, g.state])
 		await _wait(0.3)
 		print("[flow]   -> state=%d gods=%s kami_lv=%s" % [g.state, str(g.player.gods), str(g.player.kami_lv)])
+	# 討伐の褒賞（神宝）
+	g._open_relics()
+	await _wait(0.5)
+	print("[flow] relics offered: %s" % str(g._relic_offers.map(func(r): return r["name"])))
+	await shot("05_relic.png")
+	g._on_relic_chosen(0)
+	await _wait(0.2)
+	print("[flow] relics=%s state=%d" % [str(g.player.relics), g.state])
 	print("[flow] done")
 	get_tree().quit()
 
@@ -484,6 +501,8 @@ func _ability_test(gods: Array) -> void:
 			dashes += 1
 		if g.state == Game.St.KAMI:
 			g._on_kami_chosen(String(g.ui.kami_view.ids[0]))
+		elif g.state == Game.St.BOON and g.ui.relic_view.visible:
+			g._on_relic_chosen(0)
 		elif g.state == Game.St.BOON and not g._offers.is_empty():
 			g._on_boon_chosen(0)
 		elif g.state == Game.St.MIKI:
