@@ -1,9 +1,10 @@
 class_name Pickup
 extends Area2D
 
-## 勾玉（経験値）／御札（回復）／神酒（恩恵の強化）。マグネット範囲に入ると吸い寄せられる。
+## 勾玉（経験値）／御札（回復）／神酒（恩恵の強化）／詠唱の珠（詠唱の回数が戻る）。
+## マグネット範囲に入ると吸い寄せられる。詠唱の珠は消えず、自機より下に抜けると必ず戻ってくる。
 
-enum Kind {XP, HEAL, MIKI}
+enum Kind {XP, HEAL, MIKI, ORB}
 
 var kind: int = Kind.XP
 var value := 3.0
@@ -20,6 +21,9 @@ func setup(p: Vector2, k: int, v: float) -> void:
 	vel = Vector2(randf_range(-70, 70), randf_range(-130, -50))
 	if k == Kind.MIKI:
 		life = 30.0
+	if k == Kind.ORB:
+		life = 9999.0
+		vel = Vector2(randf_range(-40, 40), randf_range(-60, -20))
 
 
 func _ready() -> void:
@@ -50,6 +54,8 @@ func _physics_process(delta: float) -> void:
 	if pl != null and is_instance_valid(pl):
 		var d := position.distance_to(pl.position)
 		var range_r: float = pl.magnet_range()
+		if kind == Kind.ORB:
+			range_r *= 1.6 * pl.cost_mult("orb")   # 珠は広めに吸い寄せる（建御雷の代償で狭まる）
 		# 自機より下に抜けたアイテムは取り逃さないよう必ず吸い寄せる
 		if _pulled or d < range_r or position.y > pl.position.y + 40.0:
 			_pulled = true
@@ -66,7 +72,13 @@ func _physics_process(delta: float) -> void:
 	position += vel * delta
 	position.x = clampf(position.x, 8.0, Cfg.W - 8.0)
 	if position.y > Cfg.H + 30.0:
-		queue_free()
+		if kind == Kind.ORB:
+			# 珠は失われない：画面上から戻ってくる
+			position = Vector2(clampf(position.x + randf_range(-80, 80), 20.0, Cfg.W - 20.0), -20.0)
+			vel = Vector2(0, 60.0)
+			_pulled = false
+		else:
+			queue_free()
 	rotation = sin(_t * 2.2) * 0.35 if kind != Kind.XP else _t * 1.6
 	queue_redraw()
 
@@ -75,6 +87,11 @@ func color_of() -> Color:
 	match kind:
 		Kind.XP: return Cfg.C_XP
 		Kind.HEAL: return Cfg.C_HP
+		Kind.ORB:
+			var pl := Game.inst.player if Game.inst != null else null
+			if pl != null and is_instance_valid(pl) and pl.main_god() != "":
+				return pl.kami_color(pl.main_god())
+			return Color(0.8, 0.85, 1.0)
 		_: return Cfg.C_GOLD
 
 
@@ -95,6 +112,13 @@ func _draw() -> void:
 			draw_colored_polygon(pts, c)
 			draw_polyline(pts + PackedVector2Array([pts[0]]), Color(1, 1, 1, 0.9), 1.5, true)
 			draw_circle(Vector2(-r * 0.2, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.95))
+		Kind.ORB:
+			# 詠唱の珠：主神の色に光る珠と回る輪
+			draw_circle(Vector2.ZERO, 18.0 * pulse, Cfg.with_a(c, 0.12))
+			draw_arc(Vector2.ZERO, 12.0, _t * 3.0, _t * 3.0 + 4.2, 16, Cfg.with_a(c, 0.8), 1.5, true)
+			draw_circle(Vector2.ZERO, 7.5, Cfg.with_a(c, 0.45))
+			draw_circle(Vector2.ZERO, 5.5, c)
+			draw_circle(Vector2(-1.8, -1.8), 2.0, Color(1, 1, 1, 0.9))
 		Kind.HEAL:
 			# 御札：縦長の紙と朱印
 			draw_rect(Rect2(-6, -11, 12, 22), Cfg.C_PAPER)

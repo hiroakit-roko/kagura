@@ -184,7 +184,7 @@ class TouchView:
 					enabled = p.dash_cool <= 0.0
 				"cast":
 					col = p.kami_color(p.main_god()) if p.main_god() != "" else Cfg.C_PBULLET
-					fill = 1.0 if p.cast_charges > 0 else 1.0 - p.cast_cd / maxf(0.01, p.cast_cd_time())
+					fill = 1.0 if p.cast_charges > 0 else 0.0
 					enabled = p.cast_charges > 0 and p.main_god() != ""
 					sub = "×%d" % p.cast_charges
 				"call":

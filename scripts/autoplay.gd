@@ -458,6 +458,8 @@ func _ability_test(gods: Array) -> void:
 			break
 		p.stats["max_hp"] = 9999.0
 		p.hp = 9999.0
+		if g.state == Game.St.PLAY and int(_t * 2.0) % 4 == 0:
+			p._try_cast()
 		if g.state == Game.St.PLAY and p.dash_cool <= 0.0 and dashes < 6:
 			p._start_dash(Vector2.RIGHT if dashes % 2 == 0 else Vector2.LEFT)
 			dashes += 1
@@ -468,5 +470,6 @@ func _ability_test(gods: Array) -> void:
 		elif g.state == Game.St.MIKI:
 			g._on_miki_chosen(String(g.ui.miki_view.ids[0]))
 	await shot("70_ability_%s.png" % "_".join(PackedStringArray(gods)))
-	print("[ability] done wave=%d score=%d" % [g.wave, g.score])
+	print("[ability] done wave=%d score=%d cast_charges=%d orbs_on_field=%d" % [g.wave, g.score, p.cast_charges,
+			get_tree().get_nodes_in_group("pickup").filter(func(x): return x.kind == Pickup.Kind.ORB).size()])
 	get_tree().quit()

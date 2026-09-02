@@ -44,6 +44,7 @@ var endless := false
 var best := {"score": 0, "wave": 0, "clears": 0}   # Records.best への参照
 var run_id := -1                                     # 今回の走りの識別子（記録の置き換えに使う）
 var _pick_reason := "miki"                           # 神を選ぶ画面の用途：miki / level / boss
+var resetting := false                               # やり直しで world を片付けている間（珠を落とさない）
 
 const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6,
 	"spirit": 0.5, "lantern": 2.0, "kite": 1.2, "oni": 3.6, "caster": 3.0, "bomber": 1.5}
@@ -193,6 +194,7 @@ func _show_title() -> void:
 # ---------- ゲーム開始 ----------
 
 func start_game() -> void:
+	resetting = true
 	for c in world.get_children():
 		c.queue_free()
 	Fx.clear_all()
@@ -227,6 +229,19 @@ func start_game() -> void:
 	# まず使い魔を選ぶ（時間は止まったまま）
 	_pause_for_choice(St.FAMILIAR)
 	ui.show_familiar_choice()
+	resetting = false
+
+
+## 詠唱の珠を落とす（詠唱の弾が消えた場所）。拾うと詠唱の回数が 1 戻る
+func drop_orb(pos: Vector2) -> void:
+	if state == St.TITLE or player == null or not is_instance_valid(player):
+		return
+	var o := Pickup.new()
+	var r := Cfg.play_rect()
+	var p := Vector2(clampf(pos.x, r.position.x + 16.0, r.end.x - 16.0), clampf(pos.y, 40.0, r.end.y - 60.0))
+	o.setup(p, Pickup.Kind.ORB, 1.0)
+	spawn_deferred(o)
+	Fx.ring(p, player.kami_color(player.main_god()) if player.main_god() != "" else Color(1, 1, 1), 4.0, 26.0, 0.3, 2.0)
 
 
 func _on_familiar_chosen(id: String) -> void:
@@ -299,9 +314,9 @@ func _tutorial(delta: float) -> void:
 			if _tut_t > 9.0:
 				_tut_step = 3
 				if is_touch():
-					ui.banner("右下の「詠唱」「神招き」", "主神を迎えると押せるようになる。敵弾の間を抜けると「かすり」でゲージが溜まる", Color(0.9, 0.9, 1.0))
+					ui.banner("右下の「詠唱」「神招き」", "主神を迎えると押せる。詠唱の珠は使うと飛んでいき、拾うと戻る。かすりでゲージが溜まる", Color(0.9, 0.9, 1.0))
 				else:
-					ui.banner("Z で詠唱、X で神招き", "主神を迎えると使えるようになる。敵弾の間を抜けると「かすり」でゲージが溜まる", Color(0.9, 0.9, 1.0))
+					ui.banner("Z で詠唱、X で神招き", "主神を迎えると使える。詠唱の珠は使うと飛んでいき、拾うと戻る。かすりでゲージが溜まる", Color(0.9, 0.9, 1.0))
 
 
 ## ヒットストップ：dur 秒（実時間）だけ時間の流れを scale に落とす。
@@ -404,6 +419,11 @@ func _clear_wave() -> void:
 	if player != null and is_instance_valid(player):
 		player.heal(6.0, true)
 		player.add_xp(8.0 + float(wave) * 2.5)   # 取りこぼしても必ず成長できるよう保証
+		player.cast_charges = int(player.stats["cast_max"])   # 波を越えると詠唱の珠は手元に戻る
+		for o in get_tree().get_nodes_in_group("pickup"):
+			if is_instance_valid(o) and o.kind == Pickup.Kind.ORB:
+				Fx.burst(o.position, player.kami_color(player.main_god()) if player.main_god() != "" else Color(1, 1, 1), 5, 120.0, 2.5, 0.3, true)
+				o.queue_free()
 		add_score(50 * wave + player.grazes)
 	if _boss_reward:
 		_boss_reward = false

@@ -35,6 +35,7 @@ var split_on_hit := 0      # 命中時にこの数の小弾に砕ける
 var doom := 0.0            # 命中した敵に刻む宿命のダメージ（月読）
 var charm_chance := 0.0    # 命中した敵を魅了する確率（天宇受売）
 var turn_dist := 330.0     # boomerang: 折り返す距離
+var orb := false           # 詠唱の弾：消えるとき、その場に「詠唱の珠」を落とす（拾うと回数が戻る）
 var return_mult := 1.0     # boomerang: 戻り道のダメージ倍率
 var travel := 0.0
 var _origin := Vector2.ZERO
@@ -130,6 +131,12 @@ func _expire() -> void:
 	queue_free()
 
 
+func _exit_tree() -> void:
+	# 詠唱の珠を落とす（ゲームのやり直しで片付けられるときは除く）
+	if orb and Game.inst != null and not Game.inst.resetting:
+		Game.inst.drop_orb(global_position)
+
+
 func _find_target() -> Node2D:
 	var best: Node2D = null
 	var bd := 1e9
@@ -194,6 +201,10 @@ func _on_area(a: Area2D) -> void:
 		var opts := {"tag": tag, "slot": slot, "kami": kami, "crit": crit,
 				"dir": vel.normalized(), "kb": kb, "doom": doom, "charm_chance": charm_chance}
 		Combat.hit(a, dmg * (return_mult if _returning else 1.0), global_position, opts)
+		if mode == "cloud":
+			# 建御雷の詠唱：敵に当たってもその場で雷雲になる（以前は当たると雲にならなかった）
+			_become_cloud()
+			return
 		if zone_kind != "":
 			_leave_zone(global_position)
 			zone_kind = ""

@@ -658,11 +658,11 @@ class HudView:
 				draw_circle(c, 7.0, Cfg.with_a(mc, 0.95))
 				draw_circle(c + Vector2(-2, -2), 2.5, Color(1, 1, 1, 0.85))
 			else:
-				draw_arc(c, 7.0, 0, TAU, 20, Cfg.with_a(mc, 0.35), 1.5, true)
-				if i == p.cast_charges:
-					var kk := 1.0 - p.cast_cd / maxf(0.01, p.cast_cd_time())
-					draw_arc(c, 7.0, -PI * 0.5, -PI * 0.5 + TAU * kk, 20, Cfg.with_a(mc, 0.9), 2.5, true)
-		Ui.txt(self, ui.font, Vector2(px, py + 24), "詠唱 Z", 10, Color(1, 1, 1, 0.6))
+				# 飛んでいった珠：点線の輪。拾うと戻る
+				for j in 8:
+					var a0 := TAU * float(j) / 8.0 + _t * 1.5
+					draw_arc(c, 7.0, a0, a0 + 0.35, 4, Cfg.with_a(mc, 0.5), 1.5, true)
+		Ui.txt(self, ui.font, Vector2(px, py + 24), "詠唱 Z" if p.cast_charges > 0 or main == "" else "珠を拾え", 10, Color(1, 1, 1, 0.6) if p.cast_charges > 0 or main == "" else Cfg.with_a(mc, 0.6 + 0.4 * sin(_t * 5.0)))
 		var dx := px + 84.0
 		var dk := 1.0 - p.dash_cool / maxf(0.01, p.dash_cd_time())
 		draw_arc(Vector2(dx, py), 9.0, 0, TAU, 20, Color(1, 1, 1, 0.25), 1.5, true)
@@ -1490,10 +1490,10 @@ class OverlayView:
 		var y := Cfg.H - 254.0
 		var touch := Game.inst != null and Game.inst.is_touch()
 		var lines := [
-			["移動", "画面のどこでも指をなぞる（速度が高いほど大きく追従）"], ["疾走", "短くなぞってすぐ離す（無敵）"], ["詠唱", "右下の「詠唱」札（主神の技・2 発）"],
+			["移動", "画面のどこでも指をなぞる（速度が高いほど大きく追従）"], ["疾走", "短くなぞってすぐ離す（無敵）"], ["詠唱", "右下の「詠唱」札（珠 2 つ。使うと飛び、拾うと戻る）"],
 			["神招き", "右下の「招」札（ゲージ 1/4 以上）"], ["小休止", "右上の「休」"], ["名前", "結果画面の「名を刻む」"],
 		] if touch else [
-			["移動", "WASD / 矢印　　スマホ：なぞる（速度が高いほど指に大きく追従）"], ["疾走", "Space（無敵）　　スマホ：指を弾く"], ["詠唱", "Z / J（主神の技・2 発）"],
+			["移動", "WASD / 矢印　　スマホ：なぞる（速度が高いほど指に大きく追従）"], ["疾走", "Space（無敵）　　スマホ：指を弾く"], ["詠唱", "Z / J（珠 2 つ。使うと飛び、拾うと戻る）"],
 			["神招き", "X / K（ゲージ 1/4 以上）"], ["低速", "Shift"], ["小休止 / 音", "P / M"],
 		]
 		for l: Array in lines:

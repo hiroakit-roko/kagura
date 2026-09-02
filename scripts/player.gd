@@ -25,7 +25,6 @@ var stats := {
 	"xp_mult": 1.0,
 	"magnet": 170.0,
 	"dash_cd": 2.2,
-	"cast_cd": 5.0,
 	"cast_max": 2,
 }
 
@@ -52,7 +51,6 @@ var alive := true
 var radius := 7.0
 var fire_cd := 0.0
 var cast_charges := 2
-var cast_cd := 0.0
 var iframe := 0.0
 var shield := 0
 var shield_t := 0.0
@@ -246,8 +244,8 @@ func cost_mult(kind: String) -> float:
 		"taken":
 			if gods.has("susa"): m *= 1.08
 			if gods.has("iza"): m *= 1.08
-		"cast_cd":
-			if gods.has("take"): m *= 1.15
+		"orb":
+			if gods.has("take"): m *= 0.7   # 詠唱の珠が吸い寄せられる範囲が狭い
 		"speed":
 			if gods.has("tsuki"): m *= 0.94
 		"magnet":
@@ -269,7 +267,6 @@ func on_boons_changed() -> void:
 		hp = minf(new_max, hp + diff)
 	hp = minf(hp, new_max)
 	stats["cast_max"] = 2
-	cast_charges = mini(cast_charges + 1, int(stats["cast_max"]))
 	# 眷属の狐
 	var want := int(round(val("inari_u4"))) if has("inari_u4") else 0
 	if want != _drones.size():
@@ -454,12 +451,7 @@ func _weapons(delta: float) -> void:
 		fire_cd = 1.0 / (float(stats["fire_rate"]) * fire_rate_mult())
 		_fire_main()
 
-	if cast_charges < int(stats["cast_max"]):
-		cast_cd -= delta
-		if cast_cd <= 0.0:
-			cast_charges += 1
-			cast_cd = cast_cd_time()
-			Sfx.play("suzu", -22.0, 1.4)
+	# 詠唱の回数は時間では戻らない。飛んでいった「詠唱の珠」を拾うか、波を越えると戻る
 	var tc := _touch()
 	if Input.is_key_pressed(KEY_Z) or Input.is_key_pressed(KEY_J) or (tc != null and tc.take("cast")):
 		_try_cast()
@@ -467,8 +459,15 @@ func _weapons(delta: float) -> void:
 		_try_call()
 
 
-func cast_cd_time() -> float:
-	return float(stats["cast_cd"]) * cost_mult("cast_cd")
+## 詠唱の珠を拾った：回数が 1 戻る
+func pick_orb() -> void:
+	var before := cast_charges
+	cast_charges = mini(cast_charges + 1, int(stats["cast_max"]))
+	var col := kami_color(main_god()) if main_god() != "" else Color(1, 1, 1)
+	Fx.ring(position, col, 8.0, 50.0, 0.3, 3.0)
+	Sfx.play("cast", -14.0, 1.5)
+	if cast_charges > before:
+		Fx.number(position + Vector2(0, -44), "詠唱 ×%d" % cast_charges, col, 11.0)
 
 
 ## 基本の弾：巫矢
@@ -489,7 +488,7 @@ func _fire_main() -> void:
 	Sfx.play("shoot", -22.0, randf_range(0.95, 1.1), 0.035)
 
 
-func spawn_foxfire(from: Vector2, target: Node2D, dmg: float, tag := "foxfire") -> void:
+func spawn_foxfire(from: Vector2, target: Node2D, dmg: float, tag := "foxfire") -> Bullet:
 	var b := Bullet.new()
 	b.shape_kind = 3
 	b.radius = 6.0
@@ -505,6 +504,7 @@ func spawn_foxfire(from: Vector2, target: Node2D, dmg: float, tag := "foxfire") 
 	b.setup(from, dir * 520.0 * quick, dmg, true)
 	Game.inst.spawn_deferred(b)
 	Sfx.play("fox", -20.0, randf_range(0.9, 1.2), 0.06)
+	return b
 
 
 # ---------- 詠唱（主神の技） ----------
@@ -513,8 +513,6 @@ func _try_cast() -> void:
 	if cast_charges <= 0 or main_god() == "":
 		return
 	cast_charges -= 1
-	if cast_cd <= 0.0:
-		cast_cd = cast_cd_time()
 	var kami := main_god()
 	var col := kami_color(kami)
 	var dmg := base_damage() * 5.0 * Kami.kami_power(int(kami_lv.get(kami, 1)))
@@ -526,6 +524,7 @@ func _try_cast() -> void:
 	match kami:
 		"ama":
 			var b := _cast_bullet(kami, 5, 44.0)
+			b.orb = true
 			b.reflect = true
 			b.pierce = 999
 			b.life = 2.6
@@ -533,6 +532,7 @@ func _try_cast() -> void:
 			Game.inst.world.add_child(b)
 		"susa":
 			var b := _cast_bullet(kami, 6, 26.0)
+			b.orb = true
 			b.mode = "vortex"
 			b.pierce = 999
 			b.kb = 480.0
@@ -541,18 +541,21 @@ func _try_cast() -> void:
 			Game.inst.world.add_child(b)
 		"take":
 			var b := _cast_bullet(kami, 2, 12.0)
+			b.orb = true
 			b.mode = "cloud"
-			b.zone_dmg = dmg * 0.4
+			b.zone_dmg = dmg * 0.5
 			b.setup(from, Vector2(0, -420.0), dmg, true)
 			Game.inst.world.add_child(b)
 		"tsuki":
 			var b := _cast_bullet(kami, 2, 14.0)
+			b.orb = true
 			b.pierce = 1
 			b.doom = dmg * 1.6
 			b.setup(from, Vector2(0, -480.0), dmg * 0.5, true)
 			Game.inst.world.add_child(b)
 		"uzume":
 			var b := _cast_bullet(kami, 2, 13.0)
+			b.orb = true
 			b.charm_chance = 1.0
 			b.pierce = 2
 			b.setup(from, Vector2(0, -480.0), dmg * 0.6, true)
@@ -560,9 +563,12 @@ func _try_cast() -> void:
 		"inari":
 			var target := Combat.nearest_enemy(position, 900.0)
 			for i in 6:
-				spawn_foxfire(from + Vector2((float(i) - 2.5) * 12.0, 0), target, dmg * 0.35, "cast")
+				var fb := spawn_foxfire(from + Vector2((float(i) - 2.5) * 12.0, 0), target, dmg * 0.35, "cast")
+				if i == 0:
+					fb.orb = true
 		"suku":
 			var b := _cast_bullet(kami, 9, 12.0)
+			b.orb = true
 			b.zone_kind = "fog"
 			b.zone_r = 110.0 * (1.0 + val("suku_u1") * 0.01)
 			b.zone_life = 4.5 * (1.0 + val("suku_u2") * 0.01)
@@ -571,16 +577,18 @@ func _try_cast() -> void:
 			Game.inst.world.add_child(b)
 		"iza":
 			var b := _cast_bullet(kami, 2, 12.0)
+			b.orb = true
 			b.zone_kind = "frost"
 			b.zone_r = 100.0
-			b.zone_life = 3.5
-			b.zone_dmg = dmg * 0.35
+			b.zone_life = 4.0
+			b.zone_dmg = dmg * 0.6
 			b.life = 0.6
 			b.setup(from, Vector2(0, -520.0), dmg * 0.5, true)
 			Game.inst.world.add_child(b)
 		"saru":
 			haste_t = 4.0
 			Fx.slash(from, -PI * 0.5, 160.0, col, 2.4, 0.3, 14.0)
+			Game.inst.drop_orb(from + Vector2(randf_range(-40, 40), -240.0))   # 風の先に珠が飛ぶ
 			for eb in get_tree().get_nodes_in_group("ebullet"):
 				if is_instance_valid(eb) and eb.position.y < position.y and absf(eb.position.x - position.x) < 160.0:
 					eb.vanish()
@@ -803,6 +811,8 @@ func _on_area(a: Area2D) -> void:
 			Pickup.Kind.MIKI:
 				Sfx.play("miki", -6.0)
 				Game.inst.on_miki_picked()
+			Pickup.Kind.ORB:
+				pick_orb()
 		Fx.burst(p.position, p.color_of(), 5, 110.0, 2.5, 0.28, true)
 		p.queue_free()
 	elif a is Enemy and _contact_cd <= 0.0 and iframe <= 0.0:

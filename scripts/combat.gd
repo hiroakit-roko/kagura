@@ -177,7 +177,7 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, _di
 				apply_weak(en)
 				var cc := float(opts.get("charm_chance", 0.0))
 				if cc > 0.0 and randf() < cc:
-					en.add_charm(3.0)
+					en.add_charm(5.0 if tag == "cast" else 3.0)
 					Sfx.play("charm", -10.0)
 				if tag == "fan" and _has("duo_take_uzume") and randf() < _val("duo_take_uzume") * 0.01:
 					lightning(en, p.base_damage() * 2.0 * p.kami_power("take"), at + Vector2(0, -80), 0)
