@@ -12,6 +12,7 @@ var _shots_done := {}
 var quit_at := 120.0
 var _cast_t := 0.0
 var _call_t := 0.0
+var _no_ai := false
 
 
 func _ready() -> void:
@@ -58,6 +59,8 @@ func _process(delta: float) -> void:
 	if g == null:
 		return
 
+	if _no_ai:
+		return
 	# 近くの敵に横位置を合わせつつ、画面下寄りに留まる（人間のプレイに近い動き）
 	if g.state == Game.St.PLAY and g.player != null and is_instance_valid(g.player):
 		var pp := g.player.position
@@ -97,6 +100,9 @@ func _run() -> void:
 		return
 	if OS.get_cmdline_user_args().has("--boontest"):
 		await _boon_test()
+		return
+	if OS.get_cmdline_user_args().has("--flicktest"):
+		await _flick_test()
 		return
 
 	Game.inst.start_game()
@@ -199,6 +205,70 @@ func _boon_test() -> void:
 	await _wait(6.0)
 	await shot("73_trio.png")
 	print("[boontest] done")
+	get_tree().quit()
+
+
+## スワイプで疾走が出るかを合成タッチイベントで確認する
+func _touch(pressed: bool, pos: Vector2, idx := 0) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = idx
+	e.position = pos
+	e.pressed = pressed
+	Input.parse_input_event(e)
+
+
+func _drag(from: Vector2, to: Vector2, idx := 0) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = idx
+	e.position = to
+	e.relative = to - from
+	e.velocity = (to - from) * 60.0
+	Input.parse_input_event(e)
+
+
+func _flick_test() -> void:
+	_no_ai = true
+	Game.inst.start_game()
+	await _wait(1.5)
+	var p := Game.inst.player
+	# 1) 短いスワイプ：120ms で 60px 動かして離す
+	var a := Vector2(200, 600)
+	_touch(true, a)
+	var cur := a
+	for i in 4:
+		await _wait(0.03)
+		var nxt := cur + Vector2(15, -5)
+		_drag(cur, nxt)
+		cur = nxt
+	_touch(false, cur)
+	await _wait(0.05)
+	print("[flicktest] short swipe -> dash_t=%.2f active=%s move_id=%d" % [p.dash_t, str(Touch.inst.active), Touch.inst._move_id])
+	await _wait(1.0)
+	# 2) 速い動き（離さない）
+	a = Vector2(300, 600)
+	_touch(true, a)
+	cur = a
+	for i in 4:
+		await _wait(0.016)
+		var nxt := cur + Vector2(-30, 0)
+		_drag(cur, nxt)
+		cur = nxt
+	await _wait(0.05)
+	print("[flicktest] fast drag -> dash_t=%.2f" % p.dash_t)
+	_touch(false, cur)
+	await _wait(2.5)
+	# 3) ゆっくり動かす（疾走してはいけない）
+	a = Vector2(300, 600)
+	_touch(true, a)
+	cur = a
+	for i in 10:
+		await _wait(0.05)
+		var nxt := cur + Vector2(6, 0)
+		_drag(cur, nxt)
+		cur = nxt
+	_touch(false, cur)
+	await _wait(0.05)
+	print("[flicktest] slow drag -> dash_t=%.2f (should be 0)" % p.dash_t)
 	get_tree().quit()
 
 

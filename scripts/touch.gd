@@ -11,7 +11,10 @@ static var inst: Touch
 
 const SENS := 1.25          # 指の移動量に対する自機の移動倍率
 const BTN_R := 50.0
-const FLICK_SPEED := 2600.0 # これ以上の速さで指を動かすと疾走（px/秒、ゲーム座標）
+const FLICK_SPEED := 900.0  # 直近 80ms の移動がこの速さ（px/秒、ゲーム座標）を超えると疾走
+const FLICK_WINDOW := 0.08
+const SWIPE_TIME := 0.28    # 置いてから離すまでがこれより短く
+const SWIPE_DIST := 24.0    # これ以上動いていれば、短いスワイプとして疾走
 
 var active := false
 var move_dir := Vector2.ZERO
@@ -22,6 +25,10 @@ var _view: Control
 var _t := 0.0
 var _flick := Vector2.ZERO
 var _flick_cd := 0.0
+var _hist: Array = []        # 移動指の履歴 [時刻, 位置]
+var _touch_start_t := 0.0
+var _touch_start_frame := 0
+var _touch_start_pos := Vector2.ZERO
 
 var buttons := {
 	"call": {"pos": Vector2.ZERO, "r": BTN_R, "id": -1, "just": false, "label": "神招き"},
@@ -114,10 +121,23 @@ func _unhandled_input(e: InputEvent) -> void:
 			if _move_id < 0:
 				_move_id = st.index
 				_last_drag = st.position
+				_hist.clear()
+				_touch_start_t = Time.get_ticks_msec() / 1000.0
+				_touch_start_frame = Engine.get_process_frames()
+				_touch_start_pos = st.position
 		else:
 			if st.index == _move_id:
+				# 置いてすぐ短く払って離した → 疾走
+				var dt := Time.get_ticks_msec() / 1000.0 - _touch_start_t
+				var df := Engine.get_process_frames() - _touch_start_frame
+				var dp := st.position - _touch_start_pos
+				# 低 fps の端末でも判定がぶれないよう、時間かフレーム数のどちらかで「短い」とみなす
+				if _flick_cd <= 0.0 and (dt < SWIPE_TIME or df <= 18) and dp.length() >= SWIPE_DIST and g.state == Game.St.PLAY:
+					_flick = dp.normalized()
+					_flick_cd = 0.5
 				_move_id = -1
 				move_dir = Vector2.ZERO
+				_hist.clear()
 			for name in buttons.keys():
 				if int(buttons[name]["id"]) == st.index:
 					buttons[name]["id"] = -1
@@ -127,9 +147,17 @@ func _unhandled_input(e: InputEvent) -> void:
 			_delta += dg.relative * SENS
 			if dg.relative.length() > 0.5:
 				move_dir = move_dir.lerp(dg.relative.normalized(), 0.5)
-			if _flick_cd <= 0.0 and dg.velocity.length() > FLICK_SPEED:
-				_flick = dg.velocity.normalized()
-				_flick_cd = 0.6
+			# 直近の短い区間の移動量から速さを出す（端末や倍率に依存しない）
+			var now := Time.get_ticks_msec() / 1000.0
+			_hist.append([now, dg.position])
+			while _hist.size() > 0 and now - float(_hist[0][0]) > FLICK_WINDOW:
+				_hist.remove_at(0)
+			if _flick_cd <= 0.0 and _hist.size() >= 2:
+				var span: float = now - float(_hist[0][0])
+				var moved: Vector2 = dg.position - _hist[0][1]
+				if span > 0.02 and moved.length() / span > FLICK_SPEED and moved.length() > 30.0:
+					_flick = moved.normalized()
+					_flick_cd = 0.5
 
 
 # =====================================================================
