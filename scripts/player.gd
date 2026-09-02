@@ -227,9 +227,9 @@ func kami_level_up(kami_id: String) -> void:
 	Fx.ring(position, k["color"], 20.0, 140.0, 0.5, 4.0)
 	Fx.petals(position, k["color"], 14, 200.0)
 	var g := int(round(Kami.growth_of(kami_id) * 100.0))
-	var note := "神器の威力 +%d%%" % g
+	var note := "威力 +%d%%" % g
 	if lv % 3 == 0 or lv % 4 == 0 or lv % 5 == 0:
-		note = "神器の威力 +%d%%。節目：弾数や大きさが増えた" % g
+		note = "威力 +%d%%　弾数や大きさが増えた" % g
 	Game.inst.ui.banner(String(k["name"]) + "　神格 %d" % lv, String(k["weapon"]) + "　" + note, k["color"])
 	on_boons_changed()
 
@@ -400,7 +400,7 @@ func _start_dash(dir: Vector2) -> void:
 
 func _enemies_within(r: float) -> Array:
 	var out: Array = []
-	for e in get_tree().get_nodes_in_group("enemy"):
+	for e in Game.enemies():
 		if is_instance_valid(e) and e.position.distance_to(position) <= r:
 			out.append(e)
 	return out
@@ -589,7 +589,7 @@ func _try_cast() -> void:
 			haste_t = 4.0
 			Fx.slash(from, -PI * 0.5, 160.0, col, 2.4, 0.3, 14.0)
 			Game.inst.drop_orb(from + Vector2(randf_range(-40, 40), -240.0))   # 風の先に珠が飛ぶ
-			for eb in get_tree().get_nodes_in_group("ebullet"):
+			for eb in Game.ebullets():
 				if is_instance_valid(eb) and eb.position.y < position.y and absf(eb.position.x - position.x) < 160.0:
 					eb.vanish()
 			Sfx.play("dash", -6.0, 0.8)
@@ -645,17 +645,17 @@ func _try_call() -> void:
 			Fx.slash(Vector2(Cfg.W * 0.5, position.y - 200.0), -PI * 0.5, 420.0, col, 2.8, 0.4, 26.0)
 			Fx.slash(Vector2(Cfg.W * 0.5, position.y - 220.0), -PI * 0.5, 300.0, Color(1, 1, 1), 2.6, 0.3, 10.0)
 			Game.inst.erase_all_ebullets()
-			for e in get_tree().get_nodes_in_group("enemy"):
+			for e in Game.enemies():
 				if is_instance_valid(e) and e.position.y < position.y:
 					Combat.hit(e, v * 3.0, e.position, {"tag": "call", "kami": "susa", "dir": Vector2.UP, "kb": 700.0})
 			Fx.shake_add(18.0)
 		"tsuki":
 			Game.inst.hitstop(1.0, 0.12)
-			for e in get_tree().get_nodes_in_group("enemy"):
+			for e in Game.enemies():
 				if is_instance_valid(e):
 					e.add_doom(v * 3.0 * (1.0 + val("tsuki_u2") * 0.01), 1.3)
 		"uzume":
-			for e in get_tree().get_nodes_in_group("enemy"):
+			for e in Game.enemies():
 				if is_instance_valid(e):
 					e.add_charm(4.0 * call_power)
 			Fx.petals(position, col, 40, 260.0)
@@ -679,13 +679,13 @@ func _try_call() -> void:
 					b._target = target
 				Game.inst.world.add_child(b)
 		"suku":
-			for e in get_tree().get_nodes_in_group("enemy"):
+			for e in Game.enemies():
 				if is_instance_valid(e):
 					Combat.apply_hangover(e, Combat.hangover_max(), Combat.hangover_dps())
 			heal(float(stats["max_hp"]) * 0.3 * call_power, true)
 			Fx.zone(position, 200.0, col, 0.8)
 		"iza":
-			for e in get_tree().get_nodes_in_group("enemy"):
+			for e in Game.enemies():
 				if is_instance_valid(e):
 					e.freeze(3.0 * call_power)
 			Fx.flash(Cfg.with_a(Color(0.8, 0.95, 1.0), 0.6), 0.4)
@@ -710,14 +710,14 @@ func _call_tick(delta: float) -> void:
 			if call_tick <= 0.0:
 				call_tick = 0.25
 				Fx.rays(position, col, 16, 40.0, 700.0, 0.3)
-				for e in get_tree().get_nodes_in_group("enemy"):
+				for e in Game.enemies():
 					if is_instance_valid(e):
 						e.add_exposed(Combat.EXPOSED_T)
 						Combat.hit(e, v * 0.25, e.position, {"tag": "light", "kami": "ama"})
 		"storm":
 			if call_tick <= 0.0:
 				call_tick = 0.11
-				var es := get_tree().get_nodes_in_group("enemy")
+				var es := Game.enemies()
 				if not es.is_empty():
 					var e = es[randi() % es.size()]
 					if is_instance_valid(e):
@@ -783,7 +783,7 @@ func _contact() -> void:
 
 ## かすり（グレイズ）：敵弾のすれすれを抜けると神招きゲージが少し溜まり、功徳にも加算される
 func _graze() -> void:
-	for b in get_tree().get_nodes_in_group("ebullet"):
+	for b in Game.ebullets():
 		if not is_instance_valid(b) or _grazed.has(b.get_instance_id()):
 			continue
 		var d: float = b.position.distance_to(position)

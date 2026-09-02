@@ -53,7 +53,7 @@ func _physics_process(delta: float) -> void:
 
 func _apply() -> void:
 	var inside: Array = []
-	for e in get_tree().get_nodes_in_group("enemy"):
+	for e in Game.enemies():
 		if not is_instance_valid(e):
 			continue
 		if e.position.distance_to(position) <= r + e.radius * 0.5:

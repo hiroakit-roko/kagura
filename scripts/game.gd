@@ -45,6 +45,27 @@ var best := {"score": 0, "wave": 0, "clears": 0}   # Records.best への参照
 var run_id := -1                                     # 今回の走りの識別子（記録の置き換えに使う）
 var _pick_reason := "miki"                           # 神を選ぶ画面の用途：miki / level / boss
 var resetting := false                               # やり直しで world を片付けている間（珠を落とさない）
+static var _en_cache: Array = []
+static var _en_stamp := -1
+static var _eb_cache: Array = []
+static var _eb_stamp := -1
+
+
+## 敵の一覧（物理フレームごとに 1 回だけ集める。毎回 get_nodes_in_group すると呼び出し元が多くて重い）
+static func enemies() -> Array:
+	var f := Engine.get_physics_frames()
+	if _en_stamp != f:
+		_en_stamp = f
+		_en_cache = inst.get_tree().get_nodes_in_group("enemy").filter(func(e): return is_instance_valid(e))
+	return _en_cache
+
+
+static func ebullets() -> Array:
+	var f := Engine.get_physics_frames()
+	if _eb_stamp != f:
+		_eb_stamp = f
+		_eb_cache = inst.get_tree().get_nodes_in_group("ebullet").filter(func(b): return is_instance_valid(b))
+	return _eb_cache
 
 const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6,
 	"spirit": 0.5, "lantern": 2.0, "kite": 1.2, "oni": 3.6, "caster": 3.0, "bomber": 1.5}
@@ -135,6 +156,21 @@ func _fit_viewport() -> void:
 	else:
 		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 		Cfg.H = Cfg.H_BASE
+	# スマホ（タッチ端末）では端末の解像度いっぱいに描くと発光の後処理で熱くなるので、
+	# 描画解像度を少し落として引き伸ばす（論理座標は 640×H のまま）。PC は等倍のまま
+	# （content_scale_* を書き換えると size_changed が再び飛ぶので、値が変わるときだけ書く）
+	var mode := Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	var k := 1.0
+	if DisplayServer.is_touchscreen_available() and size.x > Cfg.W * 1.15:
+		k = clampf(size.x * Cfg.MOBILE_RENDER_SCALE / Cfg.W, 1.0, 2.0)
+		mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	var want_size := Vector2i(int(round(Cfg.W * k)), int(round(Cfg.H * k)))
+	if win.content_scale_mode != mode:
+		win.content_scale_mode = mode
+	if not is_equal_approx(win.content_scale_factor, k):
+		win.content_scale_factor = k
+	if win.content_scale_size != want_size:
+		win.content_scale_size = want_size
 	cam.position = Vector2(Cfg.W * 0.5, Cfg.H * 0.5)
 	if player != null and is_instance_valid(player):
 		var r := Cfg.play_rect()
@@ -178,7 +214,7 @@ func continue_endless() -> void:
 	_wave_active = false
 	_between = 2.0
 	Music.play("stage")
-	ui.banner("祟りの参道", "踏破の先へ。穢れはさらに濃くなる。功徳は続けて数えられる", Color(1, 0.5, 0.6))
+	ui.banner("祟りの参道", "踏破の先へ。穢れはさらに濃くなる", Color(1, 0.5, 0.6))
 	Sfx.play("taiko", -4.0, 0.8)
 
 
@@ -252,7 +288,7 @@ func _on_familiar_chosen(id: String) -> void:
 	Sfx.play("suzu", -6.0)
 	_close_choice()
 	var touch := Touch.inst != null and Touch.inst.active
-	ui.banner(String(f["name"]) + " が付いてきた", "画面をなぞって移動。短くなぞって離すと疾走" if touch else "WASD で移動、Space で疾走", f["color"])
+	ui.banner(String(f["name"]) + " が付いてきた", "なぞって移動、弾いて疾走" if touch else "WASD 移動　Space 疾走", f["color"])
 
 
 # ---------- メインループ ----------
@@ -304,19 +340,24 @@ func _tutorial(delta: float) -> void:
 		0:
 			if _tut_t > 4.0:
 				_tut_step = 1
-				ui.banner("穢れを祓え", "敵を倒すと勾玉（経験値）が落ちる。拾って位を上げよ", Cfg.C_XP)
+				ui.banner("穢れを祓え", "敵を倒す → 勾玉を拾う → 位が上がる", Cfg.C_XP)
 		1:
 			if player.xp > 0.0 or _tut_t > 14.0:
 				_tut_step = 2
 				_tut_t = 0.0
-				ui.banner("位が上がると神が現れる", "3 柱から主神を選ぶ。選んだ瞬間、その神の神器が付く", Cfg.C_GOLD)
+				ui.banner("位が上がると神が現れる", "3 柱から主神を選ぶ", Cfg.C_GOLD)
 		2:
-			if _tut_t > 9.0:
-				_tut_step = 3
-				if is_touch():
-					ui.banner("右下の「詠唱」「神招き」", "主神を迎えると押せる。詠唱の珠は使うと飛んでいき、拾うと戻る。かすりでゲージが溜まる", Color(0.9, 0.9, 1.0))
-				else:
-					ui.banner("Z で詠唱、X で神招き", "主神を迎えると使える。詠唱の珠は使うと飛んでいき、拾うと戻る。かすりでゲージが溜まる", Color(0.9, 0.9, 1.0))
+			# 詠唱・神招きの案内は主神を迎えてから
+			if not player.gods.is_empty():
+				_tut_t += delta
+				if _tut_t > 4.0:
+					_tut_step = 3
+					if is_touch():
+						ui.banner("右下の札", "詠唱：珠を投げる、拾うと戻る　　神招き：ゲージ 1/4 で", Color(0.9, 0.9, 1.0))
+					else:
+						ui.banner("Z 詠唱　X 神招き", "詠唱の珠は拾うと戻る　　神招きはゲージ 1/4 で", Color(0.9, 0.9, 1.0))
+			else:
+				_tut_t = 0.0
 
 
 ## ヒットストップ：dur 秒（実時間）だけ時間の流れを scale に落とす。
@@ -364,7 +405,7 @@ func _tick_wave(delta: float) -> void:
 				world.add_child(en2)
 			Sfx.play("warn", -18.0, 1.5, 0.5)
 
-	if _plan_i >= _plan.size() and get_tree().get_nodes_in_group("enemy").is_empty():
+	if _plan_i >= _plan.size() and Game.enemies().is_empty():
 		_clear_wave()
 
 
@@ -532,13 +573,13 @@ func spawn_charmed_bullet(pos: Vector2, vel: Vector2, dmg: float) -> void:
 
 
 func erase_ebullets_near(pos: Vector2, r: float) -> void:
-	for b in get_tree().get_nodes_in_group("ebullet"):
+	for b in Game.ebullets():
 		if is_instance_valid(b) and b.position.distance_to(pos) <= r:
 			b.vanish()
 
 
 func erase_all_ebullets() -> void:
-	for b in get_tree().get_nodes_in_group("ebullet"):
+	for b in Game.ebullets():
 		if is_instance_valid(b):
 			b.vanish()
 
@@ -629,7 +670,7 @@ func _on_kami_chosen(id: String) -> void:
 	if main:
 		ui.banner(String(k["weapon"]) + " を授かった", String(k["weapon_desc"]), k["color"])
 	else:
-		ui.banner(String(k["name"]) + " が副神となった", String(k["weapon"]) + " が加わった（威力は主神と同じ）", k["color"])
+		ui.banner(String(k["name"]) + " が副神となった", String(k["weapon"]) + " が加わった", k["color"])
 	player.pending_levels = maxi(0, player.pending_levels - 1)
 	_close_choice()
 
@@ -715,7 +756,7 @@ func on_miki_picked() -> void:
 	var targets := Boons.miki_targets(player)
 	if targets.is_empty():
 		player.heal(30.0, true)
-		ui.banner("神酒", "神格を上げられる神がいないので HP を回復した", Cfg.C_GOLD)
+		ui.banner("神酒", "HP を回復した", Cfg.C_GOLD)
 		return
 	_pick_reason = "miki"
 	_pause_for_choice(St.MIKI)

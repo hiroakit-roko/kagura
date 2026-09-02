@@ -140,7 +140,7 @@ func _exit_tree() -> void:
 func _find_target() -> Node2D:
 	var best: Node2D = null
 	var bd := 1e9
-	for e in get_tree().get_nodes_in_group("enemy"):
+	for e in Game.enemies():
 		if not is_instance_valid(e) or _hit.has(e.get_instance_id()):
 			continue
 		var d: float = global_position.distance_squared_to(e.global_position)
@@ -151,7 +151,7 @@ func _find_target() -> Node2D:
 
 
 func _vortex_pull(delta: float) -> void:
-	for e in get_tree().get_nodes_in_group("enemy"):
+	for e in Game.enemies():
 		if not is_instance_valid(e) or e.is_boss:
 			continue
 		var d: float = e.position.distance_to(position)
@@ -272,7 +272,7 @@ func vanish() -> void:
 func _nearest_enemy() -> Node2D:
 	var best: Node2D = null
 	var bd := 1e9
-	for e in get_tree().get_nodes_in_group("enemy"):
+	for e in Game.enemies():
 		if not is_instance_valid(e):
 			continue
 		var d: float = global_position.distance_squared_to(e.global_position)

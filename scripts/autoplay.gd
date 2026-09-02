@@ -431,6 +431,9 @@ func _death_test() -> void:
 ## 新しい能力の実装が例外を出さないかを見るためのもの。
 func _ability_test(gods: Array) -> void:
 	var g := Game.inst
+	if OS.get_cmdline_user_args().has("--nohdr"):
+		get_viewport().use_hdr_2d = false
+		print("[ability] hdr_2d OFF")
 	g.start_game()
 	g._on_familiar_chosen("neko")
 	var p := g.player
@@ -452,8 +455,24 @@ func _ability_test(gods: Array) -> void:
 	g.wave = 5
 	var t0 := _t
 	var dashes := 0
+	var perf_acc := {"proc": 0.0, "phys": 0.0, "n": 0, "draw": 0.0, "nodes": 0.0, "obj": 0.0}
 	while _t - t0 < 40.0:
 		await _wait(0.5)
+		if OS.get_cmdline_user_args().has("--perf") and g.state == Game.St.PLAY:
+			perf_acc["proc"] += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+			perf_acc["phys"] += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+			perf_acc["draw"] += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+			perf_acc["nodes"] += Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
+			perf_acc["obj"] += Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
+			perf_acc["n"] += 1
+			if int((_t - t0) * 2.0) % 10 == 0:
+				print("[perf] t=%.0f fps=%d proc=%.1fms phys=%.1fms draw_calls=%d objs=%d nodes=%d enemies=%d bullets=%d parts=%d" % [
+					_t - t0, Engine.get_frames_per_second(),
+					Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+					int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)), int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+					int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
+					get_tree().get_nodes_in_group("enemy").size(), get_tree().get_nodes_in_group("ebullet").size() + get_tree().get_nodes_in_group("pbullet").size(),
+					Fx.inst._parts.size()])
 		if not is_instance_valid(p) or not p.alive:
 			break
 		p.stats["max_hp"] = 9999.0
@@ -469,7 +488,10 @@ func _ability_test(gods: Array) -> void:
 			g._on_boon_chosen(0)
 		elif g.state == Game.St.MIKI:
 			g._on_miki_chosen(String(g.ui.miki_view.ids[0]))
-	await shot("70_ability_%s.png" % "_".join(PackedStringArray(gods)))
+	await shot("70_ability_%s%s.png" % ["_".join(PackedStringArray(gods)), "_nohdr" if OS.get_cmdline_user_args().has("--nohdr") else ""])
+	if perf_acc["n"] > 0:
+		var n := float(perf_acc["n"])
+		print("[perf] avg proc=%.2fms phys=%.2fms draw_calls=%.0f objs=%.0f nodes=%.0f" % [perf_acc["proc"] / n, perf_acc["phys"] / n, perf_acc["draw"] / n, perf_acc["obj"] / n, perf_acc["nodes"] / n])
 	print("[ability] done wave=%d score=%d cast_charges=%d orbs_on_field=%d" % [g.wave, g.score, p.cast_charges,
 			get_tree().get_nodes_in_group("pickup").filter(func(x): return x.kind == Pickup.Kind.ORB).size()])
 	get_tree().quit()

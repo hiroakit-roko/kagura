@@ -291,7 +291,7 @@ static func lightning(en: Enemy, dmg: float, from: Vector2, chains: int, used: D
 		en.add_chill(2)
 	if _has("take_u5"):
 		var r := _val("take_u5")
-		for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
+		for o in Game.enemies():
 			if o == en or not is_instance_valid(o) or used.has(o.get_instance_id()):
 				continue
 			if o.position.distance_to(en.position) <= r:
@@ -352,7 +352,7 @@ static func doom_trigger(en: Enemy, dmg: float) -> void:
 		var z := Zone.new()
 		z.setup(pos, "fog", r * 0.9, _val("duo_tsuki_suku"), 0.0, Color(0.62, 1.0, 0.55))
 		Game.inst.spawn_deferred(z)
-	for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
+	for o in Game.enemies():
 		if o == en or not is_instance_valid(o):
 			continue
 		if o.position.distance_to(pos) <= r:
@@ -420,7 +420,7 @@ static func shatter(en: Enemy) -> void:
 			Game.inst.spawn_deferred(b)
 	if _has("iza_leg"):
 		var ld := scaled("iza_leg", "iza")
-		for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
+		for o in Game.enemies():
 			if o == en or not is_instance_valid(o):
 				continue
 			if o.position.distance_to(en.position) <= 120.0:
@@ -482,7 +482,7 @@ static func on_fan_return(_b: Bullet) -> void:
 static func nearest_enemy(from: Vector2, max_d: float, exclude: Node2D = null, used: Dictionary = {}) -> Enemy:
 	var best: Enemy = null
 	var bd := max_d * max_d
-	for e in Game.inst.get_tree().get_nodes_in_group("enemy"):
+	for e in Game.enemies():
 		if e == exclude or not is_instance_valid(e) or used.has(e.get_instance_id()):
 			continue
 		var d: float = from.distance_squared_to(e.position)

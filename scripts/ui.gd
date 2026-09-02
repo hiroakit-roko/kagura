@@ -487,12 +487,18 @@ class HudView:
 	var _t := 0.0
 	var _hp_shown := 1.0
 
+	var _rd := 0.0
+
 	func _process(delta: float) -> void:
 		_t += delta
 		banner_t = maxf(0.0, banner_t - delta)
 		small_t = maxf(0.0, small_t - delta)
 		intro_t = maxf(0.0, intro_t - delta)
-		queue_redraw()
+		# HUD は文字が多く、毎フレーム描き直すと文字の整形が重い。30fps に間引く
+		_rd += delta
+		if _rd >= 1.0 / 30.0:
+			_rd = 0.0
+			queue_redraw()
 
 	func _draw() -> void:
 		var g := Game.inst
@@ -579,10 +585,10 @@ class HudView:
 		# 次に神を迎える位（枠が残っているとき）
 		var nxt := Boons.next_recruit_level(p)
 		if nxt > 0:
-			var lbl := ("主神" if p.gods.is_empty() else "副神") + "　位 %d で迎える" % nxt
-			draw_rect(Rect2(12, y - 6.0, 150, 18), Color(0.5, 0.5, 0.65, 0.18))
-			draw_rect(Rect2(12, y - 6.0, 150, 18), Color(0.7, 0.7, 0.85, 0.35), false, 1.0)
-			Ui.txt(self, ui.font, Vector2(20, y + 7.0), lbl, 9, Color(0.9, 0.9, 1.0, 0.7))
+			var lbl := "位 %d で%s" % [nxt, "主神" if p.gods.is_empty() else "副神"]
+			draw_rect(Rect2(12, y - 6.0, 110, 20), Color(0.5, 0.5, 0.65, 0.18))
+			draw_rect(Rect2(12, y - 6.0, 110, 20), Color(0.7, 0.7, 0.85, 0.35), false, 1.0)
+			Ui.txt(self, ui.font, Vector2(20, y + 8.0), lbl, 11, Color(0.9, 0.9, 1.0, 0.75))
 			y += 20.0
 		_draw_chips(p, y + 2.0)
 
@@ -831,25 +837,23 @@ class ConfirmView:
 		var y := 420.0
 		Ui.panel(self, Rect2(x0 - 8, y - 6, w + 16, 190), col, a, 0.8)
 		Ui.txt(self, ui.font_bold, Vector2(x0 + 6, y + 14), "得意　" + String(k["role"]), 12, Cfg.with_a(col.lightened(0.2), a))
-		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 36), "神器", 10, Color(1, 0.9, 0.7, a * 0.85))
-		Ui.txt(self, ui.font_display, Vector2(x0 + 36, y + 38), String(k["weapon"]), 15, Color(1, 1, 1, a))
+		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 36), "神器", 11, Color(1, 0.9, 0.7, a * 0.85))
+		Ui.txt(self, ui.font_display, Vector2(x0 + 40, y + 38), String(k["weapon"]), 16, Color(1, 1, 1, a))
 		var gr := int(round(Kami.growth_of(String(k["id"])) * 100.0))
-		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 38), ("神格ごとの伸び +%d%%（近距離の見返り）" % gr) if gr > 12 else ("神格ごとの伸び +%d%%" % gr), 10,
+		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 38), "神格の伸び +%d%%" % gr, 11,
 				Cfg.with_a(Cfg.C_GOLD if gr > 12 else Color(1, 1, 1), a * 0.85), HORIZONTAL_ALIGNMENT_RIGHT, w - 12)
-		Ui.para(self, ui.font, Vector2(x0 + 6, y + 56), String(k["weapon_desc"]), w - 12, 11, 2, Color(0.9, 0.92, 1.0, a * 0.9))
+		Ui.para(self, ui.font, Vector2(x0 + 6, y + 56), String(k["weapon_desc"]), w - 12, 12, 2, Color(0.9, 0.92, 1.0, a * 0.9))
 		if role == "主神":
-			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 96), "詠唱 Z　" + String(k["cast"]) + "：" + String(k["cast_desc"]), 10, Color(0.9, 0.92, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
-			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 112), "神招き X　" + String(k["call"]) + "：" + String(k["call_desc"]), 10, Color(0.9, 0.92, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
+			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 96), "詠唱　" + String(k["cast"]) + "：" + String(k["cast_desc"]), 11, Color(0.9, 0.92, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
+			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 114), "神招き　" + String(k["call"]) + "：" + String(k["call_desc"]), 11, Color(0.9, 0.92, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
 		else:
-			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 96), "副神の神器は主神と同じ威力。詠唱と神招きだけは主神のものが使われる", 10, Color(0.9, 0.92, 1.0, a * 0.85))
-			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 112), "（この神の詠唱・神招きは付かない。神威と能力はすべて働く）", 10, Color(0.9, 0.92, 1.0, a * 0.6))
+			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 98), "詠唱と神招きは主神のみ", 11, Color(0.9, 0.92, 1.0, a * 0.7))
 		var st := String(k["status"])
 		if st != "":
 			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 134), "神威 " + st + "：" + String(k["status_desc"]), 10, Color(0.85, 0.9, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
 		else:
 			Ui.txt(self, ui.font, Vector2(x0 + 6, y + 134), String(k["status_desc"]), 10, Color(0.85, 0.9, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_LEFT, w - 12)
-		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 156), String(k["mark"]), 10, Cfg.with_a(col, a * 0.8))
-		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 174), "神器は当てるほど神格が上がる。神酒でも 1 段上がる", 10, Color(1, 1, 1, 0.55 * a))
+		Ui.txt(self, ui.font, Vector2(x0 + 6, y + 160), String(k["mark"]), 11, Cfg.with_a(col, a * 0.8))
 
 		# 契約の代償
 		y = 626.0
@@ -970,23 +974,17 @@ class KamiChoiceView:
 		backdrop(Cfg.C_GOLD)
 		Ui.txt(self, ui.font_display, Vector2(0, 104), "主神を選べ" if main else "副神を迎えよ", 44, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		var l1 := "選んだ瞬間に、その神の神器（自動で撃つ武器）が付く。詠唱・神招き・伝説は主神のもの。" if main \
-				else "迎えた瞬間に、その神の神器が加わる（威力は主神と同じ）。迎えること自体が今回の報酬。"
-		var l2 := "位 4 と位 7 で新たな神が現れ、副神として 2 柱まで迎えられる。" if main \
-				else "詠唱と神招きだけは主神のもの。神威と能力はすべて働く。"
-		Ui.txt(self, ui.font, Vector2(0, 134), l1, 12,
+		var l1 := "選んだ神の神器（自動で撃つ武器）が付く" if main else "神器がもう 1 つ加わる"
+		Ui.txt(self, ui.font, Vector2(0, 140), l1, 14,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 152), l2, 12,
-				Color(0.9, 0.9, 1.0, 0.7 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		for i in ids.size():
 			_draw_card(i)
 		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30), Ui.pick_hint("選ぶ"), 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		if hover >= 0 and hover < ids.size():
 			var k := Kami.kami(ids[hover])
-			Ui.txt(self, ui.font, Vector2(0, CY + CH + 52), "「" + String(k["intro"]) + "」", 13,
+			Ui.txt(self, ui.font, Vector2(0, CY + CH + 54), "「" + String(k["intro"]) + "」", 14,
 					Cfg.with_a(k["color"], 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		_draw_howto(CY + CH + 70.0)
 
 	func _draw_howto(y0: float) -> void:
 		var r := Rect2(40.0, y0, Cfg.W - 80.0, 96.0)
@@ -1030,18 +1028,18 @@ class KamiChoiceView:
 
 		Ui.txt(self, ui.font_display, Vector2(rr.position.x, rr.position.y + 166), String(k["name"]), 23,
 				Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-		Ui.txt(self, ui.font, Vector2(rr.position.x, rr.position.y + 184), String(k["kana"]) + "　" + String(k["title"]), 10,
+		Ui.txt(self, ui.font, Vector2(rr.position.x, rr.position.y + 184), String(k["kana"]) + "　" + String(k["title"]), 11,
 				Cfg.with_a(col, a * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		draw_line(Vector2(x0, rr.position.y + 196), Vector2(rr.end.x - 14, rr.position.y + 196), Cfg.with_a(col, 0.4 * a), 1.0)
 
 		# 得意
 		draw_rect(Rect2(x0, rr.position.y + 206, w, 20), Cfg.with_a(col, 0.18 * a))
-		Ui.txt(self, ui.font_bold, Vector2(x0 + 6, rr.position.y + 221), String(k["role"]), 11, Cfg.with_a(col.lightened(0.2), a))
+		Ui.txt(self, ui.font_bold, Vector2(x0 + 6, rr.position.y + 221), String(k["role"]), 12, Cfg.with_a(col.lightened(0.2), a))
 
 		# 神器
-		Ui.txt(self, ui.font, Vector2(x0, rr.position.y + 248), "神器", 10, Color(1, 0.9, 0.7, a * 0.85))
-		Ui.txt(self, ui.font_display, Vector2(x0 + 30, rr.position.y + 250), String(k["weapon"]), 16, Color(1, 1, 1, a))
-		Ui.para(self, ui.font, Vector2(x0, rr.position.y + 270), String(k["weapon_desc"]), w, 11, 4, Color(0.9, 0.92, 1.0, a * 0.9))
+		Ui.txt(self, ui.font, Vector2(x0, rr.position.y + 248), "神器", 11, Color(1, 0.9, 0.7, a * 0.85))
+		Ui.txt(self, ui.font_display, Vector2(x0 + 32, rr.position.y + 250), String(k["weapon"]), 17, Color(1, 1, 1, a))
+		Ui.para(self, ui.font, Vector2(x0, rr.position.y + 270), String(k["weapon_desc"]), w, 12, 4, Color(0.9, 0.92, 1.0, a * 0.9))
 
 		# 神威
 		var y := rr.position.y + 352.0
@@ -1049,25 +1047,24 @@ class KamiChoiceView:
 		if st != "":
 			draw_rect(Rect2(x0, y - 13, 56, 17), Cfg.with_a(col, 0.25 * a))
 			Ui.txt(self, ui.font_bold, Vector2(x0, y), "神威 " + st, 11, Cfg.with_a(col, a), HORIZONTAL_ALIGNMENT_CENTER, 56)
-			Ui.para(self, ui.font, Vector2(x0, y + 18), String(k["status_desc"]), w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.85))
+			Ui.para(self, ui.font, Vector2(x0, y + 18), String(k["status_desc"]), w, 11, 3, Color(0.85, 0.9, 1.0, a * 0.85))
 		else:
-			Ui.para(self, ui.font, Vector2(x0, y + 2), String(k["status_desc"]), w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.85))
+			Ui.para(self, ui.font, Vector2(x0, y + 2), String(k["status_desc"]), w, 11, 3, Color(0.85, 0.9, 1.0, a * 0.85))
 
 		# 詠唱と神招き（主神のみ）／副神なら神格の伸びを見せる
 		y = rr.position.y + 430.0
 		draw_line(Vector2(x0, y - 8), Vector2(rr.end.x - 14, y - 8), Cfg.with_a(col, 0.4 * a), 1.0)
 		var gr := int(round(Kami.growth_of(String(k["id"])) * 100.0))
 		if role == "主神":
-			Ui.txt(self, ui.font, Vector2(x0, y + 8), "詠唱", 10, Color(1, 0.9, 0.7, a * 0.85))
-			Ui.txt(self, ui.font_display, Vector2(x0 + 30, y + 9), String(k["cast"]), 13, Color(1, 1, 1, a))
-			Ui.para(self, ui.font, Vector2(x0, y + 26), String(k["cast_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
-			Ui.txt(self, ui.font, Vector2(x0, y + 70), "神招き", 10, Color(1, 0.9, 0.7, a * 0.85))
-			Ui.txt(self, ui.font_display, Vector2(x0 + 42, y + 71), String(k["call"]), 13, Color(1, 1, 1, a))
-			Ui.para(self, ui.font, Vector2(x0, y + 88), String(k["call_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
+			Ui.txt(self, ui.font, Vector2(x0, y + 8), "詠唱", 11, Color(1, 0.9, 0.7, a * 0.85))
+			Ui.txt(self, ui.font_display, Vector2(x0 + 32, y + 9), String(k["cast"]), 14, Color(1, 1, 1, a))
+			Ui.para(self, ui.font, Vector2(x0, y + 26), String(k["cast_desc"]), w, 11, 2, Color(0.85, 0.9, 1.0, a * 0.85))
+			Ui.txt(self, ui.font, Vector2(x0, y + 70), "神招き", 11, Color(1, 0.9, 0.7, a * 0.85))
+			Ui.txt(self, ui.font_display, Vector2(x0 + 44, y + 71), String(k["call"]), 14, Color(1, 1, 1, a))
+			Ui.para(self, ui.font, Vector2(x0, y + 88), String(k["call_desc"]), w, 11, 2, Color(0.85, 0.9, 1.0, a * 0.85))
 		else:
-			Ui.txt(self, ui.font, Vector2(x0, y + 8), "副神として", 10, Color(1, 0.9, 0.7, a * 0.85))
-			Ui.para(self, ui.font, Vector2(x0, y + 26), "神器・神威・能力はすべて働く。詠唱と神招きだけは主神のものが使われる", w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.85))
-		Ui.txt(self, ui.font_bold, Vector2(x0, y + 128), ("神格ごとの伸び +%d%%（近距離の見返り）" % gr) if gr > 12 else ("神格ごとの伸び +%d%%" % gr), 10,
+			Ui.txt(self, ui.font, Vector2(x0, y + 8), "詠唱と神招きは主神のみ", 11, Color(0.85, 0.9, 1.0, a * 0.7))
+		Ui.txt(self, ui.font_bold, Vector2(x0, y + 128), "神格の伸び +%d%%" % gr, 12,
 				Cfg.with_a(Cfg.C_GOLD if gr > 12 else Color(0.85, 0.9, 1.0), a * 0.9))
 
 		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))
@@ -1182,7 +1179,7 @@ class BoonsView:
 		if p == null:
 			return
 		var a := anim
-		Ui.txt(self, ui.font, Vector2(0, y0 + 12), "迎えている神々（神器は当てるほど神格が上がる）", 11, Color(1, 0.9, 0.7, 0.85 * a),
+		Ui.txt(self, ui.font, Vector2(0, y0 + 12), "神々", 12, Color(1, 0.9, 0.7, 0.85 * a),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		var n := Boons.MAX_KAMI
 		var w := 180.0
@@ -1208,7 +1205,7 @@ class BoonsView:
 						draw_arc(dot, 3.5, 0, TAU, 12, Cfg.with_a(k["color"], 0.6 * a), 1.0, true)
 			else:
 				Ui.panel(self, r, Color(0.5, 0.5, 0.6), a * 0.6, 0.5)
-				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 34), "空き（位 %d で副神を迎える）" % int(Boons.RECRUIT_LEVELS[i]), 10, Color(1, 1, 1, 0.45 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
+				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 35), "位 %d で副神" % int(Boons.RECRUIT_LEVELS[i]), 12, Color(1, 1, 1, 0.5 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
 
 	func _draw_card(i: int) -> void:
 		var o: Dictionary = offers[i]
@@ -1259,18 +1256,17 @@ class BoonsView:
 				Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		Ui.txt(self, ui.font, rr.position + Vector2(0, 146), String(k["name"]) + "の神器 " + String(k["weapon"]) + " を強める" if type == "upgrade" else String(k["name"]), 10,
 				Cfg.with_a(kc, a * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-		Ui.para(self, ui.font, Vector2(x0, rr.position.y + 168), Kami.describe(b, show_rar, cur_lv + 1), w, 12, 5, Color(0.9, 0.92, 1.0, a * 0.95))
+		Ui.para(self, ui.font, Vector2(x0, rr.position.y + 168), Kami.describe(b, show_rar, cur_lv + 1), w, 13, 5, Color(0.9, 0.92, 1.0, a * 0.95))
 		if cur_lv > 0:
 			var prev := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv))
 			var nxt := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv + 1))
 			draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(Cfg.C_GOLD, 0.12 * a))
-			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "強化  Lv.%d → Lv.%d（最大 %d）" % [cur_lv, cur_lv + 1, int(b.get("maxlv", 3))], 11, Cfg.with_a(Cfg.C_GOLD, a))
-			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), prev + "  →  " + nxt, 11, Color(1, 1, 1, a * 0.9))
+			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "強化  Lv.%d → %d" % [cur_lv, cur_lv + 1], 12, Cfg.with_a(Cfg.C_GOLD, a))
+			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), prev + "  →  " + nxt, 12, Color(1, 1, 1, a * 0.9))
 		elif type == "upgrade" and p != null:
 			var owned := Boons.owned_of(p, String(b["kami"])).size()
 			draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(kc, 0.10 * a))
-			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "新しい能力  %d / %d 枠目" % [owned + 1, Boons.MAX_PER_KAMI], 11, Cfg.with_a(kc.lightened(0.3), a))
-			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), "重ねて Lv.%d まで強化できる" % int(b.get("maxlv", 3)), 10, Color(1, 1, 1, a * 0.8))
+			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 33), "新しい能力  %d / %d" % [owned + 1, Boons.MAX_PER_KAMI], 13, Cfg.with_a(kc.lightened(0.3), a))
 		elif special:
 			Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 26), "重ねることはできない", 10, Cfg.with_a(col, a * 0.8), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))
@@ -1300,17 +1296,17 @@ class MikiView:
 	func _draw() -> void:
 		backdrop(Cfg.C_GOLD)
 		var title := "神酒"
-		var sub := "神を 1 柱選び、神格を 1 段上げる。神器の威力が上がり、節目では弾数や大きさも増える。"
+		var sub := "神を選び、神格を 1 上げる"
 		match mode:
 			"level":
 				title = "神との邂逅"
-				sub = "神格を上げる神を選べ。選んだ神が続けて能力を 3 枚示す。"
+				sub = "神格を上げる神を選ぶ"
 			"boss":
 				title = "討伐の褒賞"
-				sub = "神格を上げる神を選べ。選んだ神が続けて秀の能力を示す。"
+				sub = "神格を上げる神を選ぶ（秀の能力が出る）"
 		Ui.txt(self, ui.font_display, Vector2(0, 150), title, 48, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 186), sub, 13,
+		Ui.txt(self, ui.font, Vector2(0, 188), sub, 15,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		var p := Game.inst.player
 		for i in ids.size():
@@ -1490,19 +1486,18 @@ class OverlayView:
 		var y := Cfg.H - 254.0
 		var touch := Game.inst != null and Game.inst.is_touch()
 		var lines := [
-			["移動", "画面のどこでも指をなぞる（速度が高いほど大きく追従）"], ["疾走", "短くなぞってすぐ離す（無敵）"], ["詠唱", "右下の「詠唱」札（珠 2 つ。使うと飛び、拾うと戻る）"],
-			["神招き", "右下の「招」札（ゲージ 1/4 以上）"], ["小休止", "右上の「休」"], ["名前", "結果画面の「名を刻む」"],
+			["移動", "画面をなぞる"], ["疾走", "短くなぞって離す（無敵）"], ["詠唱", "右下の札。珠は拾うと戻る"],
+			["神招き", "右下の札。ゲージ 1/4 で"], ["小休止", "右上の「休」"],
 		] if touch else [
-			["移動", "WASD / 矢印　　スマホ：なぞる（速度が高いほど指に大きく追従）"], ["疾走", "Space（無敵）　　スマホ：指を弾く"], ["詠唱", "Z / J（珠 2 つ。使うと飛び、拾うと戻る）"],
-			["神招き", "X / K（ゲージ 1/4 以上）"], ["低速", "Shift"], ["小休止 / 音", "P / M"],
+			["移動", "WASD / 矢印"], ["疾走", "Space（無敵）"], ["詠唱", "Z　珠は拾うと戻る"],
+			["神招き", "X　ゲージ 1/4 で"], ["低速 / 小休止 / 音", "Shift / P / M"],
 		]
+		y += 12.0
 		for l: Array in lines:
-			Ui.txt(self, ui.font_bold, Vector2(120, y), String(l[0]), 13, Color(1, 0.9, 0.75, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, 90)
-			Ui.txt(self, ui.font, Vector2(230, y), String(l[1]), 13, Color(0.9, 0.92, 1.0, 0.9))
-			y += 22.0
+			Ui.txt(self, ui.font_bold, Vector2(110, y), String(l[0]), 14, Color(1, 0.9, 0.75, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, 130)
+			Ui.txt(self, ui.font, Vector2(256, y), String(l[1]), 14, Color(0.9, 0.92, 1.0, 0.9))
+			y += 24.0
 
-		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 104.0), "神を迎えれば神器が付く。主神と 2 柱の副神とともに参道を登れ。", 13,
-				Color(0.85, 0.86, 1.0, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		# この端末の記録（上位 5 件）と名前
 		var rows := mini(Records.entries.size(), 5)
 		var rh := 26.0 + 20.0 * float(maxi(rows, 1))

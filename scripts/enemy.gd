@@ -383,7 +383,7 @@ func _check_kb_collision(before: Vector2) -> void:
 		Combat.collide(self, null)
 		return
 	# 他の敵
-	for o in get_tree().get_nodes_in_group("enemy"):
+	for o in Game.enemies():
 		if o == self or not is_instance_valid(o):
 			continue
 		if o.position.distance_to(position) < radius + o.radius:
@@ -604,7 +604,7 @@ func _aim_target() -> Node2D:
 	if st["charm"] > 0.0:
 		var best: Node2D = null
 		var bd := 1e9
-		for e in get_tree().get_nodes_in_group("enemy"):
+		for e in Game.enemies():
 			if e == self or not is_instance_valid(e):
 				continue
 			var d: float = position.distance_squared_to(e.position)

@@ -96,15 +96,13 @@ func _draw() -> void:
 		var y1 := -80.0 + (Cfg.H + 160.0) * k1
 		draw_rect(Rect2(-80, y0, Cfg.W + 160, y1 - y0 + 1.0), top.lerp(bottom, k0))
 
-	# 月
-	var mp := Vector2(Cfg.W - 110.0, 150.0)
-	draw_circle(mp, 120.0, Cfg.with_a(_tint_cur.lightened(0.4), 0.05))
-	draw_circle(mp, 70.0, Cfg.with_a(_tint_cur.lightened(0.5), 0.07))
-	var moon_col: Color = [Color(0.93, 0.90, 0.80, 0.55), Color(1.0, 0.72, 0.55, 0.6), Color(0.85, 0.75, 1.0, 0.65)][clampi(stage - 1, 0, 2)]
-	var mr := 42.0 + 10.0 * float(stage - 1)
+	# 月：淡い光の輪を 1 つと月の面だけ（重ねすぎると何か分からなくなる）
+	var mp := Vector2(Cfg.W - 96.0, 190.0)
+	var moon_col: Color = [Color(0.93, 0.90, 0.80, 0.42), Color(1.0, 0.72, 0.55, 0.45), Color(0.85, 0.75, 1.0, 0.5)][clampi(stage - 1, 0, 2)]
+	var mr := 34.0 + 8.0 * float(stage - 1)
+	draw_circle(mp, mr * 2.2, Cfg.with_a(moon_col, 0.06))
 	draw_circle(mp, mr, moon_col)
-	if stage < 3:
-		draw_circle(mp + Vector2(-14, -8), mr * 0.9, top.lerp(moon_col, 0.35))
+	draw_arc(mp, mr, 0, TAU, 40, Cfg.with_a(moon_col.lightened(0.3), 0.5), 1.0, true)
 
 	# 星
 	var sizes := [1.0, 1.6, 2.4]
@@ -113,12 +111,29 @@ func _draw() -> void:
 		Color(0.85, 0.82, 1.0, 0.7),
 		Color(1.0, 0.96, 0.85, 0.95),
 	]
+	# 奥の 2 層は 1 回の draw_multiline でまとめて描く（星ごとの描画呼び出しを避ける）。手前の層だけ個別に瞬く
+	var far0 := PackedVector2Array()
+	var far1 := PackedVector2Array()
 	for s: Dictionary in _stars:
+		if s.layer == 0:
+			far0.append(s.pos + Vector2(-0.6, 0))
+			far0.append(s.pos + Vector2(0.6, 0))
+		elif s.layer == 1:
+			far1.append(s.pos + Vector2(-0.9, 0))
+			far1.append(s.pos + Vector2(0.9, 0))
+	var tw_all: float = 0.75 + 0.25 * sin(_t * 1.7)
+	if far0.size() >= 2:
+		draw_multiline(far0, Cfg.with_a(cols[0], cols[0].a * tw_all), 1.6)
+	if far1.size() >= 2:
+		draw_multiline(far1, Cfg.with_a(cols[1], cols[1].a * tw_all), 2.4)
+	for s: Dictionary in _stars:
+		if s.layer != 2:
+			continue
 		var tw: float = 0.7 + 0.3 * sin(_t * 3.0 + s.tw)
-		var c: Color = cols[s.layer]
+		var c: Color = cols[2]
 		c.a *= tw
-		draw_circle(s.pos, sizes[s.layer], c)
-		if s.layer == 2 and tw > 0.95:
+		draw_circle(s.pos, sizes[2], c)
+		if tw > 0.95:
 			draw_line(s.pos + Vector2(-5, 0), s.pos + Vector2(5, 0), Cfg.with_a(c, 0.5), 1.0)
 			draw_line(s.pos + Vector2(0, -5), s.pos + Vector2(0, 5), Cfg.with_a(c, 0.5), 1.0)
 
@@ -138,9 +153,9 @@ func _draw() -> void:
 		var cc := Cfg.with_a(_tint_cur.lightened(0.55), a)
 		var w: float = c2.w
 		var h: float = c2.h
-		for j in 5:
-			var off := Vector2((float(j) - 2.0) * w * 0.18, sin(float(j) * 1.9) * h * 0.25)
-			var rw: float = w * (0.22 + 0.10 * absf(sin(float(j) * 2.3)))
+		for j in 3:
+			var off := Vector2((float(j) - 1.0) * w * 0.26, sin(float(j) * 1.9) * h * 0.25)
+			var rw: float = w * (0.30 + 0.12 * absf(sin(float(j) * 2.3)))
 			var rh: float = h * (0.7 + 0.3 * cos(float(j) * 1.3))
 			_ellipse(c2.pos + off, rw, rh, cc)
 

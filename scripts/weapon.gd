@@ -73,7 +73,7 @@ func _rate(mult: float) -> float:
 
 
 func _enemies() -> Array:
-	return get_tree().get_nodes_in_group("enemy").filter(func(e): return is_instance_valid(e))
+	return Game.enemies()
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +141,7 @@ func _beam(delta: float) -> void:
 			_flare_t = 0.0
 			flare_fx = 0.35
 			var n_erased := 0
-			for eb in get_tree().get_nodes_in_group("ebullet"):
+			for eb in Game.ebullets():
 				if not is_instance_valid(eb):
 					continue
 				for d0 in dirs:
@@ -279,7 +279,7 @@ func _blades(delta: float) -> void:
 	var br := blade_size()
 	# 月の盾：刃が触れた敵弾を消す
 	if p.has("tsuki_u8"):
-		for eb in get_tree().get_nodes_in_group("ebullet"):
+		for eb in Game.ebullets():
 			if not is_instance_valid(eb):
 				continue
 			for i in n:
