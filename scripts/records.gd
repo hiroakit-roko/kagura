@@ -10,8 +10,10 @@ const MAX_ENTRIES := 10
 
 static var player_name := ""
 static var best := {"score": 0, "wave": 0, "clears": 0}
-## 各要素：{run, name, score, wave, stage, lv, gods(Array), cleared(bool), endless(bool), date}
+## 各要素：{run, run_key, name, score, wave, stage, lv, gods(Array), kami_lv, relics, boons, familiar,
+##          cleared(bool), endless(bool), date, version, commit, build_time, platform, duration}
 static var entries: Array = []
+static var last_entry := {}
 static var _loaded := false
 
 
@@ -60,7 +62,7 @@ static func set_player_name(n: String, run_id: int = -1) -> void:
 
 ## 今回の走りを記録する。同じ run の記録があれば置き換える（踏破 → 祟りの参道で倒れた場合）。
 ## 戻り値は順位（1〜MAX_ENTRIES）。上位に入らなければ 0
-static func record(run_id: int, score: int, wave: int, lv: int, gods: Array, cleared: bool, endless: bool) -> int:
+static func record(run_id: int, score: int, wave: int, lv: int, gods: Array, cleared: bool, endless: bool, extra := {}) -> int:
 	best["score"] = maxi(int(best["score"]), score)
 	best["wave"] = maxi(int(best["wave"]), wave)
 	var prev_cleared := false
@@ -70,12 +72,17 @@ static func record(run_id: int, score: int, wave: int, lv: int, gods: Array, cle
 			entries.remove_at(i)
 	if cleared and not prev_cleared:
 		best["clears"] = int(best["clears"]) + 1
+	BuildInfo.load_info()
 	var e := {
-		"run": run_id, "name": display_name(), "score": score, "wave": wave,
+		"run": run_id, "run_key": String(extra.get("run_key", str(run_id))), "name": display_name(), "score": score, "wave": wave,
 		"stage": Cfg.stage_of(maxi(wave, 1)), "lv": lv, "gods": gods.duplicate(),
+		"kami_lv": extra.get("kami_lv", {}), "relics": extra.get("relics", []), "boons": extra.get("boons", []),
+		"familiar": String(extra.get("familiar", "")), "duration": float(extra.get("duration", 0.0)),
 		"cleared": cleared or prev_cleared, "endless": endless,
 		"date": Time.get_date_string_from_system().replace("-", "/"),
+		"version": BuildInfo.version, "commit": BuildInfo.commit, "build_time": BuildInfo.time, "platform": BuildInfo.platform(),
 	}
+	last_entry = e
 	entries.append(e)
 	_sort()
 	var rank := 0

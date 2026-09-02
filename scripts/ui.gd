@@ -26,6 +26,7 @@ var confirm_view: ConfirmView
 var boons_view: BoonsView
 var miki_view: MikiView
 var relic_view: RelicView
+var ranking_view: RankingView
 var overlay: OverlayView
 
 const LACQUER := Color(0.07, 0.045, 0.10, 0.92)
@@ -218,6 +219,9 @@ func _ready() -> void:
 	relic_view = RelicView.new()
 	_setup_view(relic_view)
 	relic_view.visible = false
+	ranking_view = RankingView.new()
+	_setup_view(ranking_view)
+	ranking_view.visible = false
 	overlay = OverlayView.new()
 	_setup_view(overlay)
 	overlay.visible = false
@@ -335,8 +339,14 @@ func banner_small(text: String, col := Color(1, 1, 1)) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	var idx := -1
 	var click := Vector2(-1, -1)
+	if ranking_view.visible:
+		ranking_view.handle(e)
+		return
 	if e is InputEventKey and e.pressed and not e.echo:
 		var k := (e as InputEventKey).keycode
+		if overlay.visible and overlay.mode == 0 and k == KEY_R:
+			ranking_view.open()
+			return
 		match k:
 			KEY_1, KEY_KP_1: idx = 0
 			KEY_2, KEY_KP_2: idx = 1
@@ -1391,6 +1401,7 @@ class OverlayView:
 	var stats_lines: Array = []
 	var tip := ""
 	var rank := 0   # 今回の走りの順位（0 なら上位 10 件に入らなかった）
+	var global_rank := 0   # 世界の順位。-1 送信中、-2 失敗、0 なし
 	var _t := 0.0
 	var _tex: Texture2D
 	var _petals: Array = []
@@ -1453,6 +1464,14 @@ class OverlayView:
 	## 結果画面の順位と名前入力
 	func _draw_rank(y: float) -> float:
 		var g := Game.inst
+		if global_rank != 0:
+			var gtxt := "世界の記録　送信中…"
+			if global_rank > 0:
+				gtxt = "世界の記録　第 %d 位" % global_rank
+			elif global_rank == -2:
+				gtxt = "世界の記録　送れなかった"
+			Ui.txt(self, ui.font_display, Vector2(0, y + 2), gtxt, 17, Color(0.75, 0.9, 1.0) if global_rank > 0 else Color(0.8, 0.8, 0.9, 0.8), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			y += 22.0
 		if rank > 0:
 			Ui.txt(self, ui.font_display, Vector2(0, y + 18), "この端末の記録　第 %d 位に刻まれた" % rank, 17, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 			Ui.txt(self, ui.font, Vector2(0, y + 36), "巫女 %s として刻まれる。名は下のボタンで付けられる（10 文字まで）" % Records.display_name(), 10, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1552,6 +1571,7 @@ class OverlayView:
 			Ui.txt(self, ui.font, Vector2(0, ry - 8.0), "踏破 %d 回　最高功徳 %d" % [int(Records.best["clears"]), int(Records.best["score"])], 11,
 					Cfg.with_a(Cfg.C_GOLD, 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		ui.name_box.place_title(ry + rh + 4.0)
+		Ui.txt(self, ui.font, Vector2(Cfg.W - 12, Cfg.H - 12), BuildInfo.label(), 10, Color(1, 1, 1, 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップで はじめる" if touch else "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1599,6 +1619,7 @@ class NameBox:
 
 	var ui: Ui
 	var open_btn: Button
+	var rank_btn: Button
 	var edit: LineEdit
 	var ok_btn: Button
 	var run_id := -1
@@ -1618,6 +1639,12 @@ class NameBox:
 		open_btn = _button("名を刻む", 12)
 		open_btn.pressed.connect(_open)
 		add_child(open_btn)
+		rank_btn = _button("記録を見る", 12)
+		rank_btn.pressed.connect(func():
+			Sfx.play("select", -10.0)
+			ui.ranking_view.open())
+		rank_btn.visible = false
+		add_child(rank_btn)
 		edit = LineEdit.new()
 		edit.max_length = 10
 		edit.placeholder_text = "巫女の名"
@@ -1688,7 +1715,15 @@ class NameBox:
 		open_btn.visible = not _editing
 		open_btn.size = Vector2(0, h)
 		open_btn.reset_size()
-		open_btn.position = Vector2(Cfg.W * 0.5 - open_btn.size.x * 0.5, y)
+		rank_btn.visible = _small and not _editing
+		if _small:
+			rank_btn.size = Vector2(0, h)
+			rank_btn.reset_size()
+			var total := open_btn.size.x + 10.0 + rank_btn.size.x
+			open_btn.position = Vector2(Cfg.W * 0.5 - total * 0.5, y)
+			rank_btn.position = Vector2(open_btn.position.x + open_btn.size.x + 10.0, y)
+		else:
+			open_btn.position = Vector2(Cfg.W * 0.5 - open_btn.size.x * 0.5, y)
 		edit.visible = _editing
 		ok_btn.visible = _editing
 		if _editing:
@@ -1767,3 +1802,197 @@ class RelicView:
 			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 10), "[%d]" % (i + 1), 12, Cfg.with_a(Cfg.C_GOLD, pop))
 		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30.0), Ui.pick_hint("選ぶ"), 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+
+
+# =====================================================================
+## 記録の一覧（この端末／世界）。行を選ぶとその走りの中身（神々・神宝・版）が見える
+class RankingView:
+	extends Control
+
+	var ui: Ui
+	var tab := 0            # 0 この端末 / 1 世界
+	var rows: Array = []
+	var sel := 0
+	var status := ""
+	var _t := 0.0
+	var _loaded_global := false
+
+	const ROW_H := 26.0
+	const LIST_Y := 150.0
+	const MAX_ROWS := 12
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if visible:
+			queue_redraw()
+
+	func open() -> void:
+		visible = true
+		sel = 0
+		_set_tab(0)
+
+	func close() -> void:
+		visible = false
+
+	func _set_tab(t: int) -> void:
+		tab = t
+		sel = 0
+		if tab == 0:
+			rows = Records.entries.duplicate()
+			status = "" if not rows.is_empty() else "まだ記録がない"
+		else:
+			var net := Net.inst
+			if net == null or not net.configured():
+				rows = []
+				status = "世界の記録はまだ繋がっていない"
+				return
+			rows = []
+			status = "読み込み中…"
+			net.fetch_top(MAX_ROWS, func(ok: bool, got: Array):
+				if tab != 1:
+					return
+				if not ok:
+					status = "読み込めなかった"
+					return
+				rows = []
+				for r in got:
+					if r is Dictionary:
+						rows.append(_from_remote(r))
+				status = "" if not rows.is_empty() else "まだ誰の記録もない")
+
+	## 世界の行を端末の記録と同じ形にする
+	func _from_remote(r: Dictionary) -> Dictionary:
+		var date := String(r.get("created_at", ""))
+		if date.length() >= 10:
+			date = date.substr(0, 10).replace("-", "/")
+		return {
+			"name": String(r.get("name", "")), "score": int(r.get("score", 0)), "wave": int(r.get("wave", 0)),
+			"stage": int(r.get("stage", 1)), "lv": int(r.get("level", 1)), "gods": r.get("gods", []) if r.get("gods") is Array else [],
+			"kami_lv": r.get("kami_lv", {}) if r.get("kami_lv") is Dictionary else {}, "relics": r.get("relics", []) if r.get("relics") is Array else [],
+			"boons": r.get("boons", []) if r.get("boons") is Array else [], "familiar": String(r.get("familiar", "")),
+			"cleared": bool(r.get("cleared", false)), "endless": bool(r.get("endless", false)),
+			"date": date, "version": String(r.get("version", "")), "commit": String(r.get("commit", "")),
+			"build_time": String(r.get("build_time", "")), "platform": String(r.get("platform", "")), "duration": float(r.get("duration", 0.0)),
+		}
+
+	func _tab_rect(i: int) -> Rect2:
+		return Rect2(Cfg.W * 0.5 - 150.0 + float(i) * 150.0, 96.0, 140.0, 34.0)
+
+	func _close_rect() -> Rect2:
+		return Rect2(Cfg.W - 96.0, 20.0, 76.0, 32.0)
+
+	func _row_rect(i: int) -> Rect2:
+		return Rect2(24.0, LIST_Y + float(i) * ROW_H, Cfg.W - 48.0, ROW_H)
+
+	func handle(e: InputEvent) -> void:
+		if e is InputEventKey and e.pressed and not e.echo:
+			var k := (e as InputEventKey).keycode
+			match k:
+				KEY_LEFT, KEY_A: _set_tab(0)
+				KEY_RIGHT, KEY_D: _set_tab(1)
+				KEY_UP, KEY_W: sel = maxi(0, sel - 1)
+				KEY_DOWN, KEY_S: sel = mini(maxi(rows.size() - 1, 0), sel + 1)
+				KEY_ESCAPE, KEY_R, KEY_ENTER, KEY_SPACE: close()
+			return
+		if e is InputEventMouseButton and e.pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			var p := (e as InputEventMouseButton).position
+			if _close_rect().has_point(p):
+				close()
+				return
+			for i in 2:
+				if _tab_rect(i).has_point(p):
+					_set_tab(i)
+					return
+			for i in rows.size():
+				if _row_rect(i).has_point(p):
+					sel = i
+					return
+
+	func _draw() -> void:
+		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.03, 0.02, 0.06, 0.94))
+		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Cfg.with_a(Cfg.C_GOLD, 0.05), 52.0, _t)
+		Ui.txt(self, ui.font_display, Vector2(0, 66), "記録", 40, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		# 閉じる
+		var cr := _close_rect()
+		Ui.panel(self, cr, Cfg.C_GOLD, 1.0, 0.8)
+		Ui.txt(self, ui.font_bold, Vector2(cr.position.x, cr.position.y + 21), "閉じる", 13, Color(1, 1, 1), HORIZONTAL_ALIGNMENT_CENTER, cr.size.x)
+		# タブ
+		for i in 2:
+			var r := _tab_rect(i)
+			var on := i == tab
+			Ui.panel(self, r, Cfg.C_GOLD if on else Color(0.5, 0.5, 0.6), 1.0, 0.85 if on else 0.5)
+			Ui.txt(self, ui.font_bold, Vector2(r.position.x, r.position.y + 22), ["この端末", "世界"][i], 14,
+					Color(1, 1, 1) if on else Color(1, 1, 1, 0.55), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		# 見出し
+		var hx := 24.0
+		var w := Cfg.W - 48.0
+		Ui.txt(self, ui.font, Vector2(hx + 34, LIST_Y - 8), "名", 10, Color(1, 1, 1, 0.5))
+		Ui.txt(self, ui.font, Vector2(hx, LIST_Y - 8), "功徳", 10, Color(1, 1, 1, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, w - 250.0)
+		Ui.txt(self, ui.font, Vector2(hx, LIST_Y - 8), "到達", 10, Color(1, 1, 1, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, w - 130.0)
+		Ui.txt(self, ui.font, Vector2(hx, LIST_Y - 8), "版", 10, Color(1, 1, 1, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
+		if status != "":
+			Ui.txt(self, ui.font, Vector2(0, LIST_Y + 40), status, 13, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		for i in mini(rows.size(), MAX_ROWS):
+			var e: Dictionary = rows[i]
+			var r := _row_rect(i)
+			var on := i == sel
+			if on:
+				draw_rect(r, Cfg.with_a(Cfg.C_GOLD, 0.16))
+				draw_rect(r, Cfg.with_a(Cfg.C_GOLD, 0.6), false, 1.0)
+			var col := Cfg.C_GOLD if on else Color(0.92, 0.92, 1.0)
+			var ty := r.position.y + 18.0
+			Ui.txt(self, ui.font_bold, Vector2(hx + 8, ty), "%d" % (i + 1), 12, Cfg.with_a(col, 1.0 if i < 3 else 0.7))
+			Ui.txt(self, ui.font, Vector2(hx + 34, ty), String(e.get("name", "")), 13, col)
+			Ui.txt(self, ui.font_bold, Vector2(hx, ty), str(int(e.get("score", 0))), 13, col, HORIZONTAL_ALIGNMENT_RIGHT, w - 250.0)
+			Ui.txt(self, ui.font, Vector2(hx, ty), Records.reach_text(e), 12, Cfg.with_a(col, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, w - 130.0)
+			Ui.txt(self, ui.font, Vector2(hx, ty), "v" + String(e.get("version", "?")), 11, Cfg.with_a(col, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
+		# 選んだ行の中身
+		if sel >= 0 and sel < rows.size():
+			_draw_detail(rows[sel], LIST_Y + float(mini(rows.size(), MAX_ROWS)) * ROW_H + 16.0)
+
+	func _draw_detail(e: Dictionary, y0: float) -> void:
+		var x0 := 24.0
+		var w := Cfg.W - 48.0
+		var h := 210.0
+		if y0 + h > Cfg.H - 20.0:
+			y0 = Cfg.H - 20.0 - h
+		Ui.panel(self, Rect2(x0, y0, w, h), Cfg.C_GOLD, 1.0, 0.85)
+		var y := y0 + 24.0
+		Ui.txt(self, ui.font_display, Vector2(x0 + 14, y), "%s　%d" % [String(e.get("name", "")), int(e.get("score", 0))], 18, Color(1, 1, 1))
+		Ui.txt(self, ui.font, Vector2(x0, y), "%s　%s" % [String(e.get("date", "")), Records.reach_text(e)], 11, Color(1, 1, 1, 0.75), HORIZONTAL_ALIGNMENT_RIGHT, w - 14.0)
+		y += 26.0
+		# 神々と神格
+		var gods: Array = e.get("gods", [])
+		var klv: Dictionary = e.get("kami_lv", {})
+		var gx := x0 + 14.0
+		for i in gods.size():
+			var gid := String(gods[i])
+			var k := Kami.kami(gid)
+			if k.is_empty():
+				continue
+			var c := Vector2(gx + 16.0, y + 12.0)
+			Emblem.draw(self, String(k["emblem"]), c, 13.0, k["color"], k["color2"], _t, 1.0)
+			Ui.txt(self, ui.font, Vector2(gx + 34.0, y + 10.0), ("主神 " if i == 0 else "副神 ") + String(k["name"]), 11, Cfg.with_a(k["color"], 0.95))
+			Ui.txt(self, ui.font, Vector2(gx + 34.0, y + 24.0), "神格 %d" % int(klv.get(gid, 1)), 10, Color(1, 1, 1, 0.7))
+			gx += 190.0
+		if gods.is_empty():
+			Ui.txt(self, ui.font, Vector2(gx, y + 12.0), "神なし", 11, Color(1, 1, 1, 0.6))
+		y += 40.0
+		# 使い魔・位・能力の数
+		var fam := Familiar.info(String(e.get("familiar", "")))
+		var boons: Array = e.get("boons", [])
+		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "使い魔 %s　　位 %d　　能力 %d" % [String(fam.get("name", "なし")), int(e.get("lv", 1)), boons.size()], 12, Color(0.92, 0.94, 1.0, 0.9))
+		y += 24.0
+		# 神宝
+		var relics: Array = e.get("relics", [])
+		var names: Array = []
+		for rid in relics:
+			var rl := Relics.get_relic(String(rid))
+			if not rl.is_empty():
+				names.append(String(rl["name"]))
+		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "神宝　" + ("・".join(names) if not names.is_empty() else "なし"), 12, Color(0.92, 0.94, 1.0, 0.9), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)
+		y += 24.0
+		# 版・環境
+		var dur := float(e.get("duration", 0.0))
+		var dur_txt := ("%d 分 %02d 秒" % [int(dur) / 60, int(dur) % 60]) if dur > 0.0 else ""
+		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "版 v%s（%s）　%s　%s" % [String(e.get("version", "?")), String(e.get("commit", "")), String(e.get("platform", "")), dur_txt], 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)

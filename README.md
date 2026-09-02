@@ -214,8 +214,21 @@ godot --path . -- --capture --deathtest  # ゲームオーバー→リスター�
 - 結果画面で上位 10 件に入ると「第 N 位に刻まれた」と出て、名前（10 文字まで）を入力できる。題目画面でも名前を変えられる。
 - 保存先は `user://save.cfg`。Web 版ではブラウザの IndexedDB に置かれるので、GitHub Pages のような静的配信でも
   同じ端末・同じブラウザなら次回も残る。**他の端末や他のプレイヤーとは共有されない**（サーバーがないため）。
-- 全員共通のランキングにするには外部の保存先（Supabase / Firebase / Cloudflare Workers KV などの無料枠）が 1 つ必要。
-  ゲーム側は HTTPRequest で送受信するだけで済む。
+
+## 世界のランキング（Supabase）
+
+- 走りが終わると `scripts/net.gd` が Supabase の REST（`/rest/v1/scores`）へ記録を送り、結果画面に「世界の記録 第 N 位」を出す。
+  同じ走り（run_id）は置き換える（踏破 → 祟りの参道で倒れた場合）。名前を後から付けると送り直す。
+- 題目の「記録を見る」（キーボードは R）で「この端末」「世界」の一覧。行を選ぶと、その走りの 神々と神格・使い魔・神宝・能力の数・
+  **版（version と commit）**・環境・所要時間 が見える。
+- 設定は `supabase.cfg` の `url` と `anon_key`。空なら世界のランキングは無効で、端末内の記録だけになる。
+- テーブルは `supabase/schema.sql` を Supabase の SQL Editor で実行して作る（RLS：anon は insert/update/select のみ）。
+
+## 版番号（ビルドごとに必ず上がる）
+
+- `build.cfg` にビルドの版・commit・時刻が入る。手元では `dev`。
+- GitHub Actions のデプロイでは実行番号から `1.<run_number>` を書き込むので、公開するたびに必ず版が上がる。
+  題目の右下に `v1.123 (abc1234)` と出て、端末内・世界の記録の両方に版が残る。
 
 ## 負荷対策（スマホの発熱）
 

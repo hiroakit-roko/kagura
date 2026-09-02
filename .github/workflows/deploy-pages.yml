@@ -34,6 +34,13 @@ jobs:
           mkdir -v -p ~/.local/share/godot/export_templates
           mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/
 
+      - name: Stamp build version
+        # 版はデプロイごとに必ず上がる（実行番号）。記録にどの版で遊んだかが残る
+        run: |
+          VERSION="1.${{ github.run_number }}"
+          printf '[build]\nversion="%s"\ncommit="%s"\ntime="%s"\n' "$VERSION" "${GITHUB_SHA::7}" "$(date -u +%Y-%m-%dT%H:%MZ)" > build.cfg
+          cat build.cfg
+
       - name: Import assets
         run: godot --headless --path . --import || true
 

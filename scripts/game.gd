@@ -43,6 +43,9 @@ var _tut_t := 0.0
 var endless := false
 var best := {"score": 0, "wave": 0, "clears": 0}   # Records.best への参照
 var run_id := -1                                     # 今回の走りの識別子（記録の置き換えに使う）
+var run_key := ""                                    # 世界のランキング用の識別子（時刻＋乱数）
+var run_start := 0.0                                 # 走りの開始時刻（秒）
+var net: Net
 var _relic_offers: Array = []                        # 討伐の褒賞（神宝）の候補
 var _seen_items := {}                                # 初めて落ちたアイテムの案内を出したか
 var resetting := false                               # やり直しで world を片付けている間（珠を落とさない）
@@ -117,6 +120,8 @@ func _ready() -> void:
 	add_child(sfx)
 	add_child(Music.new())
 
+	net = Net.new()
+	add_child(net)
 	ui = Ui.new()
 	add_child(ui)
 	fx.font = ui.font
@@ -176,16 +181,45 @@ func _load_best() -> void:
 
 ## 今回の走りを記録に刻む（名前・功徳・到達・神々）。順位を結果画面に渡す
 func _save_best(cleared: bool) -> void:
-	var gods: Array = player.gods.duplicate() if (player != null and is_instance_valid(player)) else []
-	var lv: int = player.level if (player != null and is_instance_valid(player)) else 1
-	ui.overlay.rank = Records.record(run_id, score, wave, lv, gods, cleared, endless)
+	var ok := player != null and is_instance_valid(player)
+	var gods: Array = player.gods.duplicate() if ok else []
+	var lv: int = player.level if ok else 1
+	var extra := {
+		"run_key": run_key,
+		"kami_lv": player.kami_lv.duplicate() if ok else {},
+		"relics": player.relics.duplicate() if ok else [],
+		"boons": player.boons.keys() if ok else [],
+		"familiar": player.familiar_id if ok else "",
+		"duration": Time.get_unix_time_from_system() - run_start,
+	}
+	ui.overlay.rank = Records.record(run_id, score, wave, lv, gods, cleared, endless, extra)
 	best = Records.best
+	_submit_global()
+
+
+## 世界のランキングへ送り、順位を結果画面に出す
+func _submit_global() -> void:
+	ui.overlay.global_rank = 0
+	if net == null or not net.configured():
+		return
+	ui.overlay.global_rank = -1   # 送信中
+	var entry := Records.last_entry.duplicate()
+	net.submit(entry, func(ok: bool):
+		if not ok:
+			ui.overlay.global_rank = -2
+			return
+		net.fetch_rank(int(entry["score"]), func(ok2: bool, rank: int):
+			ui.overlay.global_rank = rank if ok2 else -2))
 
 
 ## 結果画面で名前が入力されたとき
 func _on_name_submitted(n: String) -> void:
 	Records.set_player_name(n, run_id)
 	Sfx.play("suzu", -8.0)
+	# 今回の記録が世界に送られていれば、名前も差し替える
+	if net != null and net.configured() and not Records.last_entry.is_empty() and int(Records.last_entry.get("run", -2)) == run_id:
+		Records.last_entry["name"] = Records.display_name()
+		net.submit(Records.last_entry.duplicate(), func(_ok: bool): pass)
 
 
 ## 功徳の加算（禍神で倍率）
@@ -241,6 +275,8 @@ func start_game() -> void:
 	_hitstop = 0.0
 	endless = false
 	run_id = int(Time.get_unix_time_from_system())
+	run_key = "%d-%06d" % [run_id, randi() % 1000000]
+	run_start = Time.get_unix_time_from_system()
 	Engine.time_scale = 1.0
 	stars.tint = Color(0.45, 0.30, 0.80)
 
@@ -884,6 +920,9 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif k == KEY_P:
 		toggle_pause()
 	elif k == KEY_ESCAPE:
+		if ui.ranking_view.visible:
+			ui.ranking_view.close()
+			return
 		if ui.confirm_view.visible:
 			return   # 確認画面の「考え直す」に使う
 		if state == St.TITLE:

@@ -295,6 +295,14 @@ func _flow_test() -> void:
 			print("[flow] lv%d state=%d" % [g.player.level, g.state])
 		await _wait(0.3)
 		print("[flow]   -> state=%d gods=%s kami_lv=%s" % [g.state, str(g.player.gods), str(g.player.kami_lv)])
+	# 記録の一覧
+	g.ui.ranking_view.open()
+	await _wait(0.4)
+	await shot("06_ranking.png")
+	g.ui.ranking_view._set_tab(1)
+	await _wait(0.4)
+	await shot("06b_ranking_global.png")
+	g.ui.ranking_view.close()
 	# 討伐の褒賞（神宝）
 	g._open_relics()
 	await _wait(0.5)
