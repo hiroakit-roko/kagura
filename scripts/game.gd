@@ -41,8 +41,8 @@ var _minion_t := 0.0
 var _tut_step := 0
 var _tut_t := 0.0
 var endless := false
-var best := {"score": 0, "wave": 0, "clears": 0}
-const SAVE_PATH := "user://save.cfg"
+var best := {"score": 0, "wave": 0, "clears": 0}   # Records.best への参照
+var run_id := -1                                     # 今回の走りの識別子（記録の置き換えに使う）
 
 const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6,
 	"spirit": 0.5, "lantern": 2.0, "kite": 1.2, "oni": 3.6, "caster": 3.0, "bomber": 1.5}
@@ -108,6 +108,7 @@ func _ready() -> void:
 	ui.start_requested.connect(start_game)
 	ui.restart_requested.connect(start_game)
 	ui.continue_requested.connect(continue_endless)
+	ui.name_submitted.connect(_on_name_submitted)
 
 	_load_best()
 	_show_title()
@@ -140,23 +141,22 @@ func _fit_viewport() -> void:
 
 ## 記録の保存と読み込み（Web では IndexedDB に保存される）
 func _load_best() -> void:
-	var cf := ConfigFile.new()
-	if cf.load(SAVE_PATH) == OK:
-		best["score"] = int(cf.get_value("best", "score", 0))
-		best["wave"] = int(cf.get_value("best", "wave", 0))
-		best["clears"] = int(cf.get_value("best", "clears", 0))
+	Records.load_all()
+	best = Records.best
 
 
+## 今回の走りを記録に刻む（名前・功徳・到達・神々）。順位を結果画面に渡す
 func _save_best(cleared: bool) -> void:
-	best["score"] = maxi(int(best["score"]), score)
-	best["wave"] = maxi(int(best["wave"]), wave)
-	if cleared:
-		best["clears"] = int(best["clears"]) + 1
-	var cf := ConfigFile.new()
-	cf.set_value("best", "score", int(best["score"]))
-	cf.set_value("best", "wave", int(best["wave"]))
-	cf.set_value("best", "clears", int(best["clears"]))
-	cf.save(SAVE_PATH)
+	var gods: Array = player.gods.duplicate() if (player != null and is_instance_valid(player)) else []
+	var lv: int = player.level if (player != null and is_instance_valid(player)) else 1
+	ui.overlay.rank = Records.record(run_id, score, wave, lv, gods, cleared, endless)
+	best = Records.best
+
+
+## 結果画面で名前が入力されたとき
+func _on_name_submitted(n: String) -> void:
+	Records.set_player_name(n, run_id)
+	Sfx.play("suzu", -8.0)
 
 
 ## 功徳の加算（禍神で倍率）
@@ -208,6 +208,7 @@ func start_game() -> void:
 	_boss_reward = false
 	_hitstop = 0.0
 	endless = false
+	run_id = int(Time.get_unix_time_from_system())
 	Engine.time_scale = 1.0
 	stars.tint = Color(0.45, 0.30, 0.80)
 
@@ -766,7 +767,7 @@ func _death_tip() -> String:
 	if player.gods.is_empty():
 		return "神を迎える前に倒れた。勾玉を優先して拾い、位を上げよう"
 	if player.gods.size() < 3:
-		return "副神の枠が空いていた。「新たな神」の札で神器を増やすと火力が伸びる"
+		return "副神の枠が空いていた。位 4 と位 7 で副神を迎えると神器が増え、火力が伸びる"
 	if player.last_hit_by.ends_with("体当たり"):
 		return "体当たりで倒れた。疾走（短くなぞる／Space）の無敵で抜けよう"
 	if player.grazes < 5:

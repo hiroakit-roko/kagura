@@ -12,11 +12,13 @@ signal miki_chosen(id: String)
 signal start_requested
 signal restart_requested
 signal continue_requested
+signal name_submitted(name: String)
 
 var font: Font
 var font_bold: Font
 var font_display: Font
 var hud: HudView
+var name_box: NameBox
 var kami_view: KamiChoiceView
 var familiar_view: FamiliarView
 var confirm_view: ConfirmView
@@ -204,6 +206,11 @@ func _ready() -> void:
 	overlay = OverlayView.new()
 	_setup_view(overlay)
 	overlay.visible = false
+	name_box = NameBox.new()
+	name_box.ui = self
+	name_box.build()
+	add_child(name_box)
+	name_box.visible = false
 
 
 func _setup_view(v: Control) -> void:
@@ -1303,6 +1310,7 @@ class OverlayView:
 	var mode := 0  # 0=タイトル 1=ゲームオーバー 2=踏破
 	var stats_lines: Array = []
 	var tip := ""
+	var rank := 0   # 今回の走りの順位（0 なら上位 10 件に入らなかった）
 	var _t := 0.0
 	var _tex: Texture2D
 	var _petals: Array = []
@@ -1330,6 +1338,48 @@ class OverlayView:
 			_clear()
 		else:
 			_over()
+		if not visible:
+			ui.name_box.visible = false
+
+	## 記録表（上位 n 件）。highlight_run の行を強調する
+	func _draw_records(y0: float, n: int, highlight_run: int, a := 1.0) -> float:
+		var rows: Array = Records.entries.slice(0, n)
+		var x0 := 36.0
+		var w := Cfg.W - 72.0
+		var h := 26.0 + 20.0 * float(maxi(rows.size(), 1))
+		Ui.panel(self, Rect2(x0, y0, w, h), Cfg.C_GOLD, a, 0.78)
+		Ui.txt(self, ui.font_display, Vector2(x0 + 12, y0 + 17), "この端末の記録", 12, Cfg.with_a(Cfg.C_GOLD, a))
+		Ui.txt(self, ui.font, Vector2(x0 + 110, y0 + 16), "巫女 %s" % Records.display_name(), 10, Color(1, 1, 1, 0.75 * a))
+		Ui.txt(self, ui.font, Vector2(x0, y0 + 16), "功徳", 9, Color(1, 1, 1, 0.5 * a), HORIZONTAL_ALIGNMENT_RIGHT, w - 250.0)
+		Ui.txt(self, ui.font, Vector2(x0, y0 + 16), "到達", 9, Color(1, 1, 1, 0.5 * a), HORIZONTAL_ALIGNMENT_RIGHT, w - 130.0)
+		Ui.txt(self, ui.font, Vector2(x0, y0 + 16), "神々", 9, Color(1, 1, 1, 0.5 * a), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
+		if rows.is_empty():
+			Ui.txt(self, ui.font, Vector2(x0, y0 + 40), "まだ記録がない。参道を登り、名を刻め", 11, Color(1, 1, 1, 0.55 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
+		var y := y0 + 40.0
+		for i in rows.size():
+			var e: Dictionary = rows[i]
+			var mine := int(e.get("run", -2)) == highlight_run and highlight_run >= 0
+			var col := Cfg.C_GOLD if mine else Color(0.92, 0.92, 1.0)
+			if mine:
+				draw_rect(Rect2(x0 + 4, y - 14, w - 8, 19), Cfg.with_a(Cfg.C_GOLD, 0.14 * a))
+			Ui.txt(self, ui.font_bold, Vector2(x0 + 12, y), "%d" % (i + 1), 11, Cfg.with_a(col, a * (1.0 if i < 3 else 0.7)))
+			Ui.txt(self, ui.font, Vector2(x0 + 34, y), String(e.get("name", "")), 11, Cfg.with_a(col, a))
+			Ui.txt(self, ui.font_bold, Vector2(x0, y), str(int(e.get("score", 0))), 11, Cfg.with_a(col, a), HORIZONTAL_ALIGNMENT_RIGHT, w - 250.0)
+			Ui.txt(self, ui.font, Vector2(x0, y), Records.reach_text(e), 10, Cfg.with_a(col, a * 0.9), HORIZONTAL_ALIGNMENT_RIGHT, w - 130.0)
+			Ui.txt(self, ui.font, Vector2(x0, y), Records.gods_text(e), 10, Cfg.with_a(col, a * 0.8), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
+			y += 20.0
+		return y0 + h
+
+	## 結果画面の順位と名前入力
+	func _draw_rank(y: float) -> float:
+		var g := Game.inst
+		if rank > 0:
+			Ui.txt(self, ui.font_display, Vector2(0, y + 18), "この端末の記録　第 %d 位に刻まれた" % rank, 17, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			Ui.txt(self, ui.font, Vector2(0, y + 36), "名を刻む（10 文字まで）。入力して Enter か「刻む」", 10, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			ui.name_box.place(y + 44.0, g.run_id if g != null else -1)
+			return y + 84.0
+		ui.name_box.visible = false
+		return y
 
 	func _clear() -> void:
 		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.03, 0.02, 0.06, 0.82))
@@ -1357,9 +1407,10 @@ class OverlayView:
 			Ui.txt(self, ui.font_display, Vector2(Cfg.W * 0.5 + 14.0, y), String(row[1]), 18,
 					Color(1, 1, 1), HORIZONTAL_ALIGNMENT_LEFT)
 			y += 30.0
+		y = _draw_rank(y)
 		var g := Game.inst
 		if g != null and g.player != null and is_instance_valid(g.player):
-			ui.hud._draw_build_on(self, g.player, y + 20.0)
+			ui.hud._draw_build_on(self, g.player, y + 16.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 96.0), "タップ / ENTER で更に登る（祟りの参道）", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1408,11 +1459,15 @@ class OverlayView:
 
 		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 104.0), "神を迎えれば神器が付く。主神と 2 柱の副神とともに参道を登れ。", 13,
 				Color(0.85, 0.86, 1.0, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		var g := Game.inst
-		if g != null and (int(g.best["score"]) > 0 or int(g.best["clears"]) > 0):
-			Ui.panel(self, Rect2(Cfg.W * 0.5 - 150, Cfg.H - 300, 300, 34), Cfg.C_GOLD, 1.0, 0.7)
-			Ui.txt(self, ui.font, Vector2(Cfg.W * 0.5 - 150, Cfg.H - 278), "最高功徳 %d　　最高到達 第 %d 波　　踏破 %d 回" % [int(g.best["score"]), int(g.best["wave"]), int(g.best["clears"])], 12,
-					Cfg.with_a(Cfg.C_GOLD, 0.95), HORIZONTAL_ALIGNMENT_CENTER, 300)
+		# この端末の記録（上位 5 件）と名前
+		var rows := mini(Records.entries.size(), 5)
+		var rh := 26.0 + 20.0 * float(maxi(rows, 1))
+		var ry := Cfg.H - 262.0 - rh - 44.0
+		_draw_records(ry, 5, -1, 0.95)
+		if int(Records.best["clears"]) > 0:
+			Ui.txt(self, ui.font, Vector2(0, ry - 8.0), "踏破 %d 回　最高功徳 %d" % [int(Records.best["clears"]), int(Records.best["score"])], 11,
+					Cfg.with_a(Cfg.C_GOLD, 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		ui.name_box.place_title(ry + rh + 6.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1442,9 +1497,92 @@ class OverlayView:
 			Ui.txt(self, ui.font_bold, Vector2(62, y + 22), "次の一手", 11, Cfg.C_GOLD)
 			Ui.para(self, ui.font, Vector2(62, y + 40), tip, Cfg.W - 124, 11, 2, Color(0.95, 0.95, 1.0, 0.95))
 			y += 60.0
+		y = _draw_rank(y)
 		var g := Game.inst
 		if g != null and g.player != null and is_instance_valid(g.player):
-			ui.hud._draw_build_on(self, g.player, y + 20.0)
+			ui.hud._draw_build_on(self, g.player, y + 16.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップ / ENTER でもう一度　　ESC で題目へ", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+
+
+# =====================================================================
+## 名前の入力欄（LineEdit と「刻む」ボタン）。結果画面では順位の下、題目では記録表の下に置く
+class NameBox:
+	extends Control
+
+	var ui: Ui
+	var edit: LineEdit
+	var button: Button
+	var run_id := -1
+
+	func build() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+		edit = LineEdit.new()
+		edit.max_length = 10
+		edit.placeholder_text = "巫女の名"
+		edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		edit.context_menu_enabled = false
+		edit.virtual_keyboard_enabled = true
+		edit.add_theme_font_override("font", ui.font)
+		edit.add_theme_font_size_override("font_size", 15)
+		edit.add_theme_color_override("font_color", Color(1, 1, 1))
+		edit.add_theme_color_override("font_placeholder_color", Color(1, 1, 1, 0.35))
+		edit.add_theme_color_override("caret_color", Cfg.C_GOLD)
+		edit.add_theme_stylebox_override("normal", _style(Color(0.08, 0.06, 0.12, 0.95), Cfg.with_a(Cfg.C_GOLD, 0.5)))
+		edit.add_theme_stylebox_override("focus", _style(Color(0.10, 0.08, 0.16, 0.98), Cfg.C_GOLD))
+		edit.text_submitted.connect(_submit)
+		add_child(edit)
+		button = Button.new()
+		button.text = "刻む"
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_override("font", ui.font_bold)
+		button.add_theme_font_size_override("font_size", 13)
+		button.add_theme_color_override("font_color", Cfg.C_GOLD)
+		button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+		button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+		button.add_theme_stylebox_override("normal", _style(Color(0.12, 0.09, 0.18, 0.95), Cfg.with_a(Cfg.C_GOLD, 0.6)))
+		button.add_theme_stylebox_override("hover", _style(Color(0.18, 0.14, 0.26, 0.98), Cfg.C_GOLD))
+		button.add_theme_stylebox_override("pressed", _style(Color(0.25, 0.2, 0.35, 1.0), Cfg.C_GOLD))
+		button.pressed.connect(func(): _submit(edit.text))
+		add_child(button)
+
+	func _style(bg: Color, border: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = bg
+		sb.border_color = border
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(2)
+		sb.content_margin_left = 10
+		sb.content_margin_right = 10
+		sb.content_margin_top = 4
+		sb.content_margin_bottom = 4
+		return sb
+
+	## 結果画面：順位の下に置く
+	func place(y: float, rid: int) -> void:
+		if not visible or run_id != rid:
+			edit.text = Records.player_name
+		run_id = rid
+		edit.position = Vector2(Cfg.W * 0.5 - 130.0, y)
+		edit.size = Vector2(190.0, 32.0)
+		button.position = Vector2(Cfg.W * 0.5 + 66.0, y)
+		button.size = Vector2(64.0, 32.0)
+		visible = true
+
+	## 題目：記録表の下に小さく置く（名前の変更用）
+	func place_title(y: float) -> void:
+		if not visible or run_id != -1:
+			edit.text = Records.player_name
+		run_id = -1
+		edit.position = Vector2(Cfg.W * 0.5 - 110.0, y)
+		edit.size = Vector2(160.0, 28.0)
+		button.position = Vector2(Cfg.W * 0.5 + 54.0, y)
+		button.size = Vector2(56.0, 28.0)
+		visible = true
+
+	func _submit(text: String) -> void:
+		edit.release_focus()
+		ui.name_submitted.emit(text)
+		Fx.sparks(edit.position + edit.size * 0.5, Vector2.UP, Cfg.C_GOLD, 8, 200.0)
