@@ -19,7 +19,8 @@ create table if not exists public.scores (
   gods        jsonb not null default '[]'::jsonb,
   kami_lv     jsonb not null default '{}'::jsonb,
   relics      jsonb not null default '[]'::jsonb,
-  boons       jsonb not null default '[]'::jsonb,
+  boons       jsonb not null default '{}'::jsonb,
+  curses      jsonb not null default '[]'::jsonb,
   duration    real not null default 0
 );
 
@@ -39,3 +40,6 @@ create policy "anon can update own run" on public.scores
 drop policy if exists "anyone can read scores" on public.scores;
 create policy "anyone can read scores" on public.scores
   for select to anon, authenticated using (true);
+
+-- 既存の表への追加（初回作成後に列を足したとき）
+alter table public.scores add column if not exists curses jsonb not null default '[]'::jsonb;

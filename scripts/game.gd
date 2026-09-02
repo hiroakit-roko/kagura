@@ -138,6 +138,7 @@ func _ready() -> void:
 	ui.start_requested.connect(start_game)
 	ui.restart_requested.connect(start_game)
 	ui.continue_requested.connect(continue_endless)
+	ui.title_requested.connect(_show_title)
 	ui.name_submitted.connect(_on_name_submitted)
 
 	_load_best()
@@ -188,13 +189,23 @@ func _save_best(cleared: bool) -> void:
 		"run_key": run_key,
 		"kami_lv": player.kami_lv.duplicate() if ok else {},
 		"relics": player.relics.duplicate() if ok else [],
-		"boons": player.boons.keys() if ok else [],
+		"boons": _boon_snapshot() if ok else {},
+		"curses": (player.boons.keys().filter(func(id): return not Kami.curse(String(id)).is_empty())) if ok else [],
 		"familiar": player.familiar_id if ok else "",
 		"duration": Time.get_unix_time_from_system() - run_start,
 	}
 	ui.overlay.rank = Records.record(run_id, score, wave, lv, gods, cleared, endless, extra)
 	best = Records.best
 	_submit_global()
+
+
+## 能力の一覧（id → {lv, rar}）。禍神の取引は含めない
+func _boon_snapshot() -> Dictionary:
+	var out := {}
+	for id in player.boons.keys():
+		if Kami.curse(String(id)).is_empty():
+			out[String(id)] = {"lv": int(player.boons[id]["lv"]), "rar": int(player.boons[id]["rar"])}
+	return out
 
 
 ## 世界のランキングへ送り、順位を結果画面に出す

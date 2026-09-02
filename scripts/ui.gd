@@ -12,6 +12,7 @@ signal miki_chosen(id: String)
 signal relic_chosen(idx: int)
 signal start_requested
 signal restart_requested
+signal title_requested
 signal continue_requested
 signal name_submitted(name: String)
 
@@ -367,9 +368,9 @@ func _unhandled_input(e: InputEvent) -> void:
 			elif overlay.mode == 2:
 				continue_requested.emit()
 			else:
-				restart_requested.emit()
+				title_requested.emit()
 			return
-		if overlay.visible and overlay.mode == 2 and k == KEY_R:
+		if overlay.visible and (overlay.mode == 2 or overlay.mode == 1) and k == KEY_R:
 			restart_requested.emit()
 			return
 	elif e is InputEventMouseButton and e.pressed \
@@ -381,7 +382,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			elif overlay.mode == 2:
 				continue_requested.emit()
 			else:
-				restart_requested.emit()
+				title_requested.emit()
 			return
 
 	if confirm_view.visible:
@@ -1607,7 +1608,7 @@ class OverlayView:
 		if g != null and g.player != null and is_instance_valid(g.player):
 			ui.hud._draw_build_on(self, g.player, y + 16.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップでもう一度" if (Game.inst != null and Game.inst.is_touch()) else "タップ / ENTER でもう一度　　ESC で題目へ", 20,
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップで題目へ" if (Game.inst != null and Game.inst.is_touch()) else "タップ / ENTER で題目へ　　R でもう一度", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 
@@ -1870,7 +1871,8 @@ class RankingView:
 			"name": String(r.get("name", "")), "score": int(r.get("score", 0)), "wave": int(r.get("wave", 0)),
 			"stage": int(r.get("stage", 1)), "lv": int(r.get("level", 1)), "gods": r.get("gods", []) if r.get("gods") is Array else [],
 			"kami_lv": r.get("kami_lv", {}) if r.get("kami_lv") is Dictionary else {}, "relics": r.get("relics", []) if r.get("relics") is Array else [],
-			"boons": r.get("boons", []) if r.get("boons") is Array else [], "familiar": String(r.get("familiar", "")),
+			"boons": r.get("boons", {}) if r.get("boons") is Dictionary else {}, "curses": r.get("curses", []) if r.get("curses") is Array else [],
+			"familiar": String(r.get("familiar", "")),
 			"cleared": bool(r.get("cleared", false)), "endless": bool(r.get("endless", false)),
 			"date": date, "version": String(r.get("version", "")), "commit": String(r.get("commit", "")),
 			"build_time": String(r.get("build_time", "")), "platform": String(r.get("platform", "")), "duration": float(r.get("duration", 0.0)),
@@ -1892,7 +1894,7 @@ class RankingView:
 				KEY_LEFT, KEY_A: _set_tab(0)
 				KEY_RIGHT, KEY_D: _set_tab(1)
 				KEY_UP, KEY_W: sel = maxi(0, sel - 1)
-				KEY_DOWN, KEY_S: sel = mini(maxi(rows.size() - 1, 0), sel + 1)
+				KEY_DOWN, KEY_S: sel = mini(maxi(_rows_shown() - 1, 0), sel + 1)
 				KEY_ESCAPE, KEY_R, KEY_ENTER, KEY_SPACE: close()
 			return
 		if e is InputEventMouseButton and e.pressed and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
@@ -1904,7 +1906,7 @@ class RankingView:
 				if _tab_rect(i).has_point(p):
 					_set_tab(i)
 					return
-			for i in rows.size():
+			for i in _rows_shown():
 				if _row_rect(i).has_point(p):
 					sel = i
 					return
@@ -1933,7 +1935,8 @@ class RankingView:
 		Ui.txt(self, ui.font, Vector2(hx, LIST_Y - 8), "版", 10, Color(1, 1, 1, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
 		if status != "":
 			Ui.txt(self, ui.font, Vector2(0, LIST_Y + 40), status, 13, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		for i in mini(rows.size(), MAX_ROWS):
+		var shown := _rows_shown()
+		for i in shown:
 			var e: Dictionary = rows[i]
 			var r := _row_rect(i)
 			var on := i == sel
@@ -1950,53 +1953,82 @@ class RankingView:
 			Ui.txt(self, ui.font, Vector2(hx, ty), ("v" + ver) if ver != "" else "-", 11, Cfg.with_a(col, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
 		# 選んだ行の中身
 		if sel >= 0 and sel < rows.size():
-			_draw_detail(rows[sel], LIST_Y + float(mini(rows.size(), MAX_ROWS)) * ROW_H + 16.0)
+			_draw_detail(rows[sel], LIST_Y + float(shown) * ROW_H + 16.0)
+
+	const DETAIL_H := 330.0
+
+	## 一覧に出す行数：中身の枡が入るぶんだけ
+	func _rows_shown() -> int:
+		var avail := Cfg.H - LIST_Y - DETAIL_H - 40.0
+		return clampi(int(avail / ROW_H), 4, mini(rows.size(), MAX_ROWS))
 
 	func _draw_detail(e: Dictionary, y0: float) -> void:
 		var x0 := 24.0
 		var w := Cfg.W - 48.0
-		var h := 210.0
-		if y0 + h > Cfg.H - 20.0:
-			y0 = Cfg.H - 20.0 - h
-		Ui.panel(self, Rect2(x0, y0, w, h), Cfg.C_GOLD, 1.0, 0.85)
+		var h := DETAIL_H
+		if y0 + h > Cfg.H - 16.0:
+			y0 = Cfg.H - 16.0 - h
+		Ui.panel(self, Rect2(x0, y0, w, h), Cfg.C_GOLD, 1.0, 0.88)
 		var y := y0 + 24.0
 		Ui.txt(self, ui.font_display, Vector2(x0 + 14, y), "%s　%d" % [String(e.get("name", "")), int(e.get("score", 0))], 18, Color(1, 1, 1))
-		Ui.txt(self, ui.font, Vector2(x0, y), "%s　%s" % [String(e.get("date", "")), Records.reach_text(e)], 11, Color(1, 1, 1, 0.75), HORIZONTAL_ALIGNMENT_RIGHT, w - 14.0)
-		y += 26.0
-		# 神々と神格
+		Ui.txt(self, ui.font, Vector2(x0, y), "%s　%s　位 %d" % [String(e.get("date", "")), Records.reach_text(e), int(e.get("lv", 1))], 11, Color(1, 1, 1, 0.75), HORIZONTAL_ALIGNMENT_RIGHT, w - 14.0)
+		y += 14.0
+		# 神ごとに：名前・神格・能力（Lv）・伝説
 		var gods: Array = e.get("gods", [])
 		var klv: Dictionary = e.get("kami_lv", {})
-		var gx := x0 + 14.0
-		for i in gods.size():
-			var gid := String(gods[i])
+		var boons: Dictionary = e.get("boons", {}) if e.get("boons") is Dictionary else {}
+		var duos: Array = []
+		for gi in gods.size():
+			var gid := String(gods[gi])
 			var k := Kami.kami(gid)
 			if k.is_empty():
 				continue
-			var c := Vector2(gx + 16.0, y + 12.0)
-			Emblem.draw(self, String(k["emblem"]), c, 13.0, k["color"], k["color2"], _t, 1.0)
-			Ui.txt(self, ui.font, Vector2(gx + 34.0, y + 10.0), ("主神 " if i == 0 else "副神 ") + String(k["name"]), 11, Cfg.with_a(k["color"], 0.95))
-			Ui.txt(self, ui.font, Vector2(gx + 34.0, y + 24.0), "神格 %d" % int(klv.get(gid, 1)), 10, Color(1, 1, 1, 0.7))
-			gx += 190.0
+			y += 22.0
+			var c := Vector2(x0 + 26.0, y + 2.0)
+			Emblem.draw(self, String(k["emblem"]), c, 11.0, k["color"], k["color2"], _t, 1.0)
+			Ui.txt(self, ui.font_bold, Vector2(x0 + 42.0, y + 6.0), "%s %s　神格 %d" % ["主神" if gi == 0 else "副神", String(k["name"]), int(klv.get(gid, 1))], 12, Cfg.with_a(k["color"], 0.95))
+			var parts: Array = []
+			for bid in boons.keys():
+				var b := Kami.boon(String(bid))
+				if b.is_empty() or String(b["kami"]) != gid:
+					continue
+				if b.has("kami2"):
+					if not duos.has(bid):
+						duos.append(bid)
+					continue
+				var info: Dictionary = boons[bid]
+				var lv := int(info.get("lv", 1))
+				var tag := "伝説 " if b.has("rar") and int(b["rar"]) == Cfg.Rar.LEGENDARY else ""
+				parts.append("%s%s%s" % [tag, String(b["name"]), (" Lv%d" % lv) if lv > 1 and tag == "" else ""])
+			y += 18.0
+			Ui.txt(self, ui.font, Vector2(x0 + 42.0, y + 4.0), "・".join(parts) if not parts.is_empty() else "能力なし", 11, Color(0.92, 0.94, 1.0, 0.9), HORIZONTAL_ALIGNMENT_LEFT, w - 56.0)
 		if gods.is_empty():
-			Ui.txt(self, ui.font, Vector2(gx, y + 12.0), "神なし", 11, Color(1, 1, 1, 0.6))
-		y += 40.0
-		# 使い魔・位・能力の数
+			y += 22.0
+			Ui.txt(self, ui.font, Vector2(x0 + 14, y + 6.0), "神なし", 12, Color(1, 1, 1, 0.6))
+		# 双神・禍神
+		var extra_parts: Array = []
+		for did in duos:
+			extra_parts.append("双神 " + String(Kami.boon(String(did))["name"]))
+		for cid in e.get("curses", []):
+			var cu := Kami.curse(String(cid))
+			if not cu.is_empty():
+				extra_parts.append("禍 " + String(cu["name"]))
+		if not extra_parts.is_empty():
+			y += 20.0
+			Ui.txt(self, ui.font, Vector2(x0 + 14, y + 6.0), "・".join(extra_parts), 11, Color(1, 0.85, 0.9, 0.9), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)
+		# 使い魔・神宝
+		y += 22.0
 		var fam := Familiar.info(String(e.get("familiar", "")))
-		var boons: Array = e.get("boons", [])
-		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "使い魔 %s　　位 %d　　能力 %d" % [String(fam.get("name", "なし")), int(e.get("lv", 1)), boons.size()], 12, Color(0.92, 0.94, 1.0, 0.9))
-		y += 24.0
-		# 神宝
 		var relics: Array = e.get("relics", [])
 		var names: Array = []
 		for rid in relics:
 			var rl := Relics.get_relic(String(rid))
 			if not rl.is_empty():
 				names.append(String(rl["name"]))
-		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "神宝　" + ("・".join(names) if not names.is_empty() else "なし"), 12, Color(0.92, 0.94, 1.0, 0.9), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)
-		y += 24.0
+		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 6.0), "使い魔 %s　　神宝 %s" % [String(fam.get("name", "なし")), "・".join(names) if not names.is_empty() else "なし"], 11, Color(0.92, 0.94, 1.0, 0.9), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)
 		# 版・環境
 		var dur := float(e.get("duration", 0.0))
 		var dur_txt := ("%d 分 %02d 秒" % [int(dur) / 60, int(dur) % 60]) if dur > 0.0 else ""
 		var ver2 := String(e.get("version", ""))
 		var vtxt := ("版 v%s（%s）" % [ver2, String(e.get("commit", ""))]) if ver2 != "" else "版 不明（古い記録）"
-		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "%s　%s　%s" % [vtxt, String(e.get("platform", "")), dur_txt], 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)
+		Ui.txt(self, ui.font, Vector2(x0 + 14, y0 + h - 12.0), "%s　%s　%s" % [vtxt, String(e.get("platform", "")), dur_txt], 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)

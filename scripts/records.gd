@@ -76,7 +76,7 @@ static func record(run_id: int, score: int, wave: int, lv: int, gods: Array, cle
 	var e := {
 		"run": run_id, "run_key": String(extra.get("run_key", str(run_id))), "name": display_name(), "score": score, "wave": wave,
 		"stage": Cfg.stage_of(maxi(wave, 1)), "lv": lv, "gods": gods.duplicate(),
-		"kami_lv": extra.get("kami_lv", {}), "relics": extra.get("relics", []), "boons": extra.get("boons", []),
+		"kami_lv": extra.get("kami_lv", {}), "relics": extra.get("relics", []), "boons": extra.get("boons", {}), "curses": extra.get("curses", []),
 		"familiar": String(extra.get("familiar", "")), "duration": float(extra.get("duration", 0.0)),
 		"cleared": cleared or prev_cleared, "endless": endless,
 		"date": Time.get_date_string_from_system().replace("-", "/"),

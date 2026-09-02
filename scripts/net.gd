@@ -35,6 +35,8 @@ func _request(path: String, method: int, body: String, extra_headers: Array, cb:
 		return
 	var r := HTTPRequest.new()
 	r.timeout = 12.0
+	# Web 版ではブラウザが gzip を展開済みなのに Godot がもう一度展開しようとして失敗する。展開は任せない
+	r.accept_gzip = false
 	add_child(r)
 	r.request_completed.connect(func(result: int, code: int, headers: PackedStringArray, raw: PackedByteArray):
 		var parsed: Variant = null
@@ -71,7 +73,8 @@ func submit(entry: Dictionary, cb: Callable) -> void:
 		"gods": entry.get("gods", []),
 		"kami_lv": entry.get("kami_lv", {}),
 		"relics": entry.get("relics", []),
-		"boons": entry.get("boons", []),
+		"boons": entry.get("boons", {}),
+		"curses": entry.get("curses", []),
 		"duration": float(entry.get("duration", 0.0)),
 	}
 	_request("/rest/v1/scores?on_conflict=run_id", HTTPClient.METHOD_POST, JSON.stringify(row),
