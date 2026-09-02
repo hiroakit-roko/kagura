@@ -221,6 +221,7 @@ func _ready() -> void:
 	relic_view.visible = false
 	ranking_view = RankingView.new()
 	_setup_view(ranking_view)
+	ranking_view.z_index = 20   # 題目・結果画面の上に重ねる
 	ranking_view.visible = false
 	overlay = OverlayView.new()
 	_setup_view(overlay)
@@ -1628,8 +1629,8 @@ class NameBox:
 	var _small := false
 
 	func _process(_delta: float) -> void:
-		# 題目・結果画面が閉じたら一緒に消える
-		if visible and not ui.overlay.visible:
+		# 題目・結果画面が閉じたら一緒に消える。記録画面の間も隠す
+		if visible and (not ui.overlay.visible or ui.ranking_view.visible):
 			visible = false
 			_editing = false
 

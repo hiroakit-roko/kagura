@@ -110,6 +110,9 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--flowtest"):
 		await _flow_test()
 		return
+	if OS.get_cmdline_user_args().has("--clicktest"):
+		await _click_test()
+		return
 	if OS.get_cmdline_user_args().has("--fantest"):
 		await _fan_test()
 		return
@@ -558,4 +561,26 @@ func _fan_test() -> void:
 				print("[fan] t=%.1f %s travel=%.0f dist=%.0f life=%.2f pos=%s vel=%s" % [_t - t0, st, tracked.travel, d, tracked.life, str(tracked.position.round()), str(tracked.vel.round())])
 				last_state = st
 	print("[fan] done")
+	get_tree().quit()
+
+
+## 題目の「記録を見る」を本物のクリックで押す
+func _click_test() -> void:
+	_no_ai = true
+	var g := Game.inst
+	await _wait(1.0)
+	var b := g.ui.name_box.rank_btn
+	print("[click] state=%d overlay=%s btn_visible=%s btn_rect=%s" % [g.state, str(g.ui.overlay.visible), str(b.visible), str(b.get_global_rect())])
+	var c := b.get_global_rect().get_center()
+	for pressed in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = pressed
+		ev.position = c
+		ev.global_position = c
+		Input.parse_input_event(ev)
+		await _wait(0.1)
+	await _wait(0.5)
+	print("[click] after: ranking_visible=%s state=%d overlay=%s rows=%d" % [str(g.ui.ranking_view.visible), g.state, str(g.ui.overlay.visible), g.ui.ranking_view.rows.size()])
+	await shot("07_click_ranking.png")
 	get_tree().quit()
