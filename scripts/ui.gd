@@ -1571,7 +1571,7 @@ class OverlayView:
 			Ui.txt(self, ui.font, Vector2(0, ry - 8.0), "踏破 %d 回　最高功徳 %d" % [int(Records.best["clears"]), int(Records.best["score"])], 11,
 					Cfg.with_a(Cfg.C_GOLD, 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		ui.name_box.place_title(ry + rh + 4.0)
-		Ui.txt(self, ui.font, Vector2(Cfg.W - 12, Cfg.H - 12), BuildInfo.label(), 10, Color(1, 1, 1, 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
+		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 12), BuildInfo.label(), 10, Color(1, 1, 1, 0.45), HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W - 12.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップで はじめる" if touch else "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1945,7 +1945,8 @@ class RankingView:
 			Ui.txt(self, ui.font, Vector2(hx + 34, ty), String(e.get("name", "")), 13, col)
 			Ui.txt(self, ui.font_bold, Vector2(hx, ty), str(int(e.get("score", 0))), 13, col, HORIZONTAL_ALIGNMENT_RIGHT, w - 250.0)
 			Ui.txt(self, ui.font, Vector2(hx, ty), Records.reach_text(e), 12, Cfg.with_a(col, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, w - 130.0)
-			Ui.txt(self, ui.font, Vector2(hx, ty), "v" + String(e.get("version", "?")), 11, Cfg.with_a(col, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
+			var ver := String(e.get("version", ""))
+			Ui.txt(self, ui.font, Vector2(hx, ty), ("v" + ver) if ver != "" else "-", 11, Cfg.with_a(col, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, w - 12.0)
 		# 選んだ行の中身
 		if sel >= 0 and sel < rows.size():
 			_draw_detail(rows[sel], LIST_Y + float(mini(rows.size(), MAX_ROWS)) * ROW_H + 16.0)
@@ -1995,4 +1996,6 @@ class RankingView:
 		# 版・環境
 		var dur := float(e.get("duration", 0.0))
 		var dur_txt := ("%d 分 %02d 秒" % [int(dur) / 60, int(dur) % 60]) if dur > 0.0 else ""
-		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "版 v%s（%s）　%s　%s" % [String(e.get("version", "?")), String(e.get("commit", "")), String(e.get("platform", "")), dur_txt], 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)
+		var ver2 := String(e.get("version", ""))
+		var vtxt := ("版 v%s（%s）" % [ver2, String(e.get("commit", ""))]) if ver2 != "" else "版 不明（古い記録）"
+		Ui.txt(self, ui.font, Vector2(x0 + 14, y + 8), "%s　%s　%s" % [vtxt, String(e.get("platform", "")), dur_txt], 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)

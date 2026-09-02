@@ -38,7 +38,8 @@ jobs:
         # 版はデプロイごとに必ず上がる（実行番号）。記録にどの版で遊んだかが残る
         run: |
           VERSION="1.${{ github.run_number }}"
-          printf '[build]\nversion="%s"\ncommit="%s"\ntime="%s"\n' "$VERSION" "${GITHUB_SHA::7}" "$(date -u +%Y-%m-%dT%H:%MZ)" > build.cfg
+          SHORT_SHA="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          printf '[build]\nversion="%s"\ncommit="%s"\ntime="%s"\n' "$VERSION" "$SHORT_SHA" "$(date -u +%Y-%m-%dT%H:%MZ)" > build.cfg
           cat build.cfg
 
       - name: Import assets
