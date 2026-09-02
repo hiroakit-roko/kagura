@@ -349,6 +349,9 @@ func _unhandled_input(e: InputEvent) -> void:
 		if overlay.visible and overlay.mode == 0 and k == KEY_R:
 			ranking_view.open()
 			return
+		if overlay.visible and overlay.mode == 0 and k == KEY_N:
+			name_box.open_at(overlay.menu_rect(2).position.y + 5.0)
+			return
 		match k:
 			KEY_1, KEY_KP_1: idx = 0
 			KEY_2, KEY_KP_2: idx = 1
@@ -378,7 +381,17 @@ func _unhandled_input(e: InputEvent) -> void:
 		click = (e as InputEventMouseButton).position
 		if overlay.visible:
 			if overlay.mode == 0:
-				start_requested.emit()
+				match overlay.menu_at(click):
+					0:
+						Sfx.play("select", -6.0)
+						start_requested.emit()
+					1:
+						Sfx.play("select", -10.0)
+						ranking_view.open()
+					2:
+						Sfx.play("select", -10.0)
+						name_box.open_at(overlay.menu_rect(2).position.y + 5.0)
+				return
 			elif overlay.mode == 2:
 				continue_requested.emit()
 			else:
@@ -1555,34 +1568,49 @@ class OverlayView:
 		Ui.txt(self, ui.font_display, Vector2(0, 252 + bob), "八百万の加護を纏いて、穢れを祓え", 17, Color(1, 0.9, 0.75, 0.95),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
-		var y := Cfg.H - 254.0
 		var touch := Game.inst != null and Game.inst.is_touch()
-		var lines := [
-			["移動", "画面をなぞる"], ["疾走", "短くなぞって離す（無敵）"], ["詠唱", "右下の札。札は拾うと戻る"],
-			["神招き", "右下の札。ゲージ 1/4 で"], ["小休止", "右上の「休」"],
-		] if touch else [
-			["移動", "WASD / 矢印"], ["疾走", "Space（無敵）"], ["詠唱", "Z　札は拾うと戻る"],
-			["神招き", "X　ゲージ 1/4 で"], ["低速 / 小休止 / 音", "Shift / P / M"],
-		]
-		y += 12.0
-		for l: Array in lines:
-			Ui.txt(self, ui.font_bold, Vector2(110, y), String(l[0]), 14, Color(1, 0.9, 0.75, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, 130)
-			Ui.txt(self, ui.font, Vector2(256, y), String(l[1]), 14, Color(0.9, 0.92, 1.0, 0.9))
-			y += 24.0
-
-		# この端末の記録（上位 5 件）と名前
-		var rows := mini(Records.entries.size(), 5)
+		# この端末の記録（上位 3 件）
+		var rows := mini(Records.entries.size(), 3)
 		var rh := 26.0 + 20.0 * float(maxi(rows, 1))
-		var ry := Cfg.H - 262.0 - rh - 44.0
-		_draw_records(ry, 5, -1, 0.95)
+		var ry := menu_rect(0).position.y - rh - 34.0
+		_draw_records(ry, 3, -1, 0.95)
 		if int(Records.best["clears"]) > 0:
 			Ui.txt(self, ui.font, Vector2(0, ry - 8.0), "踏破 %d 回　最高功徳 %d" % [int(Records.best["clears"]), int(Records.best["score"])], 11,
 					Cfg.with_a(Cfg.C_GOLD, 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		ui.name_box.place_title(ry + rh + 4.0)
+		# メニュー：大きく、押す場所を分ける
+		var labels := ["はじめる", "記録を見る", "名を刻む" if Records.player_name.strip_edges() == "" else "名を変える（%s）" % Records.display_name()]
+		var keys := ["Enter", "R", "N"]
+		var blink := 0.75 + 0.25 * sin(_t * 4.0)
+		for i in 3:
+			var r := menu_rect(i)
+			var main := i == 0
+			var col := Cfg.C_GOLD if main else Color(0.8, 0.8, 0.95)
+			draw_rect(r.grow(3.0), Color(0, 0, 0, 0.45))
+			draw_rect(r, Color(0.09, 0.06, 0.14, 0.92) if not main else Color(0.16, 0.11, 0.08, 0.95))
+			draw_rect(r, Cfg.with_a(col, (blink if main else 0.55)), false, 2.0 if main else 1.2)
+			for cx in [r.position.x + 6.0, r.end.x - 6.0]:
+				draw_circle(Vector2(cx, r.get_center().y), 2.0, Cfg.with_a(col, 0.9))
+			Ui.txt(self, ui.font_display, Vector2(r.position.x, r.get_center().y + 9.0), labels[i], 24 if main else 19,
+					Color(1, 1, 1) if main else Cfg.with_a(col, 0.95), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			if not touch:
+				Ui.txt(self, ui.font, Vector2(r.end.x - 60.0, r.get_center().y + 5.0), keys[i], 11, Color(1, 1, 1, 0.45), HORIZONTAL_ALIGNMENT_RIGHT, 48.0)
 		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 12), BuildInfo.label(), 10, Color(1, 1, 1, 0.45), HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W - 12.0)
-		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップで はじめる" if touch else "タップ / ENTER で はじめる", 22,
-				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+
+	## 題目のメニューの枡。0 はじめる / 1 記録 / 2 名前
+	func menu_rect(i: int) -> Rect2:
+		var w := Cfg.W - 140.0
+		var h := 58.0 if i == 0 else 48.0
+		var y0 := Cfg.H - 62.0 - 48.0 - 48.0 - 58.0 - 12.0 * 2.0
+		var y := y0
+		for j in i:
+			y += (58.0 if j == 0 else 48.0) + 12.0
+		return Rect2(70.0, y, w, h)
+
+	func menu_at(p: Vector2) -> int:
+		for i in 3:
+			if menu_rect(i).has_point(p):
+				return i
+		return -1
 
 	func _over() -> void:
 		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.01, 0.05, 0.8))
@@ -1705,25 +1733,29 @@ class NameBox:
 			_editing = false
 		run_id = rid
 		_small = false
+		_menu_mode = false
 		_layout(y)
 
-	## 題目：記録表の下に小さく置く（名前の変更用）
-	func place_title(y: float) -> void:
-		if run_id != -1 or not visible:
-			_editing = false
+	## 題目：メニューの「名を刻む」から開く（枡の位置に入力欄が出る。Web は入力ダイアログ）
+	func open_at(y: float) -> void:
 		run_id = -1
 		_small = true
-		_layout(y)
+		_menu_mode = true
+		_y = y
+		visible = true
+		_open()
+
+	var _menu_mode := false
 
 	func _layout(y: float) -> void:
 		_y = y
 		visible = true
 		var h := 26.0 if _small else 32.0
 		open_btn.text = "名を刻む" if Records.player_name.strip_edges() == "" else "名を変える（%s）" % Records.display_name()
-		open_btn.visible = not _editing
+		open_btn.visible = not _editing and not _menu_mode
 		open_btn.size = Vector2(0, h)
 		open_btn.reset_size()
-		rank_btn.visible = _small and not _editing
+		rank_btn.visible = _small and not _editing and not _menu_mode
 		if _small:
 			rank_btn.size = Vector2(0, h)
 			rank_btn.reset_size()
@@ -1735,10 +1767,11 @@ class NameBox:
 		edit.visible = _editing
 		ok_btn.visible = _editing
 		if _editing:
-			edit.position = Vector2(Cfg.W * 0.5 - 130.0, y)
-			edit.size = Vector2(190.0, h)
-			ok_btn.position = Vector2(Cfg.W * 0.5 + 66.0, y)
-			ok_btn.size = Vector2(64.0, h)
+			var eh := 38.0 if _menu_mode else h
+			edit.position = Vector2(Cfg.W * 0.5 - 150.0, y)
+			edit.size = Vector2(220.0, eh)
+			ok_btn.position = Vector2(Cfg.W * 0.5 + 78.0, y)
+			ok_btn.size = Vector2(72.0, eh)
 
 	func _open() -> void:
 		Sfx.play("select", -10.0)

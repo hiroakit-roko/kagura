@@ -65,6 +65,9 @@ func _process(delta: float) -> void:
 	shake = maxf(0.0, shake - delta * 34.0)
 	flash_t = maxf(0.0, flash_t - delta)
 
+	# 粒が多すぎるときは古いものから捨てる（処理落ち防止）
+	if _parts.size() > 420:
+		_parts = _parts.slice(_parts.size() - 420)
 	for i in range(_parts.size() - 1, -1, -1):
 		var p: Dictionary = _parts[i]
 		p.life -= delta

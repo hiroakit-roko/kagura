@@ -569,9 +569,9 @@ func _click_test() -> void:
 	_no_ai = true
 	var g := Game.inst
 	await _wait(1.0)
-	var b := g.ui.name_box.rank_btn
-	print("[click] state=%d overlay=%s btn_visible=%s btn_rect=%s" % [g.state, str(g.ui.overlay.visible), str(b.visible), str(b.get_global_rect())])
-	var c := b.get_global_rect().get_center()
+	var r := g.ui.overlay.menu_rect(1)
+	print("[click] state=%d overlay=%s menu_rect=%s" % [g.state, str(g.ui.overlay.visible), str(r)])
+	var c := r.get_center()
 	for pressed in [true, false]:
 		var ev := InputEventMouseButton.new()
 		ev.button_index = MOUSE_BUTTON_LEFT

@@ -221,7 +221,7 @@ godot --path . -- --capture --deathtest  # ゲームオーバー→リスター�
 
 - 走りが終わると `scripts/net.gd` が Supabase の REST（`/rest/v1/scores`）へ記録を送り、結果画面に「世界の記録 第 N 位」を出す。
   同じ走り（run_id）は置き換える（踏破 → 祟りの参道で倒れた場合）。名前を後から付けると送り直す。
-- 題目の「記録を見る」（キーボードは R）で「この端末」「世界」の一覧。行を選ぶと、その走りの 神々と神格・使い魔・神宝・能力の数・
+- 題目のメニュー「記録を見る」（キーボードは R）で「この端末」「世界」の一覧。行を選ぶと、その走りの 神々と神格・使い魔・神宝・能力の数・
   **版（version と commit）**・環境・所要時間 が見える。
 - 設定は `supabase.cfg` の `url` と `anon_key`。空なら世界のランキングは無効で、端末内の記録だけになる。
 - テーブルは `supabase/schema.sql` を Supabase の SQL Editor で実行して作る（RLS：anon は insert/update/select のみ）。

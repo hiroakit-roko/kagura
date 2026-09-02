@@ -243,7 +243,9 @@ func _physics_process(delta: float) -> void:
 			or position.x < -260.0 or position.x > Cfg.W + 260.0:
 		queue_free()
 		return
-	queue_redraw()
+	# 見た目の描き直しは 1 フレームおき（30fps）。動き自体は毎フレーム
+	if (Engine.get_physics_frames() + (get_instance_id() & 1)) % 2 == 0 or flash > 0.0:
+		queue_redraw()
 
 
 # ---------- 神威 ----------
@@ -546,7 +548,8 @@ func _behavior(delta: float) -> void:
 
 ## ウェーブが進むほど発射間隔を少しずつ詰める
 func _cool(lo: float, hi: float) -> float:
-	return randf_range(lo, hi) * clampf(0.85 - float(wave) * 0.015, 0.5, 1.0)
+	# 弾は少し控えめに（×1.18）。後半ほど間隔は詰まるが下限は 0.55
+	return randf_range(lo, hi) * 1.18 * clampf(0.85 - float(wave) * 0.015, 0.55, 1.0)
 
 
 ## 弾速もウェーブでじわじわ上がる

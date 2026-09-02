@@ -80,7 +80,8 @@ func _physics_process(delta: float) -> void:
 		else:
 			queue_free()
 	rotation = sin(_t * 2.2) * 0.35 if kind != Kind.XP else _t * 1.6
-	queue_redraw()
+	if (Engine.get_physics_frames() + (get_instance_id() & 1)) % 2 == 0:
+		queue_redraw()
 
 
 func color_of() -> Color:
