@@ -28,10 +28,62 @@ func _headers(extra: Array = []) -> PackedStringArray:
 	return h
 
 
+var _js_ready := false
+var _js_cbs := {}   # id -> {"js": JavaScriptObject, "cb": Callable}
+var _js_seq := 0
+
+
+## Web 版：ブラウザの fetch を使う（Godot の HTTPRequest はブラウザが展開済みの gzip を再展開して失敗する）
+func _js_request(path: String, method: int, body: String, extra_headers: Array, cb: Callable) -> void:
+	if not _js_ready:
+		_js_ready = true
+		JavaScriptBridge.eval("""
+window.kaguraFetch = function(url, method, headersJson, body, cb) {
+  var opt = {method: method, headers: JSON.parse(headersJson)};
+  if (body && body.length > 0) opt.body = body;
+  fetch(url, opt).then(function(r) {
+    return r.text().then(function(t) { cb(r.status, t, r.headers.get('content-range') || ''); });
+  }).catch(function(e) { cb(0, String(e), ''); });
+};""", true)
+	var hd := {}
+	for h in _headers(extra_headers):
+		var hs := String(h)
+		var i := hs.find(":")
+		if i > 0:
+			hd[hs.substr(0, i).strip_edges()] = hs.substr(i + 1).strip_edges()
+	_js_seq += 1
+	var id := _js_seq
+	var js_cb := JavaScriptBridge.create_callback(func(args: Array):
+		var code := int(args[0]) if args.size() > 0 else 0
+		var txt := String(args[1]) if args.size() > 1 else ""
+		var range_h := String(args[2]) if args.size() > 2 else ""
+		var parsed: Variant = null
+		if txt != "":
+			var j := JSON.new()
+			if j.parse(txt) == OK:
+				parsed = j.data
+		var headers := PackedStringArray()
+		if range_h != "":
+			headers.append("content-range: " + range_h)
+		_js_cbs.erase(id)
+		cb.call(code >= 200 and code < 300, code, parsed, headers))
+	_js_cbs[id] = {"js": js_cb, "cb": cb}
+	var mname := "GET"
+	match method:
+		HTTPClient.METHOD_POST: mname = "POST"
+		HTTPClient.METHOD_PATCH: mname = "PATCH"
+		HTTPClient.METHOD_DELETE: mname = "DELETE"
+	var win := JavaScriptBridge.get_interface("window")
+	win.kaguraFetch(url + path, mname, JSON.stringify(hd), body, js_cb)
+
+
 ## 汎用リクエスト。cb(ok: bool, code: int, body: Variant, headers: PackedStringArray)
 func _request(path: String, method: int, body: String, extra_headers: Array, cb: Callable) -> void:
 	if not configured():
 		cb.call(false, 0, null, PackedStringArray())
+		return
+	if OS.has_feature("web"):
+		_js_request(path, method, body, extra_headers, cb)
 		return
 	var r := HTTPRequest.new()
 	r.timeout = 12.0
