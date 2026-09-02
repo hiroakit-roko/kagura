@@ -168,7 +168,7 @@ func _vortex_pull(delta: float) -> void:
 
 func _become_cloud() -> void:
 	var z := Zone.new()
-	z.setup(position, "cloud", 170.0, 3.0, zone_dmg, color)
+	z.setup(position, "cloud", 170.0, zone_life if zone_life > 2.0 else 3.0, zone_dmg, color)
 	Game.inst.world.add_child.call_deferred(z)
 	queue_free()
 
@@ -189,7 +189,7 @@ func _on_area(a: Area2D) -> void:
 		if eb.friendly:
 			return
 		if reflect:
-			eb.reflect_to_friendly(dmg * 0.6)
+			eb.reflect_to_friendly(dmg * 1.0)
 			Sfx.play("deflect", -14.0, randf_range(0.95, 1.15), 0.03)
 		elif eraser and randf() < erase_chance:
 			eb.vanish()

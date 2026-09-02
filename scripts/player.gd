@@ -529,83 +529,119 @@ func _try_cast() -> void:
 	cast_charges -= 1
 	var kami := main_god()
 	var col := kami_color(kami)
-	var dmg := base_damage() * 5.0 * Kami.kami_power(int(kami_lv.get(kami, 1)))
+	var dmg := base_damage() * 8.0 * Kami.kami_power(int(kami_lv.get(kami, 1)))
 	var from := position + Vector2(0, -30.0)
 	var k := Kami.kami(kami)
-	Fx.ring(from, col, 6.0, 60.0, 0.25, 3.0)
-	Sfx.play("cast", -8.0, randf_range(0.95, 1.05))
+	# 共通の見せ方：足元の輪、光条、短い停止、色の閃き
+	Fx.ring(from, col, 8.0, 90.0, 0.3, 4.0)
+	Fx.ring(from, Color(1, 1, 1), 4.0, 50.0, 0.2, 2.0)
+	Fx.rays(from, col, 12, 10.0, 70.0, 0.3)
+	Fx.puff(from, 10.0, 70.0, Cfg.with_a(col, 0.9), 0.35)
+	Fx.flash(Cfg.with_a(col, 0.18), 0.18)
+	Fx.shake_add(4.0)
+	Game.inst.hitstop(0.06, 0.1)
+	Sfx.play("cast", -6.0, randf_range(0.95, 1.05))
+	Sfx.play("suzu", -14.0, 1.3)
 	Game.inst.ui.banner_small(String(k["cast"]), col)
 	match kami:
 		"ama":
-			var b := _cast_bullet(kami, 5, 44.0)
+			# 八咫鏡：大きな鏡が前に浮き、敵弾を倍の威力で跳ね返す。触れた敵も焼く
+			var b := _cast_bullet(kami, 5, 58.0)
 			b.orb = true
 			b.reflect = true
 			b.pierce = 999
-			b.life = 2.6
-			b.setup(from, Vector2(0, -150.0), dmg, true)
+			b.life = 3.6
+			b.setup(from, Vector2(0, -120.0), dmg, true)
 			Game.inst.world.add_child(b)
 		"susa":
-			var b := _cast_bullet(kami, 6, 26.0)
+			# 渦潮：大きな渦が敵を巻き込み、奥へ押し流す
+			var b := _cast_bullet(kami, 6, 36.0)
 			b.orb = true
 			b.mode = "vortex"
 			b.pierce = 999
-			b.kb = 480.0
-			b.life = 2.2
-			b.setup(from, Vector2(0, -210.0), dmg, true)
+			b.kb = 760.0
+			b.life = 2.6
+			b.setup(from, Vector2(0, -190.0), dmg, true)
 			Game.inst.world.add_child(b)
 		"take":
-			var b := _cast_bullet(kami, 2, 12.0)
+			# 雷雲：まず近い敵 3 体に雷を落とし、前方に長く残る雷雲を置く
+			var used := {}
+			for i in 3:
+				var t := Combat.nearest_enemy(position, 900.0, null, used)
+				if t == null:
+					break
+				used[t.get_instance_id()] = true
+				Combat.lightning(t, dmg * 0.6, Vector2(t.position.x + randf_range(-40, 40), -30.0), 0)
+			var b := _cast_bullet(kami, 2, 14.0)
 			b.orb = true
 			b.mode = "cloud"
-			b.zone_dmg = dmg * 0.5
+			b.zone_dmg = dmg * 0.7
+			b.zone_life = 4.5
 			b.setup(from, Vector2(0, -420.0), dmg, true)
 			Game.inst.world.add_child(b)
 		"tsuki":
-			var b := _cast_bullet(kami, 2, 14.0)
+			# 新月：3 体まで貫き、大きな宿命を刻んで広く爆ぜさせる
+			var b := _cast_bullet(kami, 2, 16.0)
 			b.orb = true
-			b.pierce = 1
-			b.doom = dmg * 1.6
-			b.setup(from, Vector2(0, -480.0), dmg * 0.5, true)
+			b.pierce = 3
+			b.doom = dmg * 2.4
+			b.setup(from, Vector2(0, -520.0), dmg * 0.6, true)
 			Game.inst.world.add_child(b)
 		"uzume":
-			var b := _cast_bullet(kami, 2, 13.0)
+			# 魅惑の舞：貫いた敵を必ず魅了（6 秒）。花弁が舞う
+			Fx.petals(from, col, 24, 260.0)
+			var b := _cast_bullet(kami, 2, 15.0)
 			b.orb = true
 			b.charm_chance = 1.0
-			b.pierce = 2
-			b.setup(from, Vector2(0, -480.0), dmg * 0.6, true)
+			b.pierce = 5
+			b.setup(from, Vector2(0, -520.0), dmg, true)
 			Game.inst.world.add_child(b)
 		"inari":
+			# 狐火乱舞：9 本の狐火が敵を追い、狐の印を刻む
 			var target := Combat.nearest_enemy(position, 900.0)
-			for i in 6:
-				var fb := spawn_foxfire(from + Vector2((float(i) - 2.5) * 12.0, 0), target, dmg * 0.35, "cast")
+			for i in 9:
+				var fb := spawn_foxfire(from + Vector2((float(i) - 4.0) * 12.0, 0), target, dmg * 0.45, "cast")
 				if i == 0:
 					fb.orb = true
 		"suku":
-			var b := _cast_bullet(kami, 9, 12.0)
+			# 大霧：広く長く残る酒気の霧。自身も一息つく（HP 回復）
+			heal(6.0, true)
+			var b := _cast_bullet(kami, 9, 13.0)
 			b.orb = true
 			b.zone_kind = "fog"
-			b.zone_r = 110.0 * (1.0 + val("suku_u1") * 0.01)
-			b.zone_life = 4.5 * (1.0 + val("suku_u2") * 0.01)
+			b.zone_r = 135.0 * (1.0 + val("suku_u1") * 0.01)
+			b.zone_life = 6.0 * (1.0 + val("suku_u2") * 0.01)
 			b.life = 0.55
-			b.setup(from, Vector2(0, -520.0), dmg * 0.5, true)
+			b.setup(from, Vector2(0, -520.0), dmg * 0.6, true)
 			Game.inst.world.add_child(b)
 		"iza":
-			var b := _cast_bullet(kami, 2, 12.0)
+			# 黄泉の凍土：広い凍土を置き、その場にいた敵を凍らせる
+			var b := _cast_bullet(kami, 2, 14.0)
 			b.orb = true
 			b.zone_kind = "frost"
-			b.zone_r = 100.0
-			b.zone_life = 4.0
-			b.zone_dmg = dmg * 0.6
+			b.zone_r = 130.0
+			b.zone_life = 5.0
+			b.zone_dmg = dmg * 0.8
 			b.life = 0.6
-			b.setup(from, Vector2(0, -520.0), dmg * 0.5, true)
+			b.setup(from, Vector2(0, -520.0), dmg * 0.6, true)
 			Game.inst.world.add_child(b)
+			for e in Game.enemies():
+				if e.position.distance_to(from + Vector2(0, -312.0)) <= 130.0:
+					e.freeze(1.2)
 		"saru":
-			haste_t = 4.0
-			Fx.slash(from, -PI * 0.5, 160.0, col, 2.4, 0.3, 14.0)
+			# 道開き：前方の敵弾を吹き飛ばし、大きな風の刃を 3 枚放つ。しばらく移動と連射が速い
+			haste_t = 6.0
+			Fx.slash(from, -PI * 0.5, 220.0, col, 3.0, 0.35, 18.0)
 			Game.inst.drop_orb(from + Vector2(randf_range(-40, 40), -240.0))   # 風の先に札が飛ぶ
 			for eb in Game.ebullets():
-				if is_instance_valid(eb) and eb.position.y < position.y and absf(eb.position.x - position.x) < 160.0:
+				if is_instance_valid(eb) and eb.position.y < position.y and absf(eb.position.x - position.x) < 220.0:
 					eb.vanish()
+			for i in 3:
+				var b := _cast_bullet(kami, 11, 11.0)
+				b.pierce = 999
+				var a := -PI * 0.5 + (float(i) - 1.0) * deg_to_rad(14.0)
+				b.setup(from, Vector2(cos(a), sin(a)) * 820.0, dmg * 0.9, true)
+				Game.inst.world.add_child(b)
 			Sfx.play("dash", -6.0, 0.8)
 
 
@@ -623,7 +659,7 @@ func _cast_bullet(kami: String, shape: int, radius: float) -> Bullet:
 # ---------- 神招き（主神の技） ----------
 
 func add_call_gauge(amount: float) -> void:
-	if main_god() == "":
+	if main_god() == "" or call_t > 0.0:   # 神招きの最中は溜まらない（一掃で即再発動できないように）
 		return
 	call_gauge = clampf(call_gauge + amount * cost_mult("gauge") * (1.25 if has_relic("r_gauge") else 1.0), 0.0, 1.0)
 
@@ -759,6 +795,8 @@ func in_fog() -> bool:
 
 
 func _upkeep(delta: float) -> void:
+	# 神招きのゲージは時間で溜まるのが主（満タンまで約 45 秒、1/4 なら約 11 秒）
+	add_call_gauge(delta * 0.022)
 	dash_buff_t = maxf(0.0, dash_buff_t - delta)
 	graze_buff_t = maxf(0.0, graze_buff_t - delta)
 	fan_heal_cd = maxf(0.0, fan_heal_cd - delta)
@@ -868,7 +906,7 @@ func take_damage(d: float, _crit := false, _at := Vector2.ZERO, source := "") ->
 		return
 	hp -= d
 	iframe = 1.0 * (1.25 if familiar_id == "shiki" else 1.0) * (1.4 if has_relic("r_iframe") else 1.0)
-	add_call_gauge(0.12)
+	add_call_gauge(0.08)
 	Fx.shake_add(9.0)
 	Fx.flash(Color(1, 0.3, 0.4, 0.25), 0.15)
 	Fx.burst(position, Cfg.C_ENEMY, 14, 250.0, 4.0, 0.45)

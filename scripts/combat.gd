@@ -96,7 +96,7 @@ static func hit(e: Node2D, dmg: float, at: Vector2, opts: Dictionary = {}) -> fl
 	en.last_tag = tag
 	en.take_damage(final, crit, at, quiet)
 	if p != null:
-		p.add_call_gauge(final * 0.0006)
+		p.add_call_gauge(final * 0.00012)   # 与ダメージは補助（主は時間経過）
 		if tag == "lightning" and _has("take_u8"):
 			p.add_call_gauge(_val("take_u8") * 0.01)
 		if kami != "":
@@ -258,7 +258,7 @@ static func status_damage(en: Enemy, dmg: float, tag: String) -> void:
 	Fx.number(en.position + Vector2(randf_range(-6, 6), -en.radius), str(int(round(dmg))), col, 11.0)
 	var p := _p()
 	if p != null:
-		p.add_call_gauge(dmg * 0.0004)
+		p.add_call_gauge(dmg * 0.0001)
 		if kami != "":
 			p.add_kami_xp(kami, dmg)
 	if en.hp <= 0.0:
