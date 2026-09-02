@@ -2,7 +2,7 @@ class_name Ui
 extends CanvasLayer
 
 ## HUD・主神選択・恩恵選択・神酒・タイトル/ゲームオーバー画面。すべて _draw で描画する。
-## フォントは Web 版でも日本語が出るようプロジェクトに同梱した TTF を使う。
+## 漆塗りの板に金の縁、和紙のカードという調子で、ゲージ類も装飾を付ける。
 
 signal kami_chosen(id: String)
 signal boon_chosen(idx: int)
@@ -19,6 +19,9 @@ var kami_view: KamiChoiceView
 var boons_view: BoonsView
 var miki_view: MikiView
 var overlay: OverlayView
+
+const LACQUER := Color(0.07, 0.045, 0.10, 0.92)
+const GOLD := Color(0.95, 0.80, 0.45)
 
 
 static func load_fonts() -> Array:
@@ -38,6 +41,9 @@ static func load_fonts() -> Array:
 	return [body, bold, disp]
 
 
+const BRK := TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND
+
+
 static func txt(ci: CanvasItem, f: Font, pos: Vector2, s: String, size: float, col: Color,
 		align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0, shadow := true) -> void:
 	if f == null:
@@ -48,15 +54,10 @@ static func txt(ci: CanvasItem, f: Font, pos: Vector2, s: String, size: float, c
 	ci.draw_string(f, pos, s, align, width, int(size), col)
 
 
-## 縦書き（1 文字ずつ下へ）
-static func vtxt(ci: CanvasItem, f: Font, pos: Vector2, s: String, size: float, col: Color) -> void:
-	if f == null:
-		return
-	var y := pos.y
-	for ch in s:
-		ci.draw_string(f, Vector2(pos.x - size * 0.5, y) + Vector2(1.5, 1.5), ch, HORIZONTAL_ALIGNMENT_CENTER, size, int(size), Color(0, 0, 0, col.a * 0.6))
-		ci.draw_string(f, Vector2(pos.x - size * 0.5, y), ch, HORIZONTAL_ALIGNMENT_CENTER, size, int(size), col)
-		y += size * 1.08
+static func para(ci: CanvasItem, f: Font, pos: Vector2, s: String, width: float, size: int, lines: int, col: Color,
+		align := HORIZONTAL_ALIGNMENT_LEFT) -> void:
+	ci.draw_multiline_string(f, pos + Vector2(1.2, 1.2), s, align, width, size, lines, Color(0, 0, 0, col.a * 0.5), BRK)
+	ci.draw_multiline_string(f, pos, s, align, width, size, lines, col, BRK)
 
 
 ## 麻の葉風の背景模様
@@ -78,6 +79,60 @@ static func pattern(ci: CanvasItem, rect: Rect2, col: Color, step := 46.0, t := 
 			x += step
 		y += step * 0.87
 		row += 1
+
+
+## 漆の板：暗い地に金の細縁と角飾り
+static func panel(ci: CanvasItem, r: Rect2, col := GOLD, a := 1.0, fill_a := 0.85) -> void:
+	ci.draw_rect(r.grow(2.0), Color(0, 0, 0, 0.35 * a))
+	ci.draw_rect(r, Color(LACQUER.r, LACQUER.g, LACQUER.b, fill_a * a))
+	ci.draw_rect(r, Cfg.with_a(col, 0.55 * a), false, 1.2)
+	ci.draw_rect(r.grow(-3.0), Cfg.with_a(col, 0.18 * a), false, 1.0)
+	for cx in [r.position.x + 5.0, r.end.x - 5.0]:
+		for cy in [r.position.y + 5.0, r.end.y - 5.0]:
+			ci.draw_circle(Vector2(cx, cy), 1.6, Cfg.with_a(col, 0.9 * a))
+
+
+## 装飾つきの横ゲージ：内側の光、上端のハイライト、目盛り、流れる光沢
+static func bar(ci: CanvasItem, r: Rect2, k: float, col: Color, t: float, ticks := 4, frame := GOLD) -> void:
+	ci.draw_rect(r.grow(3.0), Color(0, 0, 0, 0.5))
+	ci.draw_rect(r.grow(1.0), Cfg.with_a(frame, 0.55), false, 1.0)
+	ci.draw_rect(r, Color(0.06, 0.04, 0.09, 0.95))
+	k = clampf(k, 0.0, 1.0)
+	if k > 0.0:
+		var f := Rect2(r.position, Vector2(r.size.x * k, r.size.y))
+		ci.draw_rect(f, col.darkened(0.35))
+		ci.draw_rect(Rect2(f.position, Vector2(f.size.x, f.size.y * 0.55)), col)
+		ci.draw_rect(Rect2(f.position, Vector2(f.size.x, 2.0)), Color(1, 1, 1, 0.35))
+		# 流れる光沢
+		var sx := fmod(t * 120.0, r.size.x + 60.0) - 30.0
+		var gx := clampf(sx, 0.0, f.size.x)
+		if sx > 0.0 and sx < f.size.x:
+			ci.draw_rect(Rect2(f.position.x + gx - 8.0, f.position.y, 16.0, f.size.y), Color(1, 1, 1, 0.16))
+		# 先端の輝き
+		ci.draw_circle(Vector2(f.end.x, f.position.y + f.size.y * 0.5), f.size.y * 0.55, Cfg.with_a(col.lightened(0.4), 0.55))
+	for i in range(1, ticks):
+		var x := r.position.x + r.size.x * float(i) / float(ticks)
+		ci.draw_line(Vector2(x, r.position.y), Vector2(x, r.end.y), Color(0, 0, 0, 0.45), 1.0)
+	ci.draw_rect(r, Color(1, 1, 1, 0.12), false, 1.0)
+
+
+## 神格の輪：紋章の周りに神徳の溜まりを弧で示す
+static func kami_ring(ci: CanvasItem, p: Player, id: String, c: Vector2, r: float, t: float, a := 1.0, show_lv := true) -> void:
+	var k := Kami.kami(id)
+	var col: Color = k["color"]
+	var lv: int = p.kami_lv.get(id, 1)
+	var need := Kami.kami_xp_need(lv)
+	var frac := clampf(float(p.kami_xp.get(id, 0.0)) / maxf(1.0, need), 0.0, 1.0) if lv < 10 else 1.0
+	ci.draw_circle(c, r + 6.0, Color(0.05, 0.03, 0.08, 0.7 * a))
+	ci.draw_arc(c, r + 5.0, 0, TAU, 40, Cfg.with_a(col, 0.25 * a), 3.0, true)
+	ci.draw_arc(c, r + 5.0, -PI * 0.5, -PI * 0.5 + TAU * frac, 40, Cfg.with_a(col, 0.95 * a), 3.0, true)
+	Emblem.draw(ci, String(k["emblem"]), c, r, col, k["color2"], t, a)
+	if show_lv:
+		var bp := c + Vector2(r * 0.75, r * 0.75)
+		ci.draw_circle(bp, 8.5, Color(0.05, 0.03, 0.08, 0.95 * a))
+		ci.draw_arc(bp, 8.5, 0, TAU, 16, Cfg.with_a(col, 0.9 * a), 1.2, true)
+		var ui := Game.inst.ui
+		Ui.txt(ci, ui.font_bold, bp + Vector2(-8.5, 4.0), str(lv), 10, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 17.0, false)
 
 
 func _ready() -> void:
@@ -155,7 +210,14 @@ func banner(text: String, sub := "", col := Color(1, 1, 1)) -> void:
 	hud.banner_text = text
 	hud.banner_sub = sub
 	hud.banner_col = col
-	hud.banner_t = 2.2
+	hud.banner_t = 2.4
+
+
+## 小さな告知（詠唱名など）：画面下寄りに短く
+func banner_small(text: String, col := Color(1, 1, 1)) -> void:
+	hud.small_text = text
+	hud.small_col = col
+	hud.small_t = 1.0
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -214,7 +276,7 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 # =====================================================================
-## 選択系ビューの共通部分（カード矩形・ホバー・フェード）
+## 選択系ビューの共通部分
 class ChoiceView:
 	extends Control
 
@@ -246,11 +308,12 @@ class ChoiceView:
 		return -1
 
 	func backdrop(col: Color) -> void:
-		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.03, 0.02, 0.06, 0.86 * anim))
+		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.03, 0.02, 0.06, 0.88 * anim))
 		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Cfg.with_a(col, 0.05 * anim), 52.0, _t)
-		# 上下の帯
 		draw_rect(Rect2(0, 0, Cfg.W, 6), Cfg.with_a(col, 0.6 * anim))
 		draw_rect(Rect2(0, Cfg.H - 6, Cfg.W, 6), Cfg.with_a(col, 0.6 * anim))
+		draw_rect(Rect2(0, 6, Cfg.W, 1), Color(1, 1, 1, 0.15 * anim))
+		draw_rect(Rect2(0, Cfg.H - 7, Cfg.W, 1), Color(1, 1, 1, 0.15 * anim))
 
 	## 和紙風のカード地
 	func card_bg(r: Rect2, col: Color, sel: bool, a: float) -> void:
@@ -262,7 +325,6 @@ class ChoiceView:
 		if sel:
 			draw_rect(r.grow(5.0), Cfg.with_a(col, 0.35 * a), false, 1.5)
 			draw_rect(r, Cfg.with_a(col, 0.06 * a))
-		# 角飾り
 		for cx in [r.position.x + 8.0, r.end.x - 8.0]:
 			for cy in [r.position.y + 10.0, r.end.y - 10.0]:
 				draw_circle(Vector2(cx, cy), 1.8, Cfg.with_a(col, 0.8 * a))
@@ -277,12 +339,16 @@ class HudView:
 	var banner_sub := ""
 	var banner_col := Color(1, 1, 1)
 	var banner_t := 0.0
+	var small_text := ""
+	var small_col := Color(1, 1, 1)
+	var small_t := 0.0
 	var _t := 0.0
+	var _hp_shown := 1.0
 
 	func _process(delta: float) -> void:
 		_t += delta
-		if banner_t > 0.0:
-			banner_t = maxf(0.0, banner_t - delta)
+		banner_t = maxf(0.0, banner_t - delta)
+		small_t = maxf(0.0, small_t - delta)
 		queue_redraw()
 
 	func _draw() -> void:
@@ -301,66 +367,76 @@ class HudView:
 			_draw_boss(g)
 		if banner_t > 0.0:
 			_draw_banner()
-		if g.state == Game.St.PAUSE:
-			draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.03, 0.06, 0.6))
-			Ui.txt(self, ui.font_display, Vector2(0, 460), "小休止", 52, Color(1, 1, 1),
+		if small_t > 0.0:
+			var a := clampf(small_t * 2.0, 0.0, 1.0)
+			Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 150.0), small_text, 20, Cfg.with_a(small_col, a),
 					HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-			Ui.txt(self, ui.font, Vector2(0, 500), "画面をタップ か P で再開" if (Touch.inst != null and Touch.inst.active) else "P で再開", 18,
+		if g.state == Game.St.PAUSE:
+			draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.03, 0.06, 0.62))
+			Ui.txt(self, ui.font_display, Vector2(0, 300), "小休止", 52, Color(1, 1, 1),
+					HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			Ui.txt(self, ui.font, Vector2(0, 336), "画面をタップ か P で再開" if (Touch.inst != null and Touch.inst.active) else "P で再開", 16,
 					Color(0.85, 0.9, 1.0, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 			if p != null and is_instance_valid(p):
-				_draw_boon_list(p, 560.0)
+				_draw_build(p, 390.0)
 
-	func _bar(r: Rect2, k: float, col: Color, bg := Color(0.08, 0.06, 0.12, 0.85)) -> void:
-		draw_rect(r.grow(2.0), Color(0, 0, 0, 0.45))
-		draw_rect(r, bg)
-		if k > 0.0:
-			var f := r
-			f.size.x = r.size.x * clampf(k, 0.0, 1.0)
-			draw_rect(f, col)
-			draw_rect(Rect2(f.position, Vector2(f.size.x, 2.0)), Color(1, 1, 1, 0.28))
-		draw_rect(r, Color(1, 1, 1, 0.16), false, 1.0)
-
+	## HP：命の帯
 	func _draw_hp(p: Player) -> void:
-		var r := Rect2(18, 18, 240, 15)
 		var k: float = p.hp / maxf(1.0, float(p.stats["max_hp"]))
+		_hp_shown = lerpf(_hp_shown, k, 0.15)
+		var r := Rect2(44, 16, 224, 14)
+		Ui.panel(self, Rect2(12, 8, 270, 32), Ui.GOLD, 1.0, 0.7)
+		Ui.txt(self, ui.font_display, Vector2(20, 30), "命", 18, Ui.GOLD)
 		var col := Cfg.C_HP.lerp(Color(1, 0.35, 0.35), clampf(1.0 - k * 1.6, 0.0, 1.0))
-		_bar(r, k, col)
-		Ui.txt(self, ui.font_bold, Vector2(24, 30), "%d / %d" % [int(ceil(p.hp)),
-				int(p.stats["max_hp"])], 12, Color(1, 1, 1, 0.95))
+		# 減った直後は白い残り帯を見せる
+		if _hp_shown > k + 0.005:
+			draw_rect(Rect2(r.position + Vector2(r.size.x * k, 0), Vector2(r.size.x * (_hp_shown - k), r.size.y)), Color(1, 1, 1, 0.55))
+		Ui.bar(self, r, k, col, _t, 5)
+		Ui.txt(self, ui.font_bold, Vector2(r.position.x, r.position.y + 11), "%d / %d" % [int(ceil(p.hp)), int(p.stats["max_hp"])],
+				11, Color(1, 1, 1, 0.95), HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 6.0)
 		if p.shield > 0:
-			draw_circle(Vector2(272, 26), 7.0, Cfg.with_a(Cfg.C_GOLD, 0.9))
-			draw_arc(Vector2(272, 26), 9.5, 0, TAU, 16, Color(1, 1, 1, 0.5), 1.0, true)
+			draw_circle(Vector2(292, 24), 8.0, Cfg.with_a(Cfg.C_GOLD, 0.9))
+			draw_arc(Vector2(292, 24), 10.5, 0, TAU, 16, Color(1, 1, 1, 0.5), 1.0, true)
+			Ui.txt(self, ui.font_display, Vector2(284, 29), "鏡", 11, Cfg.C_INK, HORIZONTAL_ALIGNMENT_CENTER, 16, false)
 
+	## 経験値：位の帯（下端）
 	func _draw_xp(p: Player) -> void:
-		var r := Rect2(18, Cfg.H - 24, Cfg.W - 36, 9)
-		_bar(r, p.xp / maxf(1.0, p.xp_next), Cfg.C_XP)
-		Ui.txt(self, ui.font_bold, Vector2(18, Cfg.H - 31), "位 %d" % p.level, 13,
-				Color(0.8, 0.95, 1.0))
-		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 31), "%d / %d" % [int(p.xp), int(p.xp_next)],
-				11, Color(0.7, 0.85, 1.0, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W - 18)
+		var r := Rect2(70, Cfg.H - 22, Cfg.W - 90, 8)
+		Ui.panel(self, Rect2(10, Cfg.H - 34, Cfg.W - 20, 30), Ui.GOLD, 1.0, 0.6)
+		# 勾玉の印と位
+		var mp := Vector2(28, Cfg.H - 19)
+		draw_circle(mp, 7.0, Cfg.C_XP)
+		draw_circle(mp + Vector2(-2, -2), 2.0, Color(1, 1, 1, 0.9))
+		Ui.txt(self, ui.font_display, Vector2(40, Cfg.H - 13), "位 %d" % p.level, 14, Color(0.9, 0.97, 1.0))
+		Ui.bar(self, r, p.xp / maxf(1.0, p.xp_next), Cfg.C_XP, _t, 8)
+		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 25), "%d / %d" % [int(p.xp), int(p.xp_next)],
+				10, Color(0.7, 0.85, 1.0, 0.85), HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W - 22)
 
-	## 左側：主神と副神の紋章、その下に所持恩恵のチップ
+	## 左側：迎えた神々（紋章＋神格の輪＋神器名）
 	func _draw_gods(p: Player) -> void:
-		var y := 62.0
+		var y := 52.0
 		for i in p.gods.size():
-			var k := Kami.kami(p.gods[i])
-			var r := 17.0 if i == 0 else 12.0
-			var c := Vector2(18.0 + r + 2.0, y + r)
-			Emblem.draw(self, String(k["emblem"]), c, r, k["color"], k["color2"], _t, 0.95)
-			Ui.txt(self, ui.font_display, Vector2(c.x + r + 8.0, y + r + 5.0),
-					String(k["name"]), 14 if i == 0 else 12, Cfg.with_a(k["color"], 0.95))
-			if i == 0:
-				Ui.txt(self, ui.font, Vector2(c.x + r + 8.0, y + 6.0), "主神", 9, Color(1, 0.9, 0.7, 0.8))
-			else:
-				Ui.txt(self, ui.font, Vector2(c.x + r + 8.0, y + 4.0), "副神", 9, Color(0.85, 0.85, 1.0, 0.7))
-			y += r * 2.0 + 12.0
-		_draw_chips(p, y + 4.0)
+			var id := String(p.gods[i])
+			var k := Kami.kami(id)
+			var main := i == 0
+			var r := 17.0 if main else 13.0
+			var c := Vector2(14.0 + 24.0, y + r + 6.0)
+			var w := 176.0 if main else 150.0
+			Ui.panel(self, Rect2(12, y, w, r * 2.0 + 14.0), k["color"], 0.9, 0.55)
+			Ui.kami_ring(self, p, id, c, r, _t, 1.0, true)
+			Ui.txt(self, ui.font, Vector2(c.x + r + 12.0, y + 14.0), "主神" if main else "副神", 9,
+					Cfg.with_a(Color(1, 0.9, 0.7) if main else Color(0.85, 0.85, 1.0), 0.8))
+			Ui.txt(self, ui.font_display, Vector2(c.x + r + 12.0, y + 30.0), String(k["name"]), 14 if main else 12,
+					Cfg.with_a(k["color"], 0.95))
+			Ui.txt(self, ui.font, Vector2(c.x + r + 12.0, y + 43.0 if main else y + 40.0), String(k["weapon"]) + ("" if main else "（半）"), 9,
+					Color(1, 1, 1, 0.7))
+			y += r * 2.0 + 22.0
+		_draw_chips(p, y + 2.0)
 
 	func _draw_chips(p: Player, y0: float) -> void:
-		var x := 20.0
+		var x := 16.0
 		var y := y0
-		var ids: Array = p.boons.keys()
-		for id: String in ids:
+		for id: String in p.boons.keys():
 			var b := Kami.boon(id)
 			if b.is_empty():
 				continue
@@ -375,111 +451,130 @@ class HudView:
 			if lv > 1:
 				Ui.txt(self, ui.font_bold, Vector2(x + 11, y + 22), str(lv), 9, Cfg.C_GOLD)
 			y += 24.0
-			if y > Cfg.H - 180.0:
+			if y > Cfg.H - 200.0:
 				y = y0
 				x += 24.0
 
-	## 右下：詠唱の残弾・疾走・神招きゲージ
+	## 右下：詠唱・疾走・神招き（御札の形のゲージ）
 	func _draw_skills(p: Player) -> void:
-		# 神招きゲージ（縦）
-		var gx := Cfg.W - 34.0
-		var gy := Cfg.H - 262.0
-		var gh := 130.0
-		var has_call: bool = p.slots.get(Cfg.Slot.CALL, "") != ""
-		draw_rect(Rect2(gx - 2, gy - 2, 16, gh + 4), Color(0, 0, 0, 0.45))
-		draw_rect(Rect2(gx, gy, 12, gh), Color(0.08, 0.06, 0.12, 0.85))
-		var kc := p.kami_color(p.slot_kami(Cfg.Slot.CALL)) if has_call else Color(0.5, 0.5, 0.6)
+		var main := p.main_god()
+		var mc := p.kami_color(main) if main != "" else Color(0.6, 0.6, 0.7)
+		# 神招き：縦長の御札
+		var gx := Cfg.W - 44.0
+		var gy := Cfg.H - 270.0
+		var gw := 26.0
+		var gh := 150.0
+		Ui.panel(self, Rect2(gx - 6, gy - 30, gw + 12, gh + 60), mc if main != "" else Ui.GOLD, 0.95, 0.75)
 		var k := p.call_gauge
+		draw_rect(Rect2(gx, gy, gw, gh), Color(0.05, 0.03, 0.08, 0.9))
 		if k > 0.0:
 			var fh := gh * k
-			var pulse := 1.0 if k < 0.999 else 0.8 + 0.2 * sin(_t * 8.0)
-			draw_rect(Rect2(gx, gy + gh - fh, 12, fh), Cfg.with_a(kc, pulse))
+			var pulse := 1.0 if k < 0.999 else 0.75 + 0.25 * sin(_t * 8.0)
+			draw_rect(Rect2(gx, gy + gh - fh, gw, fh), Cfg.with_a(mc.darkened(0.3), pulse))
+			draw_rect(Rect2(gx + 4, gy + gh - fh, gw - 8, fh), Cfg.with_a(mc, pulse))
+			# 炎のように揺れる上端
+			for i in 3:
+				var fx := gx + 4.0 + float(i) * (gw - 8.0) * 0.5
+				var fh2 := 6.0 + 5.0 * sin(_t * 9.0 + float(i) * 2.0)
+				draw_colored_polygon(PackedVector2Array([Vector2(fx - 4, gy + gh - fh), Vector2(fx + 4, gy + gh - fh), Vector2(fx, gy + gh - fh - fh2)]), Cfg.with_a(mc.lightened(0.4), 0.8 * pulse))
 		for i in range(1, 4):
 			var yy := gy + gh * (1.0 - 0.25 * float(i))
-			draw_line(Vector2(gx, yy), Vector2(gx + 12, yy), Color(0, 0, 0, 0.6), 1.5)
-		draw_rect(Rect2(gx, gy, 12, gh), Color(1, 1, 1, 0.2), false, 1.0)
-		if has_call:
-			var ready := k >= 0.25
-			Ui.txt(self, ui.font_display, Vector2(gx - 6, gy - 10), "招", 18,
-					Cfg.with_a(kc, 0.6 + 0.4 * float(ready) * (0.5 + 0.5 * sin(_t * 6.0))), HORIZONTAL_ALIGNMENT_CENTER, 24)
-			Ui.txt(self, ui.font, Vector2(gx - 8, gy + gh + 16), "X", 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 28)
-		else:
-			Ui.txt(self, ui.font, Vector2(gx - 10, gy - 10), "招", 12, Color(1, 1, 1, 0.25), HORIZONTAL_ALIGNMENT_CENTER, 32)
+			draw_line(Vector2(gx, yy), Vector2(gx + gw, yy), Color(0, 0, 0, 0.55), 1.5)
+		draw_rect(Rect2(gx, gy, gw, gh), Cfg.with_a(Ui.GOLD, 0.5), false, 1.0)
+		var ready := main != "" and k >= 0.25
+		Ui.txt(self, ui.font_display, Vector2(gx - 6, gy - 8), "招", 20,
+				Cfg.with_a(mc if main != "" else Color(1, 1, 1, 0.3), 0.7 + 0.3 * float(ready) * (0.5 + 0.5 * sin(_t * 6.0))), HORIZONTAL_ALIGNMENT_CENTER, gw + 12)
+		Ui.txt(self, ui.font, Vector2(gx - 6, gy + gh + 18), "X", 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, gw + 12)
 
-		# 詠唱の残弾
-		var cx := Cfg.W - 70.0
-		var cy := Cfg.H - 92.0
-		var cc := p.kami_color(p.slot_kami(Cfg.Slot.CAST)) if p.slot_kami(Cfg.Slot.CAST) != "" else Cfg.C_PBULLET
+		# 詠唱の珠と疾走の輪
+		var px := Cfg.W - 150.0
+		var py := Cfg.H - 88.0
+		Ui.panel(self, Rect2(px - 8, py - 22, 108, 54), Ui.GOLD, 0.95, 0.7)
 		var mx: int = int(p.stats["cast_max"])
 		for i in mx:
-			var c := Vector2(cx - float(mx - 1 - i) * 22.0, cy)
-			if i < p.cast_charges:
-				draw_circle(c, 8.0, Cfg.with_a(cc, 0.9))
-				draw_circle(c + Vector2(-2, -2), 3.0, Color(1, 1, 1, 0.8))
+			var c := Vector2(px + 10.0 + float(i) * 22.0, py)
+			if i < p.cast_charges and main != "":
+				draw_circle(c, 9.0, Cfg.with_a(mc, 0.3))
+				draw_circle(c, 7.0, Cfg.with_a(mc, 0.95))
+				draw_circle(c + Vector2(-2, -2), 2.5, Color(1, 1, 1, 0.85))
 			else:
-				draw_arc(c, 8.0, 0, TAU, 20, Cfg.with_a(cc, 0.35), 1.5, true)
+				draw_arc(c, 7.0, 0, TAU, 20, Cfg.with_a(mc, 0.35), 1.5, true)
 				if i == p.cast_charges:
 					var kk := 1.0 - p.cast_cd / maxf(0.01, p.cast_cd_time())
-					draw_arc(c, 8.0, -PI * 0.5, -PI * 0.5 + TAU * kk, 20, Cfg.with_a(cc, 0.9), 2.5, true)
-		Ui.txt(self, ui.font, Vector2(cx - float(mx) * 22.0 + 6.0, cy + 26), "詠唱 Z", 11, Color(1, 1, 1, 0.6))
-
-		# 疾走
-		var dx := Cfg.W - 34.0
-		var dy := Cfg.H - 92.0
+					draw_arc(c, 7.0, -PI * 0.5, -PI * 0.5 + TAU * kk, 20, Cfg.with_a(mc, 0.9), 2.5, true)
+		Ui.txt(self, ui.font, Vector2(px, py + 24), "詠唱 Z", 10, Color(1, 1, 1, 0.6))
+		var dx := px + 84.0
 		var dk := 1.0 - p.dash_cool / maxf(0.01, p.dash_cd_time())
-		var dc := p.kami_color(p.slot_kami(Cfg.Slot.DASH)) if p.slot_kami(Cfg.Slot.DASH) != "" else Color(0.9, 0.9, 1.0)
-		draw_arc(Vector2(dx, dy), 9.0, 0, TAU, 20, Cfg.with_a(dc, 0.3), 1.5, true)
-		draw_arc(Vector2(dx, dy), 9.0, -PI * 0.5, -PI * 0.5 + TAU * dk, 20, Cfg.with_a(dc, 0.9), 2.5, true)
-		Ui.txt(self, ui.font, Vector2(dx - 20, dy + 26), "疾走", 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 40)
+		draw_arc(Vector2(dx, py), 9.0, 0, TAU, 20, Color(1, 1, 1, 0.25), 1.5, true)
+		draw_arc(Vector2(dx, py), 9.0, -PI * 0.5, -PI * 0.5 + TAU * dk, 20, Color(1, 1, 1, 0.9) if dk >= 1.0 else Color(0.8, 0.85, 1.0, 0.7), 2.5, true)
+		if dk >= 1.0:
+			draw_circle(Vector2(dx, py), 3.0, Color(1, 1, 1, 0.8))
+		Ui.txt(self, ui.font, Vector2(dx - 20, py + 24), "疾走", 10, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 40)
 
 	func _draw_top(g: Game) -> void:
-		Ui.txt(self, ui.font_display, Vector2(0, 34), "第 %d 波" % g.wave, 22,
+		var cx := Cfg.W * 0.5
+		Ui.txt(self, ui.font_display, Vector2(0, 36), "第 %d 波" % g.wave, 22,
 				Color(1, 1, 1, 0.95), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 24), "功徳", 10, Color(0.85, 0.8, 0.95, 0.85),
+		draw_line(Vector2(cx - 90, 24), Vector2(cx - 52, 24), Cfg.with_a(Ui.GOLD, 0.7), 1.0)
+		draw_line(Vector2(cx + 52, 24), Vector2(cx + 90, 24), Cfg.with_a(Ui.GOLD, 0.7), 1.0)
+		draw_colored_polygon(PackedVector2Array([Vector2(cx - 48, 24), Vector2(cx - 44, 20), Vector2(cx - 40, 24), Vector2(cx - 44, 28)]), Cfg.with_a(Ui.GOLD, 0.9))
+		draw_colored_polygon(PackedVector2Array([Vector2(cx + 40, 24), Vector2(cx + 44, 20), Vector2(cx + 48, 24), Vector2(cx + 44, 28)]), Cfg.with_a(Ui.GOLD, 0.9))
+		Ui.txt(self, ui.font, Vector2(0, 22), "功徳", 10, Color(0.85, 0.8, 0.95, 0.85),
 				HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W - 18)
-		Ui.txt(self, ui.font_bold, Vector2(0, 42), str(g.score), 17, Color(1, 1, 1, 0.95),
+		Ui.txt(self, ui.font_display, Vector2(0, 42), str(g.score), 18, Color(1, 1, 1, 0.95),
 				HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W - 18)
 
 	func _draw_boss(g: Game) -> void:
 		var b := g.boss
 		if b == null or not is_instance_valid(b):
 			return
-		var r := Rect2(90, 78, Cfg.W - 180, 11)
-		_bar(r, b.hp / b.max_hp, Color(1, 0.3, 0.4))
-		Ui.txt(self, ui.font_display, Vector2(0, 70), b.boss_name, 14, Color(1, 0.75, 0.8),
+		var r := Rect2(110, 82, Cfg.W - 220, 10)
+		Ui.panel(self, Rect2(92, 60, Cfg.W - 184, 40), Color(1, 0.4, 0.5), 0.95, 0.7)
+		Ui.txt(self, ui.font_display, Vector2(0, 77), b.boss_name, 13, Color(1, 0.75, 0.8),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		Ui.bar(self, r, b.hp / b.max_hp, Color(1, 0.3, 0.4), _t, 3, Color(1, 0.5, 0.6))
 		for i in b.phase():
-			draw_circle(Vector2(Cfg.W - 76 + i * 12, 84), 4.0, Color(1, 0.85, 0.4))
+			draw_circle(Vector2(Cfg.W - 108 + i * 10, 74), 3.5, Color(1, 0.85, 0.4))
 
 	func _draw_banner() -> void:
-		var k := banner_t / 2.2
+		var k := banner_t / 2.4
 		var a := clampf(sin(k * PI) * 2.2, 0.0, 1.0)
-		var y := 330.0 - (1.0 - k) * 16.0
+		var y := 300.0 - (1.0 - k) * 16.0
 		var c := banner_col
 		c.a = a
-		draw_rect(Rect2(0, y - 42, Cfg.W, 78), Color(0, 0, 0, 0.4 * a))
-		draw_rect(Rect2(0, y - 42, Cfg.W, 2), Color(c.r, c.g, c.b, a * 0.7))
-		draw_rect(Rect2(0, y + 34, Cfg.W, 2), Color(c.r, c.g, c.b, a * 0.7))
+		draw_rect(Rect2(0, y - 44, Cfg.W, 82), Color(0, 0, 0, 0.45 * a))
+		draw_rect(Rect2(0, y - 44, Cfg.W, 2), Color(c.r, c.g, c.b, a * 0.8))
+		draw_rect(Rect2(0, y + 36, Cfg.W, 2), Color(c.r, c.g, c.b, a * 0.8))
+		draw_rect(Rect2(0, y - 41, Cfg.W, 1), Color(1, 1, 1, a * 0.25))
 		Ui.txt(self, ui.font_display, Vector2(0, y), banner_text, 32, c, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		if banner_sub != "":
 			Ui.txt(self, ui.font, Vector2(0, y + 26), banner_sub, 14,
 					Color(1, 1, 1, a * 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
-	## 所持恩恵の一覧（小休止・ゲームオーバーで使う）
-	func _draw_boon_list(p: Player, y0: float) -> void:
+	## 現在の構成（小休止・ゲームオーバーで使う）：神々と神器、恩恵
+	func _draw_build(p: Player, y0: float) -> void:
+		_draw_build_on(self, p, y0)
+
+	func _draw_build_on(ci: CanvasItem, p: Player, y0: float) -> void:
 		var y := y0
+		for id in p.gods:
+			var k := Kami.kami(id)
+			Ui.kami_ring(ci, p, String(id), Vector2(90, y + 4), 14.0, _t, 1.0, true)
+			Ui.txt(ci, ui.font_display, Vector2(116, y), String(k["name"]) + ("（主神）" if p.is_main(id) else "（副神）"), 14, Cfg.with_a(k["color"], 0.95))
+			Ui.txt(ci, ui.font, Vector2(116, y + 16), String(k["weapon"]) + "　神格 Lv.%d　威力 ×%.2f" % [int(p.kami_lv.get(id, 1)), p.kami_power(id)], 11, Color(0.9, 0.92, 1.0, 0.85))
+			y += 42.0
+		y += 6.0
 		for id: String in p.boons.keys():
 			var b := Kami.boon(id)
 			if b.is_empty():
 				continue
 			var rar := int(p.boons[id]["rar"])
 			var lv := int(p.boons[id]["lv"])
-			var col: Color = Cfg.RAR_COLOR[rar]
-			Ui.txt(self, ui.font, Vector2(90, y), Cfg.RAR_NAME[rar], 13, col)
-			Ui.txt(self, ui.font_bold, Vector2(112, y), String(b["name"]) + ("  Lv.%d" % lv if lv > 1 else ""), 14, Color(1, 1, 1))
-			Ui.txt(self, ui.font, Vector2(280, y), Kami.describe(b, rar, lv), 11, Color(0.85, 0.88, 1.0, 0.85), HORIZONTAL_ALIGNMENT_LEFT, 280)
-			y += 22.0
-			if y > Cfg.H - 60.0:
+			Ui.txt(ci, ui.font, Vector2(90, y), Cfg.RAR_NAME[rar], 12, Cfg.RAR_COLOR[rar])
+			Ui.txt(ci, ui.font_bold, Vector2(112, y), String(b["name"]) + ("  ×%d" % lv if lv > 1 else ""), 13, Color(1, 1, 1))
+			Ui.txt(ci, ui.font, Vector2(270, y), Kami.describe(b, rar, lv), 10, Color(0.85, 0.88, 1.0, 0.85), HORIZONTAL_ALIGNMENT_LEFT, 300)
+			y += 20.0
+			if y > Cfg.H - 100.0:
 				break
 
 
@@ -490,58 +585,54 @@ class KamiChoiceView:
 
 	var ids: Array = []
 
-	const CW := 188.0
-	const CH := 560.0
-	const CY := 190.0
+	const CW := 190.0
+	const CH := 590.0
+	const CY := 176.0
 
 	func count() -> int:
 		return ids.size()
 
 	func rect_of(i: int) -> Rect2:
 		var total := ids.size()
-		var gap := 14.0
+		var gap := 12.0
 		var w := float(total) * CW + float(total - 1) * gap
 		var x := (Cfg.W - w) * 0.5 + float(i) * (CW + gap)
 		return Rect2(x, CY, CW, CH)
 
 	func _draw() -> void:
 		backdrop(Cfg.C_GOLD)
-		Ui.txt(self, ui.font_display, Vector2(0, 112), "主神を選べ", 44, Cfg.with_a(Cfg.C_GOLD, anim),
+		Ui.txt(self, ui.font_display, Vector2(0, 104), "主神を選べ", 44, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 146), "最初に選んだ神が主神となる。伝説の恩恵は主神からのみ授かる。", 13,
+		Ui.txt(self, ui.font, Vector2(0, 134), "選んだ瞬間に、その神の神器（自動で撃つ武器）が付く。伝説の恩恵は主神からのみ。", 12,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 166), "のちに恩恵を受けた 2 柱が副神として加わる。", 13,
+		Ui.txt(self, ui.font, Vector2(0, 152), "のちに迎える 2 柱は副神となり、神器が半分の威力で加わる。", 12,
 				Color(0.9, 0.9, 1.0, 0.7 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		for i in ids.size():
 			_draw_card(i)
-		var hint := "[1] [2] [3] またはタップで選ぶ"
-		Ui.txt(self, ui.font, Vector2(0, CY + CH + 34), hint, 14,
+		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30), "[1] [2] [3] またはタップで選ぶ", 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		if hover >= 0 and hover < ids.size():
 			var k := Kami.kami(ids[hover])
-			Ui.txt(self, ui.font, Vector2(0, CY + CH + 58), "「" + String(k["intro"]) + "」", 13,
+			Ui.txt(self, ui.font, Vector2(0, CY + CH + 52), "「" + String(k["intro"]) + "」", 13,
 					Cfg.with_a(k["color"], 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		_draw_howto(CY + CH + 78.0)
+		_draw_howto(CY + CH + 70.0)
 
-	## 恩恵の仕組み（初見向けの短い説明）
 	func _draw_howto(y0: float) -> void:
-		var r := Rect2(40.0, y0, Cfg.W - 80.0, 118.0)
+		var r := Rect2(40.0, y0, Cfg.W - 80.0, 96.0)
 		if r.end.y > Cfg.H - 10.0:
 			return
 		var a := anim
-		draw_rect(r, Color(0.06, 0.05, 0.10, 0.85 * a))
-		draw_rect(r, Cfg.with_a(Cfg.C_GOLD, 0.45 * a), false, 1.0)
-		Ui.txt(self, ui.font_display, Vector2(r.position.x + 14, r.position.y + 22), "恩恵の仕組み", 14, Cfg.with_a(Cfg.C_GOLD, a))
+		Ui.panel(self, r, Cfg.C_GOLD, a, 0.85)
+		Ui.txt(self, ui.font_display, Vector2(r.position.x + 14, r.position.y + 22), "仕組み", 14, Cfg.with_a(Cfg.C_GOLD, a))
 		var lines := [
-			"① 波を祓うごとに神が現れ、恩恵を 3 つ提示する。1 つ選ぶ。",
-			"② 恩恵は 攻撃・特技・詠唱・疾走・神招き の技に宿るか、常時の加護。",
-			"③ 1 つの技に宿せる神威は 1 柱まで。別の神の恩恵で「交換」できる。",
-			"④ 神は 3 柱まで（主神 + 副神 2）。神酒で恩恵の位を深められる。",
+			"① 神を迎えると神器（自動発射の武器）が付く。主神は 100%、副神は 50% の威力。",
+			"② 神器は敵に当てるほど神徳が溜まり、神格が上がって強くなる。神酒でも 1 段上がる。",
+			"③ 位が上がるごとに神が現れ、神器の形を変える強化を 3 枚提示する。1 枚選ぶ。",
 		]
 		var y := r.position.y + 42.0
 		for l: String in lines:
 			Ui.txt(self, ui.font, Vector2(r.position.x + 14, y), l, 11, Color(0.9, 0.92, 1.0, 0.9 * a))
-			y += 19.0
+			y += 18.0
 
 	func _draw_card(i: int) -> void:
 		var k := Kami.kami(ids[i])
@@ -555,51 +646,50 @@ class KamiChoiceView:
 		card_bg(rr, col, sel, pop)
 		var a := pop
 		var cx := rr.position.x + rr.size.x * 0.5
+		var x0 := rr.position.x + 14.0
+		var w := rr.size.x - 28.0
 
-		# 紋章と後光
-		var ec := Vector2(cx, rr.position.y + 92.0)
+		var ec := Vector2(cx, rr.position.y + 80.0)
 		if sel:
-			draw_circle(ec, 62.0 + 4.0 * sin(_t * 3.0), Cfg.with_a(col, 0.10 * a))
-		Emblem.draw(self, String(k["emblem"]), ec, 46.0, col, k["color2"], _t, a)
+			draw_circle(ec, 58.0 + 4.0 * sin(_t * 3.0), Cfg.with_a(col, 0.10 * a))
+		Emblem.draw(self, String(k["emblem"]), ec, 42.0, col, k["color2"], _t, a)
 
-		Ui.txt(self, ui.font_display, Vector2(rr.position.x, rr.position.y + 188), String(k["name"]), 24,
+		Ui.txt(self, ui.font_display, Vector2(rr.position.x, rr.position.y + 166), String(k["name"]), 23,
 				Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-		Ui.txt(self, ui.font, Vector2(rr.position.x, rr.position.y + 208), String(k["kana"]), 11,
+		Ui.txt(self, ui.font, Vector2(rr.position.x, rr.position.y + 184), String(k["kana"]) + "　" + String(k["title"]), 10,
 				Cfg.with_a(col, a * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-		Ui.txt(self, ui.font, Vector2(rr.position.x, rr.position.y + 230), String(k["title"]), 13,
-				Color(0.9, 0.9, 1.0, a * 0.85), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-		draw_line(Vector2(rr.position.x + 24, rr.position.y + 246), Vector2(rr.end.x - 24, rr.position.y + 246), Cfg.with_a(col, 0.4 * a), 1.0)
+		draw_line(Vector2(x0, rr.position.y + 196), Vector2(rr.end.x - 14, rr.position.y + 196), Cfg.with_a(col, 0.4 * a), 1.0)
 
-		# 得意と神威
+		# 得意
+		draw_rect(Rect2(x0, rr.position.y + 206, w, 20), Cfg.with_a(col, 0.18 * a))
+		Ui.txt(self, ui.font_bold, Vector2(x0 + 6, rr.position.y + 221), String(k["role"]), 11, Cfg.with_a(col.lightened(0.2), a))
+
+		# 神器
+		Ui.txt(self, ui.font, Vector2(x0, rr.position.y + 248), "神器", 10, Color(1, 0.9, 0.7, a * 0.85))
+		Ui.txt(self, ui.font_display, Vector2(x0 + 30, rr.position.y + 250), String(k["weapon"]), 16, Color(1, 1, 1, a))
+		Ui.para(self, ui.font, Vector2(x0, rr.position.y + 270), String(k["weapon_desc"]), w, 11, 4, Color(0.9, 0.92, 1.0, a * 0.9))
+
+		# 神威
+		var y := rr.position.y + 352.0
 		var st := String(k["status"])
-		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 16, rr.position.y + 268), "得意　" + String(k["style"]), 12,
-				Cfg.with_a(col, a))
 		if st != "":
-			draw_rect(Rect2(rr.position.x + 16, rr.position.y + 282, 62, 20), Cfg.with_a(col, 0.25 * a))
-			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 16, rr.position.y + 297), "神威 " + st, 12,
-					Cfg.with_a(col, a), HORIZONTAL_ALIGNMENT_CENTER, 62)
-		draw_multiline_string(ui.font, Vector2(rr.position.x + 16, rr.position.y + 322), String(k["status_desc"]),
-				HORIZONTAL_ALIGNMENT_LEFT, rr.size.x - 32, 12, 3, Color(0.85, 0.9, 1.0, a * 0.9),
-				TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND)
+			draw_rect(Rect2(x0, y - 13, 56, 17), Cfg.with_a(col, 0.25 * a))
+			Ui.txt(self, ui.font_bold, Vector2(x0, y), "神威 " + st, 11, Cfg.with_a(col, a), HORIZONTAL_ALIGNMENT_CENTER, 56)
+			Ui.para(self, ui.font, Vector2(x0, y + 18), String(k["status_desc"]), w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.85))
+		else:
+			Ui.para(self, ui.font, Vector2(x0, y + 2), String(k["status_desc"]), w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.85))
 
-		# 攻撃の恩恵（主神から最初に授かる恩恵の例）
-		var boons := Kami.boons_of(String(k["id"]))
-		var atk := {}
-		for b in boons:
-			if int(b["slot"]) == Cfg.Slot.ATTACK:
-				atk = b
-		draw_line(Vector2(rr.position.x + 24, rr.position.y + 380), Vector2(rr.end.x - 24, rr.position.y + 380), Cfg.with_a(col, 0.4 * a), 1.0)
-		Ui.txt(self, ui.font, Vector2(rr.position.x + 16, rr.position.y + 402), "授かる恩恵の例", 11,
-				Color(1, 0.9, 0.7, a * 0.8))
-		if not atk.is_empty():
-			Ui.txt(self, ui.font_display, Vector2(rr.position.x + 16, rr.position.y + 424), String(atk["name"]), 16,
-					Color(1, 1, 1, a))
-			draw_multiline_string(ui.font, Vector2(rr.position.x + 16, rr.position.y + 446), Kami.describe(atk, Cfg.Rar.RARE, 1),
-					HORIZONTAL_ALIGNMENT_LEFT, rr.size.x - 32, 11, 4, Color(0.85, 0.9, 1.0, a * 0.85),
-				TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND)
+		# 詠唱と神招き
+		y = rr.position.y + 430.0
+		draw_line(Vector2(x0, y - 8), Vector2(rr.end.x - 14, y - 8), Cfg.with_a(col, 0.4 * a), 1.0)
+		Ui.txt(self, ui.font, Vector2(x0, y + 8), "詠唱 Z", 10, Color(1, 0.9, 0.7, a * 0.85))
+		Ui.txt(self, ui.font_display, Vector2(x0 + 44, y + 9), String(k["cast"]), 13, Color(1, 1, 1, a))
+		Ui.para(self, ui.font, Vector2(x0, y + 26), String(k["cast_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
+		Ui.txt(self, ui.font, Vector2(x0, y + 70), "神招き X", 10, Color(1, 0.9, 0.7, a * 0.85))
+		Ui.txt(self, ui.font_display, Vector2(x0 + 56, y + 71), String(k["call"]), 13, Color(1, 1, 1, a))
+		Ui.para(self, ui.font, Vector2(x0, y + 88), String(k["call_desc"]), w, 10, 2, Color(0.85, 0.9, 1.0, a * 0.85))
 
-		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14,
-				Cfg.with_a(col, a))
+		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))
 
 
 # =====================================================================
@@ -614,8 +704,8 @@ class BoonsView:
 	var quote := ""
 
 	const CW := 192.0
-	const CH := 330.0
-	const CY := 312.0
+	const CH := 300.0
+	const CY := 296.0
 
 	func count() -> int:
 		return offers.size()
@@ -633,10 +723,9 @@ class BoonsView:
 		backdrop(col)
 		var p := Game.inst.player
 
-		# 神の顕現：紋章と後光
-		var ec := Vector2(Cfg.W * 0.5, 128.0)
+		var ec := Vector2(Cfg.W * 0.5, 122.0)
 		for i in 3:
-			var rr := 70.0 + float(i) * 22.0 + 6.0 * sin(_t * 2.0 + float(i))
+			var rr := 66.0 + float(i) * 22.0 + 6.0 * sin(_t * 2.0 + float(i))
 			draw_arc(ec, rr, 0, TAU, 64, Cfg.with_a(col, (0.25 - 0.06 * float(i)) * anim), 1.5, true)
 		for i in 16:
 			var ang := _t * 0.25 + TAU * float(i) / 16.0
@@ -644,22 +733,18 @@ class BoonsView:
 			draw_line(ec + Vector2(cos(ang), sin(ang)) * 60.0, ec + Vector2(cos(ang), sin(ang)) * l,
 					Cfg.with_a(col, 0.10 * anim), 6.0, true)
 		if not k.is_empty():
-			Emblem.draw(self, String(k["emblem"]), ec, 48.0, col, k["color2"], _t, anim)
+			Emblem.draw(self, String(k["emblem"]), ec, 46.0, col, k["color2"], _t, anim)
 
 		Ui.txt(self, ui.font, Vector2(0, 40), title, 14, Cfg.with_a(Cfg.C_GOLD, anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		if not k.is_empty():
 			var role := ""
 			if p != null:
-				if p.main_god() == kami_id: role = "主神"
-				elif p.gods.has(kami_id): role = "副神"
-				else: role = "新たな神"
-			Ui.txt(self, ui.font_display, Vector2(0, 224), String(k["name"]), 34, Color(1, 1, 1, anim),
+				role = "主神" if p.main_god() == kami_id else "副神"
+			Ui.txt(self, ui.font_display, Vector2(0, 212), String(k["name"]), 32, Color(1, 1, 1, anim),
 					HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-			Ui.txt(self, ui.font, Vector2(0, 246), String(k["kana"]) + "　・　" + String(k["title"]) + "　［" + role + "］", 12,
+			Ui.txt(self, ui.font, Vector2(0, 232), String(k["kana"]) + "　・　" + String(k["title"]) + "　［" + role + "］　神器：" + String(k["weapon"]), 11,
 					Cfg.with_a(col, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-			Ui.txt(self, ui.font_bold, Vector2(0, 262), "得意　" + String(k["style"]), 12,
-					Color(1, 0.95, 0.85, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-			Ui.txt(self, ui.font, Vector2(0, 284), "「" + quote + "」", 14,
+			Ui.txt(self, ui.font, Vector2(0, 262), "「" + quote + "」", 14,
 					Color(0.95, 0.93, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 		for i in offers.size():
@@ -670,176 +755,152 @@ class BoonsView:
 			hint += "　　[R] 神籤を引き直す ×%d" % rerolls
 		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30), hint, 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		_draw_loadout(CY + CH + 52.0)
+		_draw_pantheon(CY + CH + 52.0)
 
-	## いま 5 つの技に宿っている神威を並べて見せる（交換の意味が分かるように）
-	func _draw_loadout(y0: float) -> void:
+	## いま迎えている神々と神格
+	func _draw_pantheon(y0: float) -> void:
 		var p := Game.inst.player
 		if p == null:
 			return
 		var a := anim
-		Ui.txt(self, ui.font, Vector2(0, y0 + 12), "いま技に宿っている神威", 11, Color(1, 0.9, 0.7, 0.85 * a),
+		Ui.txt(self, ui.font, Vector2(0, y0 + 12), "迎えている神々（神器は当てるほど神格が上がる）", 11, Color(1, 0.9, 0.7, 0.85 * a),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		var n := 5
-		var w := 96.0
-		var gap := 8.0
+		var n := Boons.MAX_KAMI
+		var w := 180.0
+		var gap := 10.0
 		var x0 := (Cfg.W - (float(n) * w + float(n - 1) * gap)) * 0.5
 		for i in n:
-			var r := Rect2(x0 + float(i) * (w + gap), y0 + 20.0, w, 46.0)
-			var id: String = p.slots.get(i, "")
-			var targeted := false
-			for o in offers:
-				if int(o["boon"]["slot"]) == i:
-					targeted = true
-			var col := Color(0.5, 0.5, 0.6)
-			var name := "空"
-			if id != "":
-				var b := Kami.boon(id)
-				var k := Kami.kami(String(b["kami"]))
-				col = k["color"]
-				name = String(k["name"])
-			draw_rect(r, Color(0.06, 0.05, 0.10, 0.85 * a))
-			draw_rect(r, Cfg.with_a(col if id != "" else Color(0.5, 0.5, 0.6), (0.9 if targeted else 0.35) * a), false, 1.5 if targeted else 1.0)
-			Ui.txt(self, ui.font_bold, Vector2(r.position.x, r.position.y + 15), Cfg.SLOT_NAME[i], 11,
-					Color(1, 1, 1, (0.95 if targeted else 0.6) * a), HORIZONTAL_ALIGNMENT_CENTER, w)
-			if id != "":
-				var b2 := Kami.boon(id)
-				var k2 := Kami.kami(String(b2["kami"]))
-				Emblem.draw(self, String(k2["emblem"]), r.position + Vector2(16, 32), 9.0, col, k2["color2"], _t, a)
-				Ui.txt(self, ui.font, Vector2(r.position.x + 28, r.position.y + 36), name, 10, Cfg.with_a(col, a), HORIZONTAL_ALIGNMENT_LEFT, w - 30)
+			var r := Rect2(x0 + float(i) * (w + gap), y0 + 20.0, w, 58.0)
+			if i < p.gods.size():
+				var id := String(p.gods[i])
+				var k := Kami.kami(id)
+				Ui.panel(self, r, k["color"], a, 0.85)
+				Ui.kami_ring(self, p, id, r.position + Vector2(28, 29), 14.0, _t, a, true)
+				Ui.txt(self, ui.font, Vector2(r.position.x + 54, r.position.y + 16), "主神" if i == 0 else "副神", 9, Color(1, 0.9, 0.7, 0.8 * a))
+				Ui.txt(self, ui.font_display, Vector2(r.position.x + 54, r.position.y + 32), String(k["name"]), 12, Cfg.with_a(k["color"], a))
+				Ui.txt(self, ui.font, Vector2(r.position.x + 54, r.position.y + 48), String(k["weapon"]) + "  ×%.2f" % p.kami_power(id), 10, Color(1, 1, 1, 0.75 * a))
 			else:
-				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 36), "空", 10, Color(1, 1, 1, 0.4 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
-		Ui.txt(self, ui.font, Vector2(0, y0 + 84), "技に宿る恩恵は 1 つの技に 1 柱まで。加護は何個でも重ねられる。", 11,
-				Color(0.85, 0.88, 1.0, 0.7 * a), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+				Ui.panel(self, r, Color(0.5, 0.5, 0.6), a * 0.6, 0.5)
+				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 34), "空き（副神を迎えられる）", 10, Color(1, 1, 1, 0.45 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
 
 	func _draw_card(i: int) -> void:
 		var o: Dictionary = offers[i]
-		var b: Dictionary = o["boon"]
+		var type := String(o["type"])
 		var rar := int(o["rar"])
 		var r := rect_of(i)
 		var sel := (i == hover)
 		var pop := clampf(anim * 1.4 - float(i) * 0.12, 0.0, 1.0)
 		if pop <= 0.0:
 			return
-		var col: Color = Cfg.RAR_COLOR[rar]
-		var kc: Color = Kami.kami(String(b["kami"]))["color"]
+		var k := Kami.kami(String(o["kami"]))
+		var kc: Color = k["color"]
+		var col: Color = Cfg.RAR_COLOR[rar] if type != "recruit" else kc
 		var rr := r.grow((4.0 if sel else 0.0) - (1.0 - pop) * 30.0)
 		var a := pop
+		var x0 := rr.position.x + 14.0
+		var w := rr.size.x - 28.0
 		card_bg(rr, col, sel, a)
-		var special := rar == Cfg.Rar.LEGENDARY or rar == Cfg.Rar.DUO
-		if special:
-			# 伝説・双神は後光を足す
+		var special := type == "legendary" or type == "duo"
+		if special or type == "recruit":
 			for j in 10:
 				var ang := _t * 0.5 + TAU * float(j) / 10.0
 				var c := rr.position + rr.size * 0.5
 				draw_line(c + Vector2(cos(ang), sin(ang)) * rr.size.x * 0.55, c + Vector2(cos(ang), sin(ang)) * rr.size.x * 0.75,
 						Cfg.with_a(col, 0.12 * a), 8.0, true)
 
-		# レアリティ帯
+		# 上帯：種類とレアリティ
 		draw_rect(Rect2(rr.position + Vector2(0, 3), Vector2(rr.size.x, 30.0)), Cfg.with_a(col, (0.30 if sel else 0.20) * a))
-		Ui.txt(self, ui.font_display, rr.position + Vector2(12, 26), Cfg.RAR_NAME[rar], 18, Cfg.with_a(col, a))
-		Ui.txt(self, ui.font, rr.position + Vector2(36, 24), Cfg.RAR_LONG[rar], 10, Cfg.with_a(col, a * 0.9))
-		# スロット札
-		var slot := int(b["slot"])
-		var sname: String = Cfg.SLOT_NAME[slot]
-		if b.has("kami2"):
-			sname = "双神"
-		draw_rect(Rect2(rr.end.x - 58, rr.position.y + 8, 48, 20), Cfg.with_a(kc, 0.35 * a))
-		Ui.txt(self, ui.font_bold, Vector2(rr.end.x - 58, rr.position.y + 23), sname, 12, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 48)
+		match type:
+			"recruit":
+				Ui.txt(self, ui.font_display, rr.position + Vector2(12, 25), "新たな神", 16, Cfg.with_a(col, a))
+				Ui.txt(self, ui.font, rr.position + Vector2(90, 24), "副神として迎える", 10, Color(1, 1, 1, a * 0.85))
+			_:
+				Ui.txt(self, ui.font_display, rr.position + Vector2(12, 26), Cfg.RAR_NAME[rar], 18, Cfg.with_a(col, a))
+				Ui.txt(self, ui.font, rr.position + Vector2(36, 24), Cfg.RAR_LONG[rar], 10, Cfg.with_a(col, a * 0.9))
+				var label: String = {"upgrade": "神器の強化", "legendary": "伝説", "duo": "双神"}[type]
+				draw_rect(Rect2(rr.end.x - 78, rr.position.y + 8, 68, 20), Cfg.with_a(kc, 0.35 * a))
+				Ui.txt(self, ui.font_bold, Vector2(rr.end.x - 78, rr.position.y + 23), label, 11, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 68)
 
-		# 神の紋章（小）と名前
-		var k := Kami.kami(String(b["kami"]))
-		Emblem.draw(self, String(k["emblem"]), rr.position + Vector2(rr.size.x * 0.5, 76), 26.0, kc, k["color2"], _t, a * 0.95)
-		if b.has("kami2"):
-			var k2 := Kami.kami(String(b["kami2"]))
-			Emblem.draw(self, String(k2["emblem"]), rr.position + Vector2(rr.size.x * 0.5 + 34, 90), 16.0, k2["color"], k2["color2"], _t, a * 0.95)
+		Emblem.draw(self, String(k["emblem"]), rr.position + Vector2(rr.size.x * 0.5, 74), 26.0, kc, k["color2"], _t, a * 0.95)
+		if type == "duo":
+			var k2 := Kami.kami(String(o["boon"]["kami2"]))
+			Emblem.draw(self, String(k2["emblem"]), rr.position + Vector2(rr.size.x * 0.5 + 34, 88), 16.0, k2["color"], k2["color2"], _t, a * 0.95)
 
-		Ui.txt(self, ui.font_display, rr.position + Vector2(0, 132), String(b["name"]), 19,
-				Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		var p := Game.inst.player
-		var lv := 1
-		if o["exchange"] and p != null and p.boons.has(o["cur"]):
-			lv = int(p.boons[o["cur"]]["lv"])
-		draw_multiline_string(ui.font, rr.position + Vector2(14, 160), Kami.describe(b, rar, lv),
-				HORIZONTAL_ALIGNMENT_LEFT, rr.size.x - 28, 12, 6, Color(0.9, 0.92, 1.0, a * 0.95),
-				TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND)
-
-		# どこに宿るか
-		if not o["exchange"]:
-			var where: String = Cfg.SLOT_HINT[slot] if not b.has("kami2") else "2 柱の神威が響き合う特別な加護"
-			Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 40), "▶ " + where, 10,
+		if type == "recruit":
+			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 128), String(k["name"]), 19, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			Ui.txt(self, ui.font_bold, Vector2(x0, rr.position.y + 148), "得意　" + String(k["role"]), 11, Cfg.with_a(kc.lightened(0.2), a))
+			Ui.txt(self, ui.font, Vector2(x0, rr.position.y + 168), "神器 " + String(k["weapon"]) + "（半分の威力）", 11, Color(1, 0.9, 0.7, a))
+			Ui.para(self, ui.font, Vector2(x0, rr.position.y + 186), String(k["weapon_desc"]), w, 11, 3, Color(0.9, 0.92, 1.0, a * 0.9))
+			if String(k["status"]) != "":
+				Ui.para(self, ui.font, Vector2(x0, rr.position.y + 240), "神威 " + String(k["status"]) + "：" + String(k["status_desc"]), w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.8))
+		else:
+			var b: Dictionary = o["boon"]
+			var cur_lv := int(p.boons[b["id"]]["lv"]) if (p != null and p.boons.has(b["id"])) else 0
+			var show_rar := maxi(rar, int(p.boons[b["id"]]["rar"])) if (p != null and p.boons.has(b["id"])) else rar
+			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 128), String(b["name"]), 19,
+					Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			Ui.txt(self, ui.font, rr.position + Vector2(0, 146), String(k["name"]) + "の神器 " + String(k["weapon"]) + " を強める" if type == "upgrade" else String(k["name"]), 10,
 					Cfg.with_a(kc, a * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-		# 交換
-		if o["exchange"]:
-			var cur := Kami.boon(String(o["cur"]))
-			draw_rect(Rect2(rr.position.x + 8, rr.end.y - 52, rr.size.x - 16, 34), Color(1, 0.6, 0.3, 0.15 * a))
-			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 14, rr.end.y - 37), "交換", 11, Color(1, 0.75, 0.4, a))
-			Ui.txt(self, ui.font, Vector2(rr.position.x + 44, rr.end.y - 37), "← " + String(cur.get("name", "")), 11, Color(1, 0.9, 0.8, a * 0.9))
-			Ui.txt(self, ui.font, Vector2(rr.position.x + 14, rr.end.y - 24), "レアリティが 1 段上がる", 10, Color(1, 0.8, 0.6, a * 0.8))
-		elif special:
-			Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 26),
-					"神酒では深められない" , 10, Cfg.with_a(col, a * 0.8), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-
+			Ui.para(self, ui.font, Vector2(x0, rr.position.y + 168), Kami.describe(b, show_rar, cur_lv + 1), w, 12, 5, Color(0.9, 0.92, 1.0, a * 0.95))
+			if cur_lv > 0:
+				var prev := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv))
+				var nxt := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv + 1))
+				draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(Cfg.C_GOLD, 0.12 * a))
+				Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "重ねる  ×%d → ×%d" % [cur_lv, cur_lv + 1], 11, Cfg.with_a(Cfg.C_GOLD, a))
+				Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), prev + "  →  " + nxt, 11, Color(1, 1, 1, a * 0.9))
+			elif special:
+				Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 26), "重ねることはできない", 10, Cfg.with_a(col, a * 0.8), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))
 
 
 # =====================================================================
-## 神酒：恩恵のレベルを 1 つ上げる
+## 神酒：神を 1 柱選んで神格を上げる
 class MikiView:
 	extends ChoiceView
 
 	var ids: Array = []
 
-	const CW := 186.0
-	const CH := 138.0
-	const COLS := 3
+	const CW := 190.0
+	const CH := 180.0
 
 	func count() -> int:
 		return ids.size()
 
 	func rect_of(i: int) -> Rect2:
-		var col := i % COLS
-		var row := int(i / COLS)
+		var total := ids.size()
 		var gap := 12.0
-		var w := float(COLS) * CW + float(COLS - 1) * gap
-		var x := (Cfg.W - w) * 0.5 + float(col) * (CW + gap)
-		return Rect2(x, 250.0 + float(row) * (CH + gap), CW, CH)
+		var w := float(total) * CW + float(total - 1) * gap
+		var x := (Cfg.W - w) * 0.5 + float(i) * (CW + gap)
+		return Rect2(x, 300.0, CW, CH)
 
 	func _draw() -> void:
 		backdrop(Cfg.C_GOLD)
-		Ui.txt(self, ui.font_display, Vector2(0, 120), "神酒", 48, Cfg.with_a(Cfg.C_GOLD, anim),
+		Ui.txt(self, ui.font_display, Vector2(0, 150), "神酒", 48, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 156), "恩恵をひとつ選び、その位を深める。", 14,
+		Ui.txt(self, ui.font, Vector2(0, 186), "神を 1 柱選び、神格を 1 段上げる。神器の威力が上がり、節目では弾数や大きさも増える。", 13,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 178), "深めるほど伸びは緩やかになる。", 12,
-				Color(0.9, 0.9, 1.0, 0.6 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		var p := Game.inst.player
 		for i in ids.size():
 			var id := String(ids[i])
-			var b := Kami.boon(id)
-			var rar := int(p.boons[id]["rar"])
-			var lv := int(p.boons[id]["lv"])
+			var k := Kami.kami(id)
 			var r := rect_of(i)
 			var sel := i == hover
-			var pop := clampf(anim * 1.5 - float(i) * 0.08, 0.0, 1.0)
+			var pop := clampf(anim * 1.5 - float(i) * 0.1, 0.0, 1.0)
 			if pop <= 0.0:
 				continue
-			var col: Color = Cfg.RAR_COLOR[rar]
-			var kc: Color = Kami.kami(String(b["kami"]))["color"]
+			var kc: Color = k["color"]
 			var rr := r.grow((3.0 if sel else 0.0) - (1.0 - pop) * 20.0)
-			card_bg(rr, col, sel, pop)
-			Emblem.draw(self, String(Kami.kami(String(b["kami"]))["emblem"]), rr.position + Vector2(24, 28), 14.0, kc, Kami.kami(String(b["kami"]))["color2"], _t, pop)
-			Ui.txt(self, ui.font_display, rr.position + Vector2(46, 32), String(b["name"]), 15, Color(1, 1, 1, pop))
-			Ui.txt(self, ui.font, rr.position + Vector2(46, 48), "%s  Lv.%d → Lv.%d" % [Cfg.RAR_LONG[rar], lv, lv + 1], 10, Cfg.with_a(col, pop))
-			var v0 := Kami.fmt_value(b, Kami.value(b, rar, lv))
-			var v1 := Kami.fmt_value(b, Kami.value(b, rar, lv + 1))
-			Ui.txt(self, ui.font_bold, rr.position + Vector2(14, 76), v0 + "  →  " + v1, 15, Cfg.with_a(Cfg.C_GOLD, pop))
-			draw_multiline_string(ui.font, rr.position + Vector2(14, 96), Kami.describe(b, rar, lv + 1),
-					HORIZONTAL_ALIGNMENT_LEFT, rr.size.x - 28, 10, 3, Color(0.85, 0.9, 1.0, pop * 0.85),
-				TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND)
-			Ui.txt(self, ui.font_bold, Vector2(rr.end.x - 30, rr.position.y + 18), "[%d]" % (i + 1), 12, Cfg.with_a(col, pop))
-		var rows := int((ids.size() + COLS - 1) / COLS)
-		Ui.txt(self, ui.font, Vector2(0, 250.0 + float(rows) * (CH + 12.0) + 24.0), "数字キー またはクリックで選ぶ", 14,
+			card_bg(rr, kc, sel, pop)
+			var lv: int = p.kami_lv.get(id, 1)
+			Ui.kami_ring(self, p, id, rr.position + Vector2(rr.size.x * 0.5, 54), 30.0, _t, pop, false)
+			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 112), String(k["name"]), 16, Color(1, 1, 1, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			Ui.txt(self, ui.font_bold, rr.position + Vector2(0, 134), "神格 %d → %d" % [lv, lv + 1], 14, Cfg.with_a(Cfg.C_GOLD, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			Ui.txt(self, ui.font, rr.position + Vector2(0, 152), "%s  威力 ×%.2f → ×%.2f" % [String(k["weapon"]),
+					p.kami_power(id), (1.0 if p.is_main(id) else 0.5) * Kami.kami_power(lv + 1)], 10,
+					Color(0.9, 0.92, 1.0, pop * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 10), "[%d]" % (i + 1), 12, Cfg.with_a(kc, pop))
+		Ui.txt(self, ui.font, Vector2(0, 300.0 + CH + 30.0), "数字キー またはタップで選ぶ", 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 
@@ -877,23 +938,20 @@ class OverlayView:
 			_over()
 
 	func _title() -> void:
-		# タイトル絵：縦画面に合わせて少女のいる右側を切り出す
 		if _tex != null:
 			var tw := float(_tex.get_width())
 			var th := float(_tex.get_height())
 			var scale := Cfg.H / th
 			var src_w := Cfg.W / scale
-			var src_x := clampf(1100.0 - src_w * 0.5, 0.0, tw - src_w)   # 少女の位置（x≈1100）を中央に
+			var src_x := clampf(1100.0 - src_w * 0.5, 0.0, tw - src_w)
 			draw_texture_rect_region(_tex, Rect2(0, 0, Cfg.W, Cfg.H), Rect2(src_x, 0, src_w, th),
 					Color(0.92, 0.88, 1.0))
 		else:
 			draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Cfg.C_BG)
-		# 上下のグラデーション帯（文字を載せるため）
 		for i in 14:
 			var k := float(i) / 14.0
 			draw_rect(Rect2(0, k * 330.0, Cfg.W, 330.0 / 14.0 + 1.0), Color(0.05, 0.02, 0.10, 0.85 * (1.0 - k)))
 			draw_rect(Rect2(0, Cfg.H - 330.0 + k * 330.0, Cfg.W, 330.0 / 14.0 + 1.0), Color(0.05, 0.02, 0.10, 0.88 * k))
-		# 花弁
 		for p: Dictionary in _petals:
 			var d := Vector2(cos(p.rot), sin(p.rot))
 			var n := d.orthogonal()
@@ -911,52 +969,37 @@ class OverlayView:
 
 		var y := Cfg.H - 254.0
 		var lines := [
-			["移動", "WASD / 矢印"], ["疾走", "Space（短い無敵）"], ["詠唱", "Z / J（強い一撃・2 発）"],
-			["神招き", "X / K（ゲージが 1/4 以上で発動）"], ["低速", "Shift"], ["小休止 / 音", "P / M"],
+			["移動", "WASD / 矢印　　スマホ：画面をなぞる"], ["疾走", "Space（無敵）　　スマホ：指を弾く"], ["詠唱", "Z / J（主神の技・2 発）"],
+			["神招き", "X / K（ゲージ 1/4 以上）"], ["低速", "Shift"], ["小休止 / 音", "P / M"],
 		]
 		for l: Array in lines:
-			Ui.txt(self, ui.font_bold, Vector2(150, y), String(l[0]), 13, Color(1, 0.9, 0.75, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, 90)
-			Ui.txt(self, ui.font, Vector2(260, y), String(l[1]), 13, Color(0.9, 0.92, 1.0, 0.9))
+			Ui.txt(self, ui.font_bold, Vector2(120, y), String(l[0]), 13, Color(1, 0.9, 0.75, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, 90)
+			Ui.txt(self, ui.font, Vector2(230, y), String(l[1]), 13, Color(0.9, 0.92, 1.0, 0.9))
 			y += 22.0
 
-		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 104.0), "神々から恩恵を受け、主神と 2 柱の副神とともに参道を登れ。", 13,
+		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 104.0), "神を迎えれば神器が付く。主神と 2 柱の副神とともに参道を登れ。", 13,
 				Color(0.85, 0.86, 1.0, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _over() -> void:
-		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.01, 0.05, 0.78))
+		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.01, 0.05, 0.8))
 		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Color(1, 0.3, 0.4, 0.04), 52.0, _t)
-		Ui.txt(self, ui.font_display, Vector2(0, 250), "討たれた", 58, Color(1, 0.3, 0.4),
+		Ui.txt(self, ui.font_display, Vector2(0, 200), "討たれた", 58, Color(1, 0.3, 0.4),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 284), "神楽は途切れ、参道は闇に沈んだ", 13, Color(0.9, 0.8, 0.85, 0.8),
+		Ui.txt(self, ui.font, Vector2(0, 234), "神楽は途切れ、参道は闇に沈んだ", 13, Color(0.9, 0.8, 0.85, 0.8),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		var y := 350.0
+		var y := 290.0
 		for row: Array in stats_lines:
-			Ui.txt(self, ui.font, Vector2(0, y), String(row[0]), 16,
+			Ui.txt(self, ui.font, Vector2(0, y), String(row[0]), 15,
 					Color(0.65, 0.75, 0.9), HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W * 0.5 - 14.0)
-			Ui.txt(self, ui.font_display, Vector2(Cfg.W * 0.5 + 14.0, y), String(row[1]), 20,
+			Ui.txt(self, ui.font_display, Vector2(Cfg.W * 0.5 + 14.0, y), String(row[1]), 18,
 					Color(1, 1, 1), HORIZONTAL_ALIGNMENT_LEFT)
-			y += 34.0
+			y += 30.0
 		var g := Game.inst
 		if g != null and g.player != null and is_instance_valid(g.player):
-			_draw_boons(g.player, y + 20.0)
+			ui.hud._draw_build_on(self, g.player, y + 20.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップ / ENTER でもう一度　　ESC で題目へ", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-
-	func _draw_boons(p: Player, y0: float) -> void:
-		var y := y0
-		for id: String in p.boons.keys():
-			var b := Kami.boon(id)
-			if b.is_empty():
-				continue
-			var rar := int(p.boons[id]["rar"])
-			var lv := int(p.boons[id]["lv"])
-			Ui.txt(self, ui.font, Vector2(110, y), Cfg.RAR_NAME[rar], 12, Cfg.RAR_COLOR[rar])
-			Ui.txt(self, ui.font_bold, Vector2(130, y), String(b["name"]) + ("  Lv.%d" % lv if lv > 1 else ""), 13, Color(1, 1, 1, 0.95))
-			Ui.txt(self, ui.font, Vector2(290, y), Kami.kami(String(b["kami"]))["name"], 11, Cfg.with_a(Kami.kami(String(b["kami"]))["color"], 0.9))
-			y += 20.0
-			if y > 850.0:
-				break

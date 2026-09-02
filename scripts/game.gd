@@ -7,6 +7,7 @@ enum St {TITLE, PLAY, KAMI, BOON, MIKI, PAUSE, OVER}
 
 static var inst: Game
 static var enemy_bullet_slow := 0.0
+static var enemy_slow := 1.0       # 敵の動きの倍率（大導きで遅くなる）
 
 var state := St.TITLE
 var wave := 0
@@ -135,6 +136,7 @@ func start_game() -> void:
 		c.queue_free()
 	Fx.clear_all()
 	enemy_bullet_slow = 0.0
+	enemy_slow = 1.0
 	boss = null
 	wave = 0
 	score = 0
@@ -420,11 +422,12 @@ func _open_kami_choice() -> void:
 func _on_kami_chosen(id: String) -> void:
 	if state != St.KAMI:
 		return
-	player.gods.append(id)
-	player.on_boons_changed()
+	player.add_god(id)
 	Sfx.play("descend", -4.0, 1.2)
 	Fx.flash(Cfg.with_a(Kami.kami(id)["color"], 0.5), 0.5)
-	# 主神はすぐに恩恵を授ける（稀以上）
+	var k := Kami.kami(id)
+	ui.banner(String(k["weapon"]) + " を授かった", String(k["weapon_desc"]), k["color"])
+	# 主神はすぐに神器の強化も授ける（稀以上）
 	_open_boons("main", Cfg.Rar.RARE, id)
 
 
@@ -471,16 +474,17 @@ func _on_boon_chosen(idx: int) -> void:
 	if state != St.BOON or idx < 0 or idx >= _offers.size():
 		return
 	var o: Dictionary = _offers[idx]
-	var was_new := not player.gods.has(_offer_kami)
 	Boons.take(player, o)
-	var b: Dictionary = o["boon"]
-	var col: Color = Cfg.RAR_COLOR[int(o["rar"])]
-	ui.banner(String(b["name"]), Kami.describe(b, int(o["rar"]), int(player.boons[b["id"]]["lv"])), col)
-	Sfx.play("suzu", -6.0)
-	if was_new and player.gods.has(_offer_kami):
-		var k := Kami.kami(_offer_kami)
-		ui.banner(String(k["name"]) + " が副神となった", String(b["name"]), k["color"])
-		Sfx.play("descend", -8.0, 1.3)
+	if String(o["type"]) == "recruit":
+		var k := Kami.kami(String(o["kami"]))
+		ui.banner(String(k["name"]) + " が副神となった", String(k["weapon"]) + "（半分の威力）が加わった", k["color"])
+		Sfx.play("descend", -6.0, 1.3)
+		Fx.flash(Cfg.with_a(k["color"], 0.4), 0.4)
+	else:
+		var b: Dictionary = o["boon"]
+		var col: Color = Cfg.RAR_COLOR[int(o["rar"])]
+		ui.banner(String(b["name"]), Kami.describe(b, int(player.boons[b["id"]]["rar"]), int(player.boons[b["id"]]["lv"])), col)
+		Sfx.play("suzu", -6.0)
 	if _offer_reason in ["level", "main"]:
 		player.pending_levels = maxi(0, player.pending_levels - 1)
 	_close_choice()
@@ -492,7 +496,7 @@ func on_miki_picked() -> void:
 	var targets := Boons.miki_targets(player)
 	if targets.is_empty():
 		player.heal(30.0, true)
-		ui.banner("神酒", "深められる恩恵がないので HP を回復した", Cfg.C_GOLD)
+		ui.banner("神酒", "神格を上げられる神がいないので HP を回復した", Cfg.C_GOLD)
 		return
 	_pause_for_choice(St.MIKI)
 	Sfx.play("miki", -4.0)
@@ -503,10 +507,7 @@ func _on_miki_chosen(id: String) -> void:
 	if state != St.MIKI:
 		return
 	Boons.miki_apply(player, id)
-	var b := Kami.boon(id)
-	ui.banner(String(b["name"]) + "  Lv.%d" % int(player.boons[id]["lv"]),
-			Kami.describe(b, int(player.boons[id]["rar"]), int(player.boons[id]["lv"])), Cfg.C_GOLD)
-	Sfx.play("suzu", -6.0, 1.2)
+	Sfx.play("miki", -4.0, 1.1)
 	_close_choice()
 
 
@@ -531,6 +532,7 @@ func _on_player_died() -> void:
 		["位", "Lv.%d" % player.level],
 		["討伐", str(kills)],
 		["神々", "・".join(god_names) if not god_names.is_empty() else "なし"],
+		["神格", "・".join(player.gods.map(func(g): return "Lv.%d" % int(player.kami_lv.get(g, 1)))) if not player.gods.is_empty() else "なし"],
 		["恩恵", str(player.boons.size())],
 	]
 	ui.hide_cards()

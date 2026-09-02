@@ -28,8 +28,8 @@ func _process(delta: float) -> void:
 	if target == null:
 		return
 	aim = (target.global_position - global_position).angle()
-	cd = 1.0 / maxf(0.6, float(owner_ship.stats["fire_rate"]) * owner_ship.fire_rate_mult() * 0.4)
-	owner_ship.spawn_foxfire(global_position, target, owner_ship.shot_damage(Cfg.Slot.ATTACK) * 0.5)
+	cd = 0.55 / owner_ship.fire_rate_mult()
+	owner_ship.spawn_foxfire(global_position, target, owner_ship.base_damage() * 0.6 * owner_ship.kami_power("inari"), "foxfire")
 
 
 func _draw() -> void:

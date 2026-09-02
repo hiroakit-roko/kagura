@@ -149,7 +149,7 @@ func _run() -> void:
 	get_tree().quit()
 
 
-## 神ごとに全恩恵を付けて戦わせ、能力と演出が動いているかを撮影する検証モード
+## 神ごとに神器と全強化を付けて戦わせ、能力と演出が動いているかを撮影する検証モード
 func _boon_test() -> void:
 	var g := Game.inst
 	for kid in Boons.kami_ids():
@@ -157,25 +157,23 @@ func _boon_test() -> void:
 		var p := g.player
 		p.stats["max_hp"] = 9999.0
 		p.hp = 9999.0
-		p.gods = [kid]
-		for b in Kami.boons_of(kid):
-			if b.has("rar") and int(b["rar"]) == Cfg.Rar.LEGENDARY:
-				continue
-			Boons.take(p, {"boon": b, "rar": Cfg.Rar.EPIC, "exchange": false, "cur": ""})
-		var leg := Boons.legendary_for(p, kid)
+		p.add_god(kid)
+		for b in Kami.upgrades_of(kid):
+			for i in 2:
+				Boons.take(p, {"type": "upgrade", "boon": b, "rar": Cfg.Rar.EPIC, "kami": kid})
+		var leg := Kami.legendary_of(kid)
 		if not leg.is_empty():
-			Boons.take(p, {"boon": leg, "rar": Cfg.Rar.LEGENDARY, "exchange": false, "cur": ""})
+			Boons.take(p, {"type": "legendary", "boon": leg, "rar": Cfg.Rar.LEGENDARY, "kami": kid})
+		p.kami_lv[kid] = 4
 		p.pending_levels = 0
-		g.wave = 5   # ある程度の物量で試す
-		print("[boontest] %s boons=%s slots=%s" % [kid, str(p.boons.keys()), str(p.slots)])
+		g.wave = 5
+		print("[boontest] %s boons=%s" % [kid, str(p.boons.keys())])
 		await _wait(4.5)
-		# 詠唱と疾走
 		_key(KEY_Z, true); await _wait(0.1); _key(KEY_Z, false)
 		_key(KEY_SPACE, true); await _wait(0.1); _key(KEY_SPACE, false)
-		await _wait(0.6)
+		await _wait(0.5)
 		await shot("70_%s_a.png" % kid)
 		await _wait(2.0)
-		# 神招き（ゲージ満タン）
 		p.call_gauge = 1.0
 		_key(KEY_X, true); await _wait(0.1); _key(KEY_X, false)
 		await _wait(0.5)
@@ -185,20 +183,21 @@ func _boon_test() -> void:
 		await _wait(1.0)
 		await shot("72_%s_b.png" % kid)
 		g.player.pending_levels = 0
-	# 双神：全部一気に付けてエラーが出ないか
+	# 3 柱 + 双神
 	g.start_game()
 	var p2 := g.player
 	p2.stats["max_hp"] = 9999.0
 	p2.hp = 9999.0
-	p2.gods = ["ama", "take", "tsuki"]
+	for kid in ["ama", "take", "uzume"]:
+		p2.add_god(kid)
+		for b in Kami.upgrades_of(kid):
+			Boons.take(p2, {"type": "upgrade", "boon": b, "rar": Cfg.Rar.RARE, "kami": kid})
 	for b in Kami.BOONS:
-		if b.has("kami2"):
-			Boons.take(p2, {"boon": b, "rar": Cfg.Rar.DUO, "exchange": false, "cur": ""})
-	for id in ["take_atk", "tsuki_spc", "ama_cast", "inari_spc"]:
-		Boons.take(p2, {"boon": Kami.boon(id), "rar": Cfg.Rar.EPIC, "exchange": false, "cur": ""})
+		if b.has("kami2") and p2.gods.has(b["kami"]) and p2.gods.has(b["kami2"]):
+			Boons.take(p2, {"type": "duo", "boon": b, "rar": Cfg.Rar.DUO, "kami": String(b["kami"])})
 	g.wave = 6
 	await _wait(6.0)
-	await shot("73_duo.png")
+	await shot("73_trio.png")
 	print("[boontest] done")
 	get_tree().quit()
 

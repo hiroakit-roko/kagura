@@ -158,9 +158,9 @@ func _do_burst_shot(ph: int) -> void:
 			Sfx.play("eshot", -12.0, 0.7, 0.05)
 
 
-func take_damage(d: float, crit: bool, at: Vector2) -> void:
+func take_damage(d: float, crit: bool, at: Vector2, quiet := false) -> void:
 	var before := phase()
-	super(d, crit, at)
+	super(d, crit, at, quiet)
 	if hp > 0.0 and phase() != before:
 		Fx.ring(position, Color(1, 1, 1), radius, radius * 5.0, 0.5)
 		Fx.shake_add(9.0)

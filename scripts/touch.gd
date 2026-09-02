@@ -165,13 +165,13 @@ class TouchView:
 					fill = 1.0 - p.dash_cool / maxf(0.01, p.dash_cd_time())
 					enabled = p.dash_cool <= 0.0
 				"cast":
-					col = p.kami_color(p.slot_kami(Cfg.Slot.CAST)) if p.slot_kami(Cfg.Slot.CAST) != "" else Cfg.C_PBULLET
+					col = p.kami_color(p.main_god()) if p.main_god() != "" else Cfg.C_PBULLET
 					fill = 1.0 if p.cast_charges > 0 else 1.0 - p.cast_cd / maxf(0.01, p.cast_cd_time())
-					enabled = p.cast_charges > 0
+					enabled = p.cast_charges > 0 and p.main_god() != ""
 					sub = "×%d" % p.cast_charges
 				"call":
-					var has_call: bool = p.slots.get(Cfg.Slot.CALL, "") != ""
-					col = p.kami_color(p.slot_kami(Cfg.Slot.CALL)) if has_call else Color(0.5, 0.5, 0.6)
+					var has_call: bool = p.main_god() != ""
+					col = p.kami_color(p.main_god()) if has_call else Color(0.5, 0.5, 0.6)
 					fill = p.call_gauge
 					enabled = has_call and p.call_gauge >= 0.25
 					if not has_call:

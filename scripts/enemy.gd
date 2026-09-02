@@ -149,7 +149,7 @@ func _physics_process(delta: float) -> void:
 	_tick_status(delta)
 
 	if st["frozen"] <= 0.0:
-		_behavior(delta * speed_mult())
+		_behavior(delta * speed_mult() * Game.enemy_slow)
 
 	# 押し戻し
 	if kb.length_squared() > 1.0:
@@ -469,14 +469,14 @@ func _on_fire() -> void:
 
 # ---------- 被弾・撃破 ----------
 
-func take_damage(d: float, crit: bool, at: Vector2) -> void:
+func take_damage(d: float, crit: bool, at: Vector2, quiet := false) -> void:
 	if hp <= 0.0:
 		return
 	hp -= d
-	flash = 1.0
-	var txt := str(int(round(d)))
-	Fx.number(at + Vector2(0, -radius), txt,
-			Cfg.C_CRIT if crit else Color(1, 1, 1, 0.92), 21.0 if crit else 14.0, crit)
+	flash = 1.0 if not quiet else maxf(flash, 0.5)
+	if not quiet or crit or randf() < 0.3:
+		Fx.number(at + Vector2(0, -radius), str(int(round(d))),
+				Cfg.C_CRIT if crit else Color(1, 1, 1, 0.92), 21.0 if crit else (14.0 if not quiet else 11.0), crit)
 	if crit:
 		Fx.sparks(at, Vector2.UP, Cfg.C_CRIT, 6, 380.0)
 	if hp <= 0.0:
@@ -592,6 +592,7 @@ func _draw_status() -> void:
 	var f: Font = Game.inst.ui.font if (Game.inst != null and Game.inst.ui != null) else null
 	if f == null:
 		return
+	_draw_status_aura()
 	var icons: Array = []
 	if st["exposed"] > 0.0: icons.append("exposed")
 	if st["rupture"] > 0.0: icons.append("rupture")
@@ -625,3 +626,80 @@ func _draw_status() -> void:
 		var k := clampf(float(d["t"]) / 1.1, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, radius * (1.0 + k * 1.2), 0.0, TAU, 24,
 				Cfg.with_a(Color(0.78, 0.72, 1.0), 0.8), 2.0, true)
+
+
+## 状態異常ごとの、体に重なる見える演出（オーラ・泡・結晶・火花・花弁）
+func _draw_status_aura() -> void:
+	var r := radius
+	# 照覧：金色の輪郭と光条
+	if st["exposed"] > 0.0:
+		var c := Color(1.0, 0.84, 0.42)
+		draw_arc(Vector2.ZERO, r + 4.0, 0, TAU, 28, Cfg.with_a(c, 0.85), 2.5, true)
+		for i in 6:
+			var a := t * 1.5 + TAU * float(i) / 6.0
+			draw_line(Vector2(cos(a), sin(a)) * (r + 6.0), Vector2(cos(a), sin(a)) * (r + 12.0 + 3.0 * sin(t * 6.0 + float(i))), Cfg.with_a(c, 0.7), 1.5, true)
+	# 弱体：桃色の花弁が舞い落ちる
+	if st["weak"] > 0.0:
+		var c := Color(1.0, 0.58, 0.78)
+		draw_circle(Vector2.ZERO, r * 1.5, Cfg.with_a(c, 0.10))
+		for i in 4:
+			var k := fmod(t * 0.7 + float(i) * 0.25, 1.0)
+			var pos := Vector2(sin(t * 2.0 + float(i) * 1.7) * r, -r * 1.4 + k * r * 2.8)
+			var dd := Vector2(cos(t * 3.0 + float(i)), sin(t * 3.0 + float(i)))
+			draw_colored_polygon(PackedVector2Array([pos + dd * 4.0, pos + dd.orthogonal() * 2.0, pos - dd * 4.0, pos - dd.orthogonal() * 2.0]), Cfg.with_a(c, 0.85 * (1.0 - k)))
+	# 魅了：桃色の心と輪
+	if st["charm"] > 0.0:
+		var c := Color(1.0, 0.45, 0.7)
+		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 24, Cfg.with_a(c, 0.5 + 0.3 * sin(t * 6.0)), 2.0, true)
+		var hp2 := Vector2(0, -r - 14.0 + sin(t * 4.0) * 2.0)
+		draw_circle(hp2 + Vector2(-3, -2), 3.0, c)
+		draw_circle(hp2 + Vector2(3, -2), 3.0, c)
+		draw_colored_polygon(PackedVector2Array([hp2 + Vector2(-6, -1), hp2 + Vector2(6, -1), hp2 + Vector2(0, 6)]), c)
+	# 酩酊：緑の泡が立ち上る、体が少し揺れる
+	var hs: int = int(st["hangover"]["stacks"])
+	if hs > 0:
+		var c := Color(0.62, 1.0, 0.55)
+		draw_circle(Vector2.ZERO, r * 1.35, Cfg.with_a(c, 0.10 + 0.02 * float(hs)))
+		for i in mini(hs + 2, 8):
+			var k := fmod(t * 0.9 + float(i) * 0.37, 1.0)
+			var pos := Vector2(sin(float(i) * 2.1 + t) * r * 0.8, r * 0.6 - k * r * 2.4)
+			draw_arc(pos, 2.0 + 2.0 * (1.0 - k), 0, TAU, 10, Cfg.with_a(c, 0.9 * (1.0 - k)), 1.2, true)
+	# 冷気：青白い結晶が体に付く。凍結で全体が氷に
+	var cs: int = int(st["chill"]["stacks"])
+	if cs > 0 or st["frozen"] > 0.0:
+		var c := Color(0.8, 0.95, 1.0)
+		var n := mini(cs, 10) if st["frozen"] <= 0.0 else 12
+		for i in n:
+			var a := float(i) * 2.4 + 0.3
+			var pos := Vector2(cos(a), sin(a)) * r * 0.85
+			var dd := Vector2(cos(a), sin(a))
+			draw_colored_polygon(PackedVector2Array([pos + dd * 7.0, pos + dd.orthogonal() * 2.5, pos - dd * 2.0, pos - dd.orthogonal() * 2.5]), Cfg.with_a(c, 0.9))
+		if st["frozen"] > 0.0:
+			draw_circle(Vector2.ZERO, r * 1.25, Cfg.with_a(c, 0.35))
+			draw_arc(Vector2.ZERO, r * 1.25, 0, TAU, 24, Color(1, 1, 1, 0.8), 2.0, true)
+	# 帯電：黄色い火花がまとわりつく
+	if st["jolted"] > 0.0:
+		var c := Color(1.0, 0.95, 0.5)
+		for i in 3:
+			var a := t * 9.0 + float(i) * 2.1
+			var p0 := Vector2(cos(a), sin(a)) * (r + 4.0)
+			var p1 := p0 + Vector2(randf_range(-6, 6), randf_range(-6, 6))
+			draw_line(p0, p1, Cfg.with_a(c, 0.9), 1.5, true)
+		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 20, Cfg.with_a(c, 0.35), 1.0, true)
+	# 裂傷：青い裂け目
+	if st["rupture"] > 0.0:
+		var c := Color(0.35, 0.82, 0.95)
+		for i in 3:
+			var a := float(i) * 2.0 + 0.5
+			var p0 := Vector2(cos(a), sin(a)) * r * 0.2
+			var p1 := Vector2(cos(a), sin(a)) * r * 0.95
+			draw_line(p0, p1, Cfg.with_a(c, 0.9), 2.0, true)
+			draw_line(p0, p1, Color(1, 1, 1, 0.6), 0.8, true)
+	# 狐憑き：橙の狐面の印
+	if st["marked"]:
+		var c := Color(1.0, 0.62, 0.3)
+		var mp := Vector2(0, -r - 12.0)
+		draw_colored_polygon(PackedVector2Array([mp + Vector2(0, 6), mp + Vector2(6, 0), mp + Vector2(5, -7), mp + Vector2(0, -3), mp + Vector2(-5, -7), mp + Vector2(-6, 0)]), Cfg.with_a(Cfg.C_PAPER, 0.95))
+		draw_line(mp + Vector2(-3, -1), mp + Vector2(-1, 1), Color(0.85, 0.2, 0.3), 1.5)
+		draw_line(mp + Vector2(3, -1), mp + Vector2(1, 1), Color(0.85, 0.2, 0.3), 1.5)
+		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 20, Cfg.with_a(c, 0.5), 1.5, true)

@@ -30,8 +30,12 @@ var zone_dmg := 10.0
 var kb := 0.0              # 押し戻しの強さ
 var mode := ""             # "cloud": 一定距離で止まり雷雲になる  "vortex": 敵を引き寄せる
 var charmed := false       # 魅了された敵が撃った弾
-var split_on_hit := 0      # 命中時にこの数の小弾に砕ける（伊邪那美の氷柱）
+var split_on_hit := 0      # 命中時にこの数の小弾に砕ける
+var doom := 0.0            # 命中した敵に刻む宿命のダメージ（月読）
+var charm_chance := 0.0    # 命中した敵を魅了する確率（天宇受売）
 var travel := 0.0
+var _origin := Vector2.ZERO
+var _returning := false
 
 var _hit: Dictionary = {}
 var _target: Node2D = null
@@ -41,6 +45,7 @@ var _t := 0.0
 
 func setup(p: Vector2, v: Vector2, d: float, friend: bool) -> void:
 	position = p
+	_origin = p
 	vel = v
 	dmg = d
 	friendly = friend
@@ -96,6 +101,20 @@ func _physics_process(delta: float) -> void:
 	elif mode == "cloud" and travel > 300.0:
 		_become_cloud()
 		return
+	elif mode == "boomerang":
+		# 舞扇：一定距離で折り返し、自機の手元へ戻る
+		var pl := Game.inst.player
+		if not _returning and travel > 330.0:
+			_returning = true
+			_hit.clear()
+			Sfx.play("clap", -18.0, 1.6, 0.1)
+		if _returning and pl != null and is_instance_valid(pl):
+			var want := (pl.position - position).normalized() * vel.length()
+			vel = vel.lerp(want, clampf(6.0 * delta, 0.0, 1.0))
+			if position.distance_to(pl.position) < 26.0:
+				queue_free()
+				return
+		rotation = _t * 14.0
 
 	if Cfg.off_screen(position, 60.0 if shape_kind != 4 else 200.0):
 		queue_free()
@@ -168,7 +187,7 @@ func _on_area(a: Area2D) -> void:
 		if crit_chance >= 0.0 and randf() < crit_chance:
 			crit = true
 		var opts := {"tag": tag, "slot": slot, "kami": kami, "crit": crit,
-				"dir": vel.normalized(), "kb": kb}
+				"dir": vel.normalized(), "kb": kb, "doom": doom, "charm_chance": charm_chance}
 		Combat.hit(a, dmg, global_position, opts)
 		if zone_kind != "":
 			_leave_zone(global_position)
@@ -301,6 +320,34 @@ func _draw() -> void:
 					var a := a0 + k * 2.4
 					draw_circle(Vector2(cos(a), sin(a)) * rr, 2.5 + k * 2.0, Cfg.with_a(color, 0.9 - k * 0.5))
 			draw_circle(Vector2.ZERO, radius * 0.3, Color(1, 1, 1, 0.9))
+		8: # 舞扇：開いた扇
+			draw_circle(Vector2.ZERO, radius * 1.3, Cfg.with_a(color, 0.14))
+			var a0 := -PI * 0.5 - 1.15
+			var a1 := -PI * 0.5 + 1.15
+			draw_arc(Vector2(0, radius * 0.5), radius * 1.15, a0, a1, 22, Cfg.C_PAPER, radius * 0.5, true)
+			draw_arc(Vector2(0, radius * 0.5), radius * 1.0, a0, a1, 22, color, radius * 0.16, true)
+			for i in 7:
+				var ang := lerpf(a0, a1, float(i) / 6.0)
+				draw_line(Vector2(0, radius * 0.5), Vector2(0, radius * 0.5) + Vector2(cos(ang), sin(ang)) * radius * 1.35, Cfg.C_INK, 1.0, true)
+			draw_circle(Vector2(0, radius * 0.5), radius * 0.16, Cfg.C_INK)
+			draw_circle(Vector2(0, -radius * 0.5), radius * 0.28, Color(0.85, 0.2, 0.3, 0.9))
+		9: # 瓢箪
+			draw_circle(Vector2.ZERO, radius * 2.0, glow)
+			draw_circle(Vector2(0, radius * 0.5), radius * 1.0, Cfg.C_PAPER)
+			draw_circle(Vector2(0, -radius * 0.55), radius * 0.7, Cfg.C_PAPER)
+			draw_arc(Vector2(0, radius * 0.5), radius * 1.0, 0, TAU, 16, color, 1.5, true)
+			draw_arc(Vector2(0, -radius * 0.55), radius * 0.7, 0, TAU, 14, color, 1.5, true)
+			draw_rect(Rect2(-radius * 0.25, -radius * 1.5, radius * 0.5, radius * 0.4), color)
+			draw_circle(Vector2(0, radius * 0.6), radius * 0.4, Color(0.85, 0.2, 0.25, 0.85))
+		10: # 氷柱：細長い結晶
+			draw_circle(Vector2.ZERO, radius * 2.0, Cfg.with_a(color, 0.2))
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(0, -radius * 3.2), Vector2(radius * 0.9, -radius * 0.6), Vector2(radius * 0.6, radius * 1.4),
+				Vector2(-radius * 0.6, radius * 1.4), Vector2(-radius * 0.9, -radius * 0.6)]), color)
+			draw_line(Vector2(0, -radius * 2.6), Vector2(0, radius * 1.0), Color(1, 1, 1, 0.9), 1.5, true)
+		11: # 風の刃：薄い三日月
+			draw_arc(Vector2(0, radius * 1.2), radius * 2.6, PI + 0.6, TAU - 0.6, 12, Cfg.with_a(color, 0.9), radius * 0.7, true)
+			draw_arc(Vector2(0, radius * 1.2), radius * 2.6, PI + 0.8, TAU - 0.8, 12, Color(1, 1, 1, 0.8), radius * 0.25, true)
 		7: # 敵弾：鬼火
 			draw_circle(Vector2.ZERO, radius * 2.2, glow)
 			var fl2 := 1.0 + 0.25 * sin(_t * 26.0)
