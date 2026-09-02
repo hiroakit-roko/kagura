@@ -63,8 +63,8 @@ const STATUS_GLYPH := {
 func setup(k: String, w: int) -> void:
 	kind = k
 	wave = w
-	var hs := 1.0 + float(w) * 0.30
-	var ss := 1.0 + float(w) * 0.028
+	var hs := 1.5 + float(w) * 0.38
+	var ss := 1.08 + float(w) * 0.03
 	_phase = randf() * TAU
 	_dir = 1.0 if randf() < 0.5 else -1.0
 	match k:
@@ -338,14 +338,14 @@ func _behavior(delta: float) -> void:
 			fire_t -= delta
 			if fire_t <= 0.0 and position.y > 40.0 and position.y < Cfg.H * 0.75:
 				fire_t = _cool(2.4, 3.8)
-				_shoot_aimed(1, 0.0, 285.0)
+				_shoot_aimed(1 if wave < 4 else 2, 10.0, _spd(285.0))
 		"weaver":
 			position.y += speed * delta
 			position.x += cos(t * 2.1 + _phase) * 165.0 * delta * _dir
 			fire_t -= delta
 			if fire_t <= 0.0 and position.y > 40.0 and position.y < Cfg.H * 0.8:
 				fire_t = _cool(2.6, 4.0)
-				_shoot_spread(2 if wave < 5 else 3, 22.0, 240.0)
+				_shoot_spread(2 if wave < 4 else 3, 22.0, _spd(240.0))
 		"charger":
 			match _state:
 				0: # 侵入
@@ -372,14 +372,14 @@ func _behavior(delta: float) -> void:
 			fire_t -= delta
 			if fire_t <= 0.0 and position.y >= 100.0:
 				fire_t = _cool(2.6, 3.2)
-				_shoot_radial(7 + mini(4, int(wave / 5)), 215.0, t * 0.6)
+				_shoot_radial(8 + mini(5, int(wave / 4)), _spd(215.0), t * 0.6)
 		"splitter":
 			position.y += speed * delta
 			position.x += sin(t * 1.1 + _phase) * 40.0 * delta
 			fire_t -= delta
 			if fire_t <= 0.0 and position.y > 40.0 and position.y < Cfg.H * 0.8:
 				fire_t = _cool(2.8, 4.2)
-				_shoot_aimed(2, 14.0, 235.0)
+				_shoot_aimed(2, 14.0, _spd(235.0))
 		"mini":
 			var p2 := _player()
 			var dir := Vector2.DOWN
@@ -392,11 +392,16 @@ func _behavior(delta: float) -> void:
 
 ## ウェーブが進むほど発射間隔を少しずつ詰める
 func _cool(lo: float, hi: float) -> float:
-	return randf_range(lo, hi) * clampf(1.0 - float(wave) * 0.012, 0.62, 1.0)
+	return randf_range(lo, hi) * clampf(0.85 - float(wave) * 0.015, 0.5, 1.0)
+
+
+## 弾速もウェーブでじわじわ上がる
+func _spd(base: float) -> float:
+	return base * (1.15 + float(wave) * 0.02)
 
 
 func _bullet_dmg() -> float:
-	return (8.0 + float(wave) * 0.8) * out_dmg_mult()
+	return (9.0 + float(wave) * 1.0) * out_dmg_mult()
 
 
 func _shoot_aimed(count: int, spread_deg: float, spd: float) -> void:

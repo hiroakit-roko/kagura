@@ -41,7 +41,7 @@ var gods: Array = []     # [主神, 副神, 副神]
 var hp := 100.0
 var level := 1
 var xp := 0.0
-var xp_next := 22.0
+var xp_next := 40.0
 var pending_levels := 0
 var alive := true
 
@@ -237,10 +237,12 @@ func _move(delta: float) -> void:
 			_on_dash_end()
 	else:
 		var want_dash := Input.is_key_pressed(KEY_SPACE)
-		if tc != null and tc.take("dash"):
-			want_dash = true
-			if dir == Vector2.ZERO:
-				dir = tc.move_dir if tc.move_dir.length() > 0.1 else Vector2.UP
+		if tc != null:
+			# スマホ：指をすばやく弾くと、その方向へ疾走
+			var flick := tc.take_flick()
+			if flick != Vector2.ZERO:
+				want_dash = true
+				dir = flick
 		if want_dash and dash_cool <= 0.0 and dir != Vector2.ZERO:
 			_start_dash(dir)
 		if tc != null and touch_move != Vector2.ZERO:
@@ -791,7 +793,8 @@ func add_xp(amount: float) -> void:
 	while xp >= xp_next:
 		xp -= xp_next
 		level += 1
-		xp_next = 20.0 + float(level) * 9.0 + pow(float(level), 1.5) * 1.4
+		# 1 波でおよそ 1 回、神が現れる程度の緩やかな曲線
+		xp_next = 34.0 + float(level) * 18.0 + pow(float(level), 1.5) * 2.0
 		pending_levels += 1
 		stats["max_hp"] = float(stats["max_hp"]) + 3.0
 		hp += 3.0
@@ -811,8 +814,9 @@ func _die() -> void:
 	Sfx.play("boom", -4.0)
 	Sfx.play("gameover", -8.0)
 	visible = false
-	monitoring = false
-	monitorable = false
+	# 当たり判定のシグナル処理中に呼ばれることがあるので遅延して切る
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
 	died.emit()
 
 

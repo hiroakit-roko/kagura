@@ -75,6 +75,7 @@ func _ready() -> void:
 
 	sfx = Sfx.new()
 	add_child(sfx)
+	add_child(Music.new())
 
 	ui = Ui.new()
 	add_child(ui)
@@ -119,6 +120,7 @@ func _fit_viewport() -> void:
 
 
 func _show_title() -> void:
+	Music.stop()
 	state = St.TITLE
 	ui.overlay.mode = 0
 	ui.overlay.visible = true
@@ -150,10 +152,12 @@ func start_game() -> void:
 	player.position = Vector2(Cfg.W * 0.5, Cfg.H - 190.0)
 	world.add_child(player)
 	player.died.connect(_on_player_died)
+	player.leveled_up.connect(_on_leveled_up)
 
 	ui.overlay.visible = false
 	ui.hide_cards()
-	ui.banner("参道を進め", "WASD 移動  Space 疾走  Z 詠唱  X 神招き", Cfg.C_PLAYER)
+	Music.play("stage")
+	ui.banner("参道を進め", "穢れを祓い、勾玉を集めよ。波を祓うと神が現れる", Cfg.C_PLAYER)
 	state = St.PLAY
 	get_tree().paused = false
 
@@ -178,8 +182,8 @@ func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player) or not player.alive:
 		return
 
-	# レベルアップが溜まっていれば神との邂逅へ
-	if player.pending_levels > 0:
+	# レベルアップが溜まっていれば、波を祓ったあと（戦闘の合間）に神との邂逅へ
+	if player.pending_levels > 0 and not _wave_active:
 		if player.gods.is_empty():
 			_open_kami_choice()
 		else:
@@ -229,6 +233,7 @@ func _start_wave() -> void:
 		b.setup_boss(wave)
 		world.add_child(b)
 		boss = b
+		Music.play("boss")
 		ui.banner("大妖、来たる", b.boss_name, Color(1, 0.35, 0.4))
 		Sfx.play("taiko", -2.0, 0.7)
 		Sfx.play("warn", -6.0)
@@ -239,17 +244,30 @@ func _start_wave() -> void:
 		Sfx.play("clap", -10.0)
 
 
+func _on_leveled_up() -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	Sfx.play("suzu", -10.0, 1.2)
+	Fx.ring(player.position, Cfg.C_GOLD, 10.0, 90.0, 0.4, 3.0)
+	if player.gods.is_empty():
+		ui.banner("位 %d" % player.level, "この波を祓うと、神々が姿を見せる", Cfg.C_GOLD)
+	else:
+		ui.banner("位 %d" % player.level, "この波を祓うと、神が恩恵を授けに現れる", Cfg.C_GOLD)
+
+
 func _clear_wave() -> void:
 	_wave_active = false
 	_between = 1.5
 	if player != null and is_instance_valid(player):
 		player.heal(6.0, true)
-		player.add_xp(9.0 + float(wave) * 3.0)   # 取りこぼしても必ず成長できるよう保証
+		player.add_xp(10.0 + float(wave) * 3.0)   # 取りこぼしても必ず成長できるよう保証
 		score += 50 * wave
 	if _boss_reward:
 		_boss_reward = false
 		_open_boons("boss", Cfg.Rar.EPIC, player.main_god())
 		return
+	if player.pending_levels > 0:
+		return   # 続けて神との邂逅が開く（_process 側）
 	ui.banner("祓い清め", "+%d" % (50 * wave), Cfg.C_HP)
 	Sfx.play("suzu", -10.0)
 	# 3 波ごとに神酒が降りてくる
@@ -266,7 +284,7 @@ func _build_wave(w: int) -> Array:
 	if w >= 6: kinds.append("turret")
 	if w >= 8: kinds.append("splitter")
 
-	var budget := 6.0 + float(w) * 2.3
+	var budget := 8.0 + float(w) * 3.0
 	var out: Array = []
 	var tt := 0.7
 	var guard := 0
@@ -359,6 +377,7 @@ func on_boss_killed(b: Boss) -> void:
 	score += b.score
 	boss = null
 	_boss_reward = true
+	Music.play("stage")
 	hitstop(0.6, 0.15)
 	for i in 10:
 		_drop(b.position + Vector2(randf_range(-70, 70), randf_range(-70, 70)), b.xp / 10.0)
@@ -505,6 +524,7 @@ func _close_choice() -> void:
 # ---------- 状態 ----------
 
 func _on_player_died() -> void:
+	Music.stop()
 	state = St.OVER
 	ui.overlay.mode = 1
 	var god_names := []
@@ -540,6 +560,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	if k == KEY_M:
 		if sfx != null:
 			sfx.muted = not sfx.muted
+			Music.set_muted(sfx.muted)
 			ui.banner("音 " + ("OFF" if sfx.muted else "ON"), "", Color(0.8, 0.9, 1.0))
 	elif k == KEY_P:
 		toggle_pause()

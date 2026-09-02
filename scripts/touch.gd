@@ -11,6 +11,7 @@ static var inst: Touch
 
 const SENS := 1.25          # 指の移動量に対する自機の移動倍率
 const BTN_R := 50.0
+const FLICK_SPEED := 2600.0 # これ以上の速さで指を動かすと疾走（px/秒、ゲーム座標）
 
 var active := false
 var move_dir := Vector2.ZERO
@@ -19,21 +20,28 @@ var _delta := Vector2.ZERO
 var _last_drag := Vector2.ZERO
 var _view: Control
 var _t := 0.0
+var _flick := Vector2.ZERO
+var _flick_cd := 0.0
 
 var buttons := {
-	"dash": {"pos": Vector2.ZERO, "r": BTN_R, "id": -1, "just": false, "label": "疾走"},
-	"cast": {"pos": Vector2.ZERO, "r": BTN_R, "id": -1, "just": false, "label": "詠唱"},
 	"call": {"pos": Vector2.ZERO, "r": BTN_R, "id": -1, "just": false, "label": "神招き"},
+	"cast": {"pos": Vector2.ZERO, "r": BTN_R, "id": -1, "just": false, "label": "詠唱"},
 	"pause": {"pos": Vector2.ZERO, "r": 20.0, "id": -1, "just": false, "label": "休"},
 }
 
 
 ## 画面の高さは端末で変わるので、ボタン位置は毎回計算する
 func layout() -> void:
-	buttons["dash"]["pos"] = Vector2(84.0, Cfg.H - 128.0)
+	buttons["call"]["pos"] = Vector2(84.0, Cfg.H - 128.0)
 	buttons["cast"]["pos"] = Vector2(Cfg.W - 84.0, Cfg.H - 128.0)
-	buttons["call"]["pos"] = Vector2(Cfg.W - 84.0, Cfg.H - 262.0)
 	buttons["pause"]["pos"] = Vector2(Cfg.W - 26.0, 112.0)
+
+
+## 指を弾いた方向（疾走）。一度だけ返す
+func take_flick() -> Vector2:
+	var f := _flick
+	_flick = Vector2.ZERO
+	return f
 
 
 func _ready() -> void:
@@ -53,6 +61,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_flick_cd = maxf(0.0, _flick_cd - delta)
 	layout()
 	_view.queue_redraw()
 
@@ -118,6 +127,9 @@ func _unhandled_input(e: InputEvent) -> void:
 			_delta += dg.relative * SENS
 			if dg.relative.length() > 0.5:
 				move_dir = move_dir.lerp(dg.relative.normalized(), 0.5)
+			if _flick_cd <= 0.0 and dg.velocity.length() > FLICK_SPEED:
+				_flick = dg.velocity.normalized()
+				_flick_cd = 0.6
 
 
 # =====================================================================
@@ -192,4 +204,6 @@ class TouchView:
 		if g.wave <= 1 and tc._t < 12.0:
 			var a2 := clampf(12.0 - tc._t, 0.0, 1.0) * 0.8
 			Ui.txt(self, ui.font, Vector2(0, Cfg.H * 0.56), "画面をなぞって移動", 15, Color(1, 1, 1, a2),
+					HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			Ui.txt(self, ui.font, Vector2(0, Cfg.H * 0.56 + 22.0), "指をすばやく弾くと疾走", 13, Color(1, 1, 1, a2 * 0.85),
 					HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)

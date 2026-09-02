@@ -23,7 +23,7 @@ func setup_boss(w: int) -> void:
 	kind = "boss"
 	is_boss = true
 	boss_name = NAMES[mini(tier - 1, NAMES.size() - 1)]
-	max_hp = 680.0 * (1.0 + float(tier - 1) * 0.85)
+	max_hp = 1100.0 * (1.0 + float(tier - 1) * 0.9)
 	hp = max_hp
 	radius = 56.0
 	speed = 70.0
@@ -120,7 +120,7 @@ func _bullet_dmg() -> float:
 
 
 func _do_burst_shot(ph: int) -> void:
-	var spd := 175.0 + 12.0 * float(ph) + float(tier) * 12.0
+	var spd := 200.0 + 14.0 * float(ph) + float(tier) * 14.0
 	match burst_kind:
 		"radial":
 			_shoot_radial(12 + ph * 3, spd, randf() * TAU)

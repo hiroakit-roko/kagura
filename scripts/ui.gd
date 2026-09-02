@@ -514,13 +514,34 @@ class KamiChoiceView:
 				Color(0.9, 0.9, 1.0, 0.7 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		for i in ids.size():
 			_draw_card(i)
-		var hint := "[1] [2] [3] またはクリックで選ぶ"
-		Ui.txt(self, ui.font, Vector2(0, CY + CH + 40), hint, 14,
+		var hint := "[1] [2] [3] またはタップで選ぶ"
+		Ui.txt(self, ui.font, Vector2(0, CY + CH + 34), hint, 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		if hover >= 0 and hover < ids.size():
 			var k := Kami.kami(ids[hover])
-			Ui.txt(self, ui.font, Vector2(0, CY + CH + 70), "「" + String(k["intro"]) + "」", 13,
+			Ui.txt(self, ui.font, Vector2(0, CY + CH + 58), "「" + String(k["intro"]) + "」", 13,
 					Cfg.with_a(k["color"], 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		_draw_howto(CY + CH + 78.0)
+
+	## 恩恵の仕組み（初見向けの短い説明）
+	func _draw_howto(y0: float) -> void:
+		var r := Rect2(40.0, y0, Cfg.W - 80.0, 118.0)
+		if r.end.y > Cfg.H - 10.0:
+			return
+		var a := anim
+		draw_rect(r, Color(0.06, 0.05, 0.10, 0.85 * a))
+		draw_rect(r, Cfg.with_a(Cfg.C_GOLD, 0.45 * a), false, 1.0)
+		Ui.txt(self, ui.font_display, Vector2(r.position.x + 14, r.position.y + 22), "恩恵の仕組み", 14, Cfg.with_a(Cfg.C_GOLD, a))
+		var lines := [
+			"① 波を祓うごとに神が現れ、恩恵を 3 つ提示する。1 つ選ぶ。",
+			"② 恩恵は 攻撃・特技・詠唱・疾走・神招き の技に宿るか、常時の加護。",
+			"③ 1 つの技に宿せる神威は 1 柱まで。別の神の恩恵で「交換」できる。",
+			"④ 神は 3 柱まで（主神 + 副神 2）。神酒で恩恵の位を深められる。",
+		]
+		var y := r.position.y + 42.0
+		for l: String in lines:
+			Ui.txt(self, ui.font, Vector2(r.position.x + 14, y), l, 11, Color(0.9, 0.92, 1.0, 0.9 * a))
+			y += 19.0
 
 	func _draw_card(i: int) -> void:
 		var k := Kami.kami(ids[i])
@@ -593,8 +614,8 @@ class BoonsView:
 	var quote := ""
 
 	const CW := 192.0
-	const CH := 318.0
-	const CY := 318.0
+	const CH := 330.0
+	const CY := 312.0
 
 	func count() -> int:
 		return offers.size()
@@ -642,16 +663,52 @@ class BoonsView:
 		for i in offers.size():
 			_draw_card(i)
 
-		var hint := "[1] [2] [3] またはクリックで受け取る"
+		var hint := "[1] [2] [3] またはタップで受け取る"
 		if rerolls > 0:
 			hint += "　　[R] 神籤を引き直す ×%d" % rerolls
-		Ui.txt(self, ui.font, Vector2(0, CY + CH + 34), hint, 14,
+		Ui.txt(self, ui.font, Vector2(0, CY + CH + 30), hint, 14,
 				Color(0.85, 0.88, 1.0, 0.9 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		# スロットの説明
-		if hover >= 0 and hover < offers.size():
-			var b: Dictionary = offers[hover]["boon"]
-			Ui.txt(self, ui.font, Vector2(0, CY + CH + 60), Cfg.SLOT_HINT[int(b["slot"])], 12,
-					Color(0.85, 0.88, 1.0, 0.7 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		_draw_loadout(CY + CH + 52.0)
+
+	## いま 5 つの技に宿っている神威を並べて見せる（交換の意味が分かるように）
+	func _draw_loadout(y0: float) -> void:
+		var p := Game.inst.player
+		if p == null:
+			return
+		var a := anim
+		Ui.txt(self, ui.font, Vector2(0, y0 + 12), "いま技に宿っている神威", 11, Color(1, 0.9, 0.7, 0.85 * a),
+				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		var n := 5
+		var w := 96.0
+		var gap := 8.0
+		var x0 := (Cfg.W - (float(n) * w + float(n - 1) * gap)) * 0.5
+		for i in n:
+			var r := Rect2(x0 + float(i) * (w + gap), y0 + 20.0, w, 46.0)
+			var id: String = p.slots.get(i, "")
+			var targeted := false
+			for o in offers:
+				if int(o["boon"]["slot"]) == i:
+					targeted = true
+			var col := Color(0.5, 0.5, 0.6)
+			var name := "空"
+			if id != "":
+				var b := Kami.boon(id)
+				var k := Kami.kami(String(b["kami"]))
+				col = k["color"]
+				name = String(k["name"])
+			draw_rect(r, Color(0.06, 0.05, 0.10, 0.85 * a))
+			draw_rect(r, Cfg.with_a(col if id != "" else Color(0.5, 0.5, 0.6), (0.9 if targeted else 0.35) * a), false, 1.5 if targeted else 1.0)
+			Ui.txt(self, ui.font_bold, Vector2(r.position.x, r.position.y + 15), Cfg.SLOT_NAME[i], 11,
+					Color(1, 1, 1, (0.95 if targeted else 0.6) * a), HORIZONTAL_ALIGNMENT_CENTER, w)
+			if id != "":
+				var b2 := Kami.boon(id)
+				var k2 := Kami.kami(String(b2["kami"]))
+				Emblem.draw(self, String(k2["emblem"]), r.position + Vector2(16, 32), 9.0, col, k2["color2"], _t, a)
+				Ui.txt(self, ui.font, Vector2(r.position.x + 28, r.position.y + 36), name, 10, Cfg.with_a(col, a), HORIZONTAL_ALIGNMENT_LEFT, w - 30)
+			else:
+				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 36), "空", 10, Color(1, 1, 1, 0.4 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
+		Ui.txt(self, ui.font, Vector2(0, y0 + 84), "技に宿る恩恵は 1 つの技に 1 柱まで。加護は何個でも重ねられる。", 11,
+				Color(0.85, 0.88, 1.0, 0.7 * a), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _draw_card(i: int) -> void:
 		var o: Dictionary = offers[i]
@@ -705,6 +762,11 @@ class BoonsView:
 				HORIZONTAL_ALIGNMENT_LEFT, rr.size.x - 28, 12, 6, Color(0.9, 0.92, 1.0, a * 0.95),
 				TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND)
 
+		# どこに宿るか
+		if not o["exchange"]:
+			var where: String = Cfg.SLOT_HINT[slot] if not b.has("kami2") else "2 柱の神威が響き合う特別な加護"
+			Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 40), "▶ " + where, 10,
+					Cfg.with_a(kc, a * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		# 交換
 		if o["exchange"]:
 			var cur := Kami.boon(String(o["cur"]))
