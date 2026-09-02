@@ -107,7 +107,12 @@ func _request(path: String, method: int, body: String, extra_headers: Array, cb:
 
 
 ## 記録を送る（同じ run_id があれば置き換える）。cb(ok)
+## 手元の開発ビルド（version が dev）や自動テストからは送らない
 func submit(entry: Dictionary, cb: Callable) -> void:
+	BuildInfo.load_info()
+	if BuildInfo.version == "dev" or OS.get_cmdline_user_args().has("--capture"):
+		cb.call(false)
+		return
 	var row := {
 		"run_id": String(entry.get("run_key", str(entry.get("run", 0)))),
 		"name": String(entry.get("name", "")).left(16),

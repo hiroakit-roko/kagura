@@ -104,6 +104,8 @@ image/
   familiar/<id>.jpg    使い魔の絵（開始時の選択カード）
   boss/<key>.jpg       ボスの登場絵（名乗りの帯）：aratama / dodomeki / orochi
   scene/clear.jpg      踏破の一枚絵、scene/gameover.jpg ゲームオーバーの一枚絵
+  relic/<id>.jpg       神宝の絵（討伐の褒賞のカード。手描き風・コミカル、512×512）
+  item/{xp,heal,orb}.jpg  勾玉・団子・詠唱の札の絵（初めて落ちたときの案内）
   player_walk.png      walk.gif から抽出した歩行スプライトシート（10 フレーム、ピンポン再生）
   walk.gif             元素材（ゲームでは未使用）
 music/
@@ -235,3 +237,8 @@ godot --path . -- --capture --deathtest  # ゲームオーバー→リスター�
 - HDR 2D は切ってある（発光は閾値 0.82 なので HDR なしでも出る。帯域が半分になる）。
 - 敵・敵弾の一覧は `Game.enemies()` / `Game.ebullets()` で物理フレームごとに 1 回だけ集める。
 - HUD の再描画は 30fps に間引く。背景の星は 1 回の draw_multiline でまとめて描く。
+
+## 見た目（エフェクト）
+
+- 光は `Fx.GLOW`（中心が白く外へ溶ける放射状のテクスチャ）を加算合成で重ねて作る。弾・敵・拾い物の光輪、
+  撃破・宿命・砕け・落雷の光の膨らみ（`Fx.puff`）がこれ。HDR なしでも重なった所が白く飽和してネオンの質感になる。
