@@ -1375,7 +1375,7 @@ class OverlayView:
 		var g := Game.inst
 		if rank > 0:
 			Ui.txt(self, ui.font_display, Vector2(0, y + 18), "この端末の記録　第 %d 位に刻まれた" % rank, 17, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-			Ui.txt(self, ui.font, Vector2(0, y + 36), "名を刻む（10 文字まで）。入力して Enter か「刻む」", 10, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			Ui.txt(self, ui.font, Vector2(0, y + 36), "巫女 %s として刻まれる。名は下のボタンで付けられる（10 文字まで）" % Records.display_name(), 10, Color(1, 1, 1, 0.7), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 			ui.name_box.place(y + 44.0, g.run_id if g != null else -1)
 			return y + 84.0
 		ui.name_box.visible = false
@@ -1467,7 +1467,7 @@ class OverlayView:
 		if int(Records.best["clears"]) > 0:
 			Ui.txt(self, ui.font, Vector2(0, ry - 8.0), "踏破 %d 回　最高功徳 %d" % [int(Records.best["clears"]), int(Records.best["score"])], 11,
 					Cfg.with_a(Cfg.C_GOLD, 0.9), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		ui.name_box.place_title(ry + rh + 6.0)
+		ui.name_box.place_title(ry + rh + 4.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
 		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1507,24 +1507,38 @@ class OverlayView:
 
 
 # =====================================================================
-## 名前の入力欄（LineEdit と「刻む」ボタン）。結果画面では順位の下、題目では記録表の下に置く
+## 名前の入力。常設せず「名を刻む」ボタンだけを置き、押したときにだけ入力する。
+##   Web 版：ブラウザ標準の入力ダイアログ（prompt）。スマホでも確実にキーボードが出る
+##   デスクトップ版：その場に LineEdit を開き、Enter か「刻む」で確定
 class NameBox:
 	extends Control
 
 	var ui: Ui
+	var open_btn: Button
 	var edit: LineEdit
-	var button: Button
+	var ok_btn: Button
 	var run_id := -1
+	var _editing := false
+	var _y := 0.0
+	var _small := false
+
+	func _process(_delta: float) -> void:
+		# 題目・結果画面が閉じたら一緒に消える
+		if visible and not ui.overlay.visible:
+			visible = false
+			_editing = false
 
 	func build() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_preset(Control.PRESET_FULL_RECT)
+		open_btn = _button("名を刻む", 12)
+		open_btn.pressed.connect(_open)
+		add_child(open_btn)
 		edit = LineEdit.new()
 		edit.max_length = 10
 		edit.placeholder_text = "巫女の名"
 		edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
 		edit.context_menu_enabled = false
-		edit.virtual_keyboard_enabled = true
 		edit.add_theme_font_override("font", ui.font)
 		edit.add_theme_font_size_override("font_size", 15)
 		edit.add_theme_color_override("font_color", Color(1, 1, 1))
@@ -1533,20 +1547,26 @@ class NameBox:
 		edit.add_theme_stylebox_override("normal", _style(Color(0.08, 0.06, 0.12, 0.95), Cfg.with_a(Cfg.C_GOLD, 0.5)))
 		edit.add_theme_stylebox_override("focus", _style(Color(0.10, 0.08, 0.16, 0.98), Cfg.C_GOLD))
 		edit.text_submitted.connect(_submit)
+		edit.visible = false
 		add_child(edit)
-		button = Button.new()
-		button.text = "刻む"
-		button.focus_mode = Control.FOCUS_NONE
-		button.add_theme_font_override("font", ui.font_bold)
-		button.add_theme_font_size_override("font_size", 13)
-		button.add_theme_color_override("font_color", Cfg.C_GOLD)
-		button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-		button.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-		button.add_theme_stylebox_override("normal", _style(Color(0.12, 0.09, 0.18, 0.95), Cfg.with_a(Cfg.C_GOLD, 0.6)))
-		button.add_theme_stylebox_override("hover", _style(Color(0.18, 0.14, 0.26, 0.98), Cfg.C_GOLD))
-		button.add_theme_stylebox_override("pressed", _style(Color(0.25, 0.2, 0.35, 1.0), Cfg.C_GOLD))
-		button.pressed.connect(func(): _submit(edit.text))
-		add_child(button)
+		ok_btn = _button("刻む", 13)
+		ok_btn.pressed.connect(func(): _submit(edit.text))
+		ok_btn.visible = false
+		add_child(ok_btn)
+
+	func _button(label: String, size: int) -> Button:
+		var b := Button.new()
+		b.text = label
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_override("font", ui.font_bold)
+		b.add_theme_font_size_override("font_size", size)
+		b.add_theme_color_override("font_color", Cfg.C_GOLD)
+		b.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+		b.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
+		b.add_theme_stylebox_override("normal", _style(Color(0.12, 0.09, 0.18, 0.92), Cfg.with_a(Cfg.C_GOLD, 0.6)))
+		b.add_theme_stylebox_override("hover", _style(Color(0.18, 0.14, 0.26, 0.98), Cfg.C_GOLD))
+		b.add_theme_stylebox_override("pressed", _style(Color(0.25, 0.2, 0.35, 1.0), Cfg.C_GOLD))
+		return b
 
 	func _style(bg: Color, border: Color) -> StyleBoxFlat:
 		var sb := StyleBoxFlat.new()
@@ -1560,29 +1580,57 @@ class NameBox:
 		sb.content_margin_bottom = 4
 		return sb
 
-	## 結果画面：順位の下に置く
+	## 結果画面：順位の下にボタンを置く
 	func place(y: float, rid: int) -> void:
-		if not visible or run_id != rid:
-			edit.text = Records.player_name
+		if run_id != rid or not visible:
+			_editing = false
 		run_id = rid
-		edit.position = Vector2(Cfg.W * 0.5 - 130.0, y)
-		edit.size = Vector2(190.0, 32.0)
-		button.position = Vector2(Cfg.W * 0.5 + 66.0, y)
-		button.size = Vector2(64.0, 32.0)
-		visible = true
+		_small = false
+		_layout(y)
 
 	## 題目：記録表の下に小さく置く（名前の変更用）
 	func place_title(y: float) -> void:
-		if not visible or run_id != -1:
-			edit.text = Records.player_name
+		if run_id != -1 or not visible:
+			_editing = false
 		run_id = -1
-		edit.position = Vector2(Cfg.W * 0.5 - 110.0, y)
-		edit.size = Vector2(160.0, 28.0)
-		button.position = Vector2(Cfg.W * 0.5 + 54.0, y)
-		button.size = Vector2(56.0, 28.0)
+		_small = true
+		_layout(y)
+
+	func _layout(y: float) -> void:
+		_y = y
 		visible = true
+		var h := 26.0 if _small else 32.0
+		open_btn.text = "名を刻む" if Records.player_name.strip_edges() == "" else "名を変える（%s）" % Records.display_name()
+		open_btn.visible = not _editing
+		open_btn.size = Vector2(0, h)
+		open_btn.reset_size()
+		open_btn.position = Vector2(Cfg.W * 0.5 - open_btn.size.x * 0.5, y)
+		edit.visible = _editing
+		ok_btn.visible = _editing
+		if _editing:
+			edit.position = Vector2(Cfg.W * 0.5 - 130.0, y)
+			edit.size = Vector2(190.0, h)
+			ok_btn.position = Vector2(Cfg.W * 0.5 + 66.0, y)
+			ok_btn.size = Vector2(64.0, h)
+
+	func _open() -> void:
+		Sfx.play("select", -10.0)
+		if OS.has_feature("web"):
+			# ブラウザの入力ダイアログ。スマホでもキーボードが確実に出る
+			var js := "window.prompt(%s, %s)" % [JSON.stringify("巫女の名（10 文字まで）"), JSON.stringify(Records.player_name)]
+			var r = JavaScriptBridge.eval(js, true)
+			if r != null and r is String:
+				_submit(String(r))
+			return
+		_editing = true
+		edit.text = Records.player_name
+		_layout(_y)
+		edit.grab_focus()
+		edit.caret_column = edit.text.length()
 
 	func _submit(text: String) -> void:
+		_editing = false
 		edit.release_focus()
 		ui.name_submitted.emit(text)
-		Fx.sparks(edit.position + edit.size * 0.5, Vector2.UP, Cfg.C_GOLD, 8, 200.0)
+		_layout(_y)
+		Fx.sparks(open_btn.position + open_btn.size * 0.5, Vector2.UP, Cfg.C_GOLD, 8, 200.0)
