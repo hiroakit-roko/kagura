@@ -269,11 +269,11 @@ func _item_hint(kind: int) -> void:
 	_seen_items[kind] = true
 	match kind:
 		Pickup.Kind.XP: ui.banner("勾玉", "拾うと位が上がる", Cfg.C_XP, kind)
-		Pickup.Kind.HEAL: ui.banner("御札", "拾うと HP 回復", Cfg.C_HP, kind)
-		Pickup.Kind.ORB: ui.banner("詠唱の珠", "拾うと詠唱が戻る", player.kami_color(player.main_god()) if (player != null and player.main_god() != "") else Color(0.8, 0.85, 1.0), kind)
+		Pickup.Kind.HEAL: ui.banner("団子", "拾うと HP 回復", Cfg.C_HP, kind)
+		Pickup.Kind.ORB: ui.banner("詠唱の札", "拾うと詠唱が戻る", player.kami_color(player.main_god()) if (player != null and player.main_god() != "") else Color(0.8, 0.85, 1.0), kind)
 
 
-## 詠唱の珠を落とす（詠唱の弾が消えた場所）。拾うと詠唱の回数が 1 戻る
+## 詠唱の札を落とす（詠唱の弾が消えた場所）。拾うと詠唱の回数が 1 戻る
 func drop_orb(pos: Vector2) -> void:
 	if state == St.TITLE or player == null or not is_instance_valid(player):
 		return
@@ -359,9 +359,9 @@ func _tutorial(delta: float) -> void:
 				if _tut_t > 4.0:
 					_tut_step = 3
 					if is_touch():
-						ui.banner("右下の札", "詠唱：珠を投げる、拾うと戻る　　神招き：ゲージ 1/4 で", Color(0.9, 0.9, 1.0))
+						ui.banner("右下の札", "詠唱：札を投げる、拾うと戻る　　神招き：ゲージ 1/4 で", Color(0.9, 0.9, 1.0))
 					else:
-						ui.banner("Z 詠唱　X 神招き", "詠唱の珠は拾うと戻る　　神招きはゲージ 1/4 で", Color(0.9, 0.9, 1.0))
+						ui.banner("Z 詠唱　X 神招き", "詠唱の札は拾うと戻る　　神招きはゲージ 1/4 で", Color(0.9, 0.9, 1.0))
 			else:
 				_tut_t = 0.0
 
@@ -466,7 +466,7 @@ func _clear_wave() -> void:
 	if player != null and is_instance_valid(player):
 		player.heal(6.0, true)
 		player.add_xp(8.0 + float(wave) * 2.5)   # 取りこぼしても必ず成長できるよう保証
-		player.cast_charges = int(player.stats["cast_max"])   # 波を越えると詠唱の珠は手元に戻る
+		player.cast_charges = int(player.stats["cast_max"])   # 波を越えると詠唱の札は手元に戻る
 		if player.has_relic("r_heal_wave"):
 			player.heal(float(player.stats["max_hp"]) * 0.08, true)
 		for o in get_tree().get_nodes_in_group("pickup"):

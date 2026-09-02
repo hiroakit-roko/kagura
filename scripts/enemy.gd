@@ -42,6 +42,7 @@ var st := {
 	"hangover": {"stacks": 0, "t": 0.0, "dps": 0.0},
 	"chill": {"stacks": 0, "t": 0.0},
 	"sunslow": 0.0,      # 灼き付く光：光線の中にいる間の減速（残り秒）
+	"stagger": 0.0,      # 怯み：動けず撃てない（残り秒）
 }
 var _last_pos := Vector2.ZERO
 var last_tag := ""          # 最後に受けた攻撃の種類（撃破時の派生に使う）
@@ -217,7 +218,7 @@ func _physics_process(delta: float) -> void:
 
 	_tick_status(delta)
 
-	if st["frozen"] <= 0.0:
+	if st["frozen"] <= 0.0 and st["stagger"] <= 0.0:
 		_behavior(delta * speed_mult() * Game.enemy_slow)
 
 	# 押し戻し
@@ -248,7 +249,7 @@ func _physics_process(delta: float) -> void:
 # ---------- 神威 ----------
 
 func _tick_status(delta: float) -> void:
-	for key in ["exposed", "rupture", "jolted", "weak", "charm", "frozen", "sunslow"]:
+	for key in ["exposed", "rupture", "jolted", "weak", "charm", "frozen", "sunslow", "stagger"]:
 		if st[key] > 0.0:
 			st[key] = maxf(0.0, st[key] - delta)
 
@@ -352,6 +353,14 @@ func add_chill(stacks: int) -> void:
 	if int(c["stacks"]) >= 10:
 		c["stacks"] = 0
 		Combat.shatter(self)
+
+
+## 怯み（須佐之男：怯み波）。動けず撃てない
+func stagger(sec: float) -> void:
+	if is_boss:
+		sec *= 0.4
+	st["stagger"] = maxf(float(st["stagger"]), sec)
+	Fx.sparks(position, Vector2.UP, Color(1, 1, 1), 5, 200.0)
 
 
 func freeze(sec: float) -> void:
@@ -873,6 +882,15 @@ func _draw_status() -> void:
 
 
 ## 状態異常ごとの、体に重なる見える演出（オーラ・泡・結晶・火花・花弁）
+func ci_star(pos: Vector2, r: float, c: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := -PI * 0.5 + TAU * float(i) / 10.0
+		var rr := r if i % 2 == 0 else r * 0.45
+		pts.append(pos + Vector2(cos(a), sin(a)) * rr)
+	draw_colored_polygon(pts, c)
+
+
 func _draw_status_aura() -> void:
 	var r := radius
 	# 照覧：金色の輪郭と光条
@@ -921,6 +939,12 @@ func _draw_status_aura() -> void:
 		if st["frozen"] > 0.0:
 			draw_circle(Vector2.ZERO, r * 1.25, Cfg.with_a(c, 0.35))
 			draw_arc(Vector2.ZERO, r * 1.25, 0, TAU, 24, Color(1, 1, 1, 0.8), 2.0, true)
+	# 怯み：頭の上で回る白い星
+	if st["stagger"] > 0.0:
+		for i in 3:
+			var a := t * 7.0 + TAU * float(i) / 3.0
+			var pos := Vector2(cos(a) * (r + 6.0), -r - 10.0 + sin(a) * 4.0)
+			ci_star(pos, 3.5, Color(1, 1, 0.85, 0.9))
 	# 帯電：黄色い火花がまとわりつく
 	if st["jolted"] > 0.0:
 		var c := Color(1.0, 0.95, 0.5)

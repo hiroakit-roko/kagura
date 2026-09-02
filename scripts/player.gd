@@ -252,7 +252,7 @@ func cost_mult(kind: String) -> float:
 			if gods.has("susa"): m *= 1.08
 			if gods.has("iza"): m *= 1.08
 		"orb":
-			if gods.has("take"): m *= 0.7   # 詠唱の珠が吸い寄せられる範囲が狭い
+			if gods.has("take"): m *= 0.7   # 詠唱の札が吸い寄せられる範囲が狭い
 		"speed":
 			if gods.has("tsuki"): m *= 0.94
 		"magnet":
@@ -465,7 +465,7 @@ func _weapons(delta: float) -> void:
 		fire_cd = 1.0 / (float(stats["fire_rate"]) * fire_rate_mult())
 		_fire_main()
 
-	# 詠唱の回数は時間では戻らない。飛んでいった「詠唱の珠」を拾うか、波を越えると戻る
+	# 詠唱の回数は時間では戻らない。飛んでいった「詠唱の札」を拾うか、波を越えると戻る
 	var tc := _touch()
 	if Input.is_key_pressed(KEY_Z) or Input.is_key_pressed(KEY_J) or (tc != null and tc.take("cast")):
 		_try_cast()
@@ -473,7 +473,7 @@ func _weapons(delta: float) -> void:
 		_try_call()
 
 
-## 詠唱の珠を拾った：回数が 1 戻る
+## 詠唱の札を拾った：回数が 1 戻る
 func pick_orb() -> void:
 	var before := cast_charges
 	cast_charges = mini(cast_charges + 1, int(stats["cast_max"]))
@@ -602,7 +602,7 @@ func _try_cast() -> void:
 		"saru":
 			haste_t = 4.0
 			Fx.slash(from, -PI * 0.5, 160.0, col, 2.4, 0.3, 14.0)
-			Game.inst.drop_orb(from + Vector2(randf_range(-40, 40), -240.0))   # 風の先に珠が飛ぶ
+			Game.inst.drop_orb(from + Vector2(randf_range(-40, 40), -240.0))   # 風の先に札が飛ぶ
 			for eb in Game.ebullets():
 				if is_instance_valid(eb) and eb.position.y < position.y and absf(eb.position.x - position.x) < 160.0:
 					eb.vanish()

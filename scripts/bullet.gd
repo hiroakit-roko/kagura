@@ -22,6 +22,7 @@ var slot: int = Cfg.Slot.ATTACK
 var kami := ""             # 神威を持つ弾の神 id（"" なら素の弾）
 var tag := "attack"
 var eraser := false        # 触れた敵弾を消す
+var erase_chance := 1.0    # eraser のとき、消す確率
 var reflect := false       # 触れた敵弾を跳ね返す（自機弾に変える）
 var zone_kind := ""        # 命中地点に残す領域
 var zone_r := 60.0
@@ -185,7 +186,7 @@ func _on_area(a: Area2D) -> void:
 		if reflect:
 			eb.reflect_to_friendly(dmg * 0.6)
 			Sfx.play("deflect", -14.0, randf_range(0.95, 1.15), 0.03)
-		elif eraser:
+		elif eraser and randf() < erase_chance:
 			eb.vanish()
 			Combat.on_erase(self)
 		return

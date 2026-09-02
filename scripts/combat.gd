@@ -368,19 +368,17 @@ static func knockback(en: Enemy, v: Vector2, at: Vector2) -> void:
 	Fx.cone(at, v.normalized(), Color(0.35, 0.82, 0.95), 4, 260.0, 0.5, 3.0, 0.25)
 	if _has("duo_susa_take"):
 		lightning(en, scaled("duo_susa_take", "take"), at + Vector2(0, -70), 0)
+	if _has("susa_u8"):
+		hit(en, scaled("susa_u8", "susa"), en.position, {"tag": "wave", "kami": "susa", "quiet": true})
+	if _has("susa_u5"):
+		en.stagger(_val("susa_u5"))
 	if _has("susa_leg"):
 		hit(en, scaled("susa_leg", "susa"), en.position, {"tag": "wave", "kami": "susa", "quiet": true})
 
 
-static func collide(en: Enemy, other: Enemy) -> void:
-	if not _has("susa_u5"):
-		return
-	var d := scaled("susa_u5", "susa")
-	Fx.ring(en.position, Color(0.35, 0.82, 0.95), 4.0, 40.0, 0.2, 3.0)
-	Sfx.play("hit_storm", -12.0, 0.8, 0.05)
-	hit(en, d, en.position, {"tag": "collide", "kami": "susa"})
-	if other != null and is_instance_valid(other):
-		hit(other, d, other.position, {"tag": "collide", "kami": "susa"})
+static func collide(_en: Enemy, _other: Enemy) -> void:
+	# 壁や仲間への衝突ダメージは廃止（縦スクロールでは壁にほとんど当たらないため）
+	pass
 
 
 # ---------------------------------------------------------------------------
@@ -454,13 +452,9 @@ static func on_kill(en: Enemy) -> void:
 		Game.inst.spawn_deferred(z)
 
 
-## 自機弾が敵弾を消したとき（潮騒）
+## 自機弾が敵弾を消したとき
 static func on_erase(b: Bullet) -> void:
-	var p := _p()
-	if p == null:
-		return
-	if b.kami == "susa" and _has("susa_u7"):
-		p.add_call_gauge(_val("susa_u7") * 0.01)
+	if b.kami == "susa":
 		Fx.sparks(b.position, Vector2.UP, Color(0.35, 0.82, 0.95), 2, 160.0)
 
 

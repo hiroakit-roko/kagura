@@ -193,14 +193,18 @@ func _wave() -> void:
 		b.shape_kind = 4
 		b.radius = size
 		b.pierce = 999
-		b.kb = 620.0 * (1.0 + p.val("susa_u8") * 0.01)
+		b.kb = 620.0
 		b.kami = "susa"
 		b.tag = "wave"
 		b.color = col
 		b.life = reach / 420.0
 		b.crit_chance = p.crit_chance()
-		if p.has("susa_leg") or p.has("susa_u7"):
+		if p.has("susa_leg"):
 			b.eraser = true
+			b.erase_chance = 0.7
+		elif p.has("susa_u7"):
+			b.eraser = true
+			b.erase_chance = p.val("susa_u7") * 0.01   # 潮騒：確率で消す
 		var start := p.position + Vector2(0, -30 - float(i) * 60.0)
 		b.setup(start, Vector2(0, -420.0), dmg, true)
 		Game.inst.world.add_child(b)
@@ -266,7 +270,7 @@ func blade_radius() -> float:
 
 
 func blade_size() -> float:
-	return 22.0 * (1.0 + p.val("tsuki_u8") * 0.01)
+	return 22.0 * (1.15 if p.has("tsuki_u8") else 1.0)
 
 
 func _blades(delta: float) -> void:
@@ -286,8 +290,9 @@ func _blades(delta: float) -> void:
 				var a := spin + TAU * float(i) / float(n)
 				var bp := p.position + Vector2(cos(a), sin(a)) * r
 				if bp.distance_to(eb.position) <= br + eb.radius:
-					Fx.sparks(eb.position, Vector2.UP, col, 2, 160.0)
-					eb.vanish()
+					if randf() < p.val("tsuki_u8") * 0.01:   # 月の盾：確率で消す
+						Fx.sparks(eb.position, Vector2.UP, col, 2, 160.0)
+						eb.vanish()
 					break
 	for e in _enemies():
 		var id: int = e.get_instance_id()

@@ -687,7 +687,7 @@ class HudView:
 				Cfg.with_a(mc if main != "" else Color(1, 1, 1, 0.3), 0.7 + 0.3 * float(ready) * (0.5 + 0.5 * sin(_t * 6.0))), HORIZONTAL_ALIGNMENT_CENTER, gw + 12)
 		Ui.txt(self, ui.font, Vector2(gx - 6, gy + gh + 18), "X", 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, gw + 12)
 
-		# 詠唱の珠と疾走の輪
+		# 詠唱の札と疾走の輪
 		var px := Cfg.W - 150.0
 		var py := Cfg.H - 88.0
 		Ui.panel(self, Rect2(px - 8, py - 22, 108, 54), Ui.GOLD, 0.95, 0.7)
@@ -695,15 +695,17 @@ class HudView:
 		for i in mx:
 			var c := Vector2(px + 10.0 + float(i) * 22.0, py)
 			if i < p.cast_charges and main != "":
-				draw_circle(c, 9.0, Cfg.with_a(mc, 0.3))
-				draw_circle(c, 7.0, Cfg.with_a(mc, 0.95))
-				draw_circle(c + Vector2(-2, -2), 2.5, Color(1, 1, 1, 0.85))
+				# 手元にある札
+				draw_rect(Rect2(c.x - 7, c.y - 11, 14, 22), Cfg.with_a(mc, 0.35))
+				draw_rect(Rect2(c.x - 6, c.y - 10, 12, 20), Cfg.C_PAPER)
+				draw_rect(Rect2(c.x - 6, c.y - 10, 12, 20), Cfg.with_a(mc, 0.95), false, 1.2)
+				draw_rect(Rect2(c.x - 4, c.y - 7, 8, 2.5), Cfg.with_a(mc, 0.9))
+				draw_line(c + Vector2(0, -3), c + Vector2(0, 5), Cfg.C_INK, 1.5)
+				draw_circle(c + Vector2(0, 7), 1.8, Color(0.85, 0.2, 0.25, 0.95))
 			else:
-				# 飛んでいった珠：点線の輪。拾うと戻る
-				for j in 8:
-					var a0 := TAU * float(j) / 8.0 + _t * 1.5
-					draw_arc(c, 7.0, a0, a0 + 0.35, 4, Cfg.with_a(mc, 0.5), 1.5, true)
-		Ui.txt(self, ui.font, Vector2(px, py + 24), "詠唱 Z" if p.cast_charges > 0 or main == "" else "珠を拾え", 10, Color(1, 1, 1, 0.6) if p.cast_charges > 0 or main == "" else Cfg.with_a(mc, 0.6 + 0.4 * sin(_t * 5.0)))
+				# 飛んでいった札：枠だけ。拾うと戻る
+				draw_rect(Rect2(c.x - 6, c.y - 10, 12, 20), Cfg.with_a(mc, 0.35 + 0.15 * sin(_t * 4.0)), false, 1.2)
+		Ui.txt(self, ui.font, Vector2(px, py + 24), "詠唱 Z" if p.cast_charges > 0 or main == "" else "札を拾え", 10, Color(1, 1, 1, 0.6) if p.cast_charges > 0 or main == "" else Cfg.with_a(mc, 0.6 + 0.4 * sin(_t * 5.0)))
 		var dx := px + 84.0
 		var dk := 1.0 - p.dash_cool / maxf(0.01, p.dash_cd_time())
 		draw_arc(Vector2(dx, py), 9.0, 0, TAU, 20, Color(1, 1, 1, 0.25), 1.5, true)
@@ -1529,10 +1531,10 @@ class OverlayView:
 		var y := Cfg.H - 254.0
 		var touch := Game.inst != null and Game.inst.is_touch()
 		var lines := [
-			["移動", "画面をなぞる"], ["疾走", "短くなぞって離す（無敵）"], ["詠唱", "右下の札。珠は拾うと戻る"],
+			["移動", "画面をなぞる"], ["疾走", "短くなぞって離す（無敵）"], ["詠唱", "右下の札。札は拾うと戻る"],
 			["神招き", "右下の札。ゲージ 1/4 で"], ["小休止", "右上の「休」"],
 		] if touch else [
-			["移動", "WASD / 矢印"], ["疾走", "Space（無敵）"], ["詠唱", "Z　珠は拾うと戻る"],
+			["移動", "WASD / 矢印"], ["疾走", "Space（無敵）"], ["詠唱", "Z　札は拾うと戻る"],
 			["神招き", "X　ゲージ 1/4 で"], ["低速 / 小休止 / 音", "Shift / P / M"],
 		]
 		y += 12.0
