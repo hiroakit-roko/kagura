@@ -46,6 +46,16 @@ var _last_pos := Vector2.ZERO
 var _rupture_acc := 0.0
 var _hang_t := 0.0
 
+const KIND_NAMES := {"grunt": "鬼火", "weaver": "傘の怪", "charger": "突撃鬼", "turret": "百目", "splitter": "分かれ玉", "mini": "小玉",
+	"spirit": "人魂", "lantern": "提灯お化け", "kite": "凧", "oni": "小鬼", "caster": "陰陽師", "bomber": "火の玉", "boss": "大妖"}
+
+
+func display_name() -> String:
+	if is_boss:
+		return String(get("boss_name")) if get("boss_name") != null else "大妖"
+	return String(KIND_NAMES.get(kind, kind))
+
+
 const STATUS_GLYPH := {
 	"exposed": ["照", Color(1.0, 0.84, 0.42)],
 	"rupture": ["裂", Color(0.35, 0.82, 0.95)],
@@ -494,7 +504,7 @@ func _behavior(delta: float) -> void:
 					if p3 != null:
 						for i in 2:
 							var a := (p3.position - position).normalized().angle() + (float(i) - 0.5) * 0.6
-							Game.inst.spawn_ebullet(position, Vector2(cos(a), sin(a)) * _spd(180.0), _bullet_dmg(), 6.0, Color(0.85, 0.7, 1.0), 1.8)
+							Game.inst.spawn_ebullet(position, Vector2(cos(a), sin(a)) * _spd(180.0), _bullet_dmg(), 6.0, Color(0.85, 0.7, 1.0), 1.8, "陰陽師の式神")
 						_on_fire()
 						Sfx.play("eshot", -14.0, 1.3, 0.05)
 		"bomber":
@@ -600,7 +610,7 @@ func _spawn(vel: Vector2, radius_b := 5.0) -> void:
 		# 魅了された敵の弾は自機側の弾として飛ぶ
 		Game.inst.spawn_charmed_bullet(position, vel * 1.3, _bullet_dmg() * 1.5)
 	else:
-		Game.inst.spawn_ebullet(position, vel, _bullet_dmg() * (1.0 + (radius_b - 5.0) * 0.08), radius_b)
+		Game.inst.spawn_ebullet(position, vel, _bullet_dmg() * (1.0 + (radius_b - 5.0) * 0.08), radius_b, Cfg.C_EBULLET, 0.0, display_name() + "の弾")
 
 
 ## 攻撃するたび帯電ダメージ
@@ -643,7 +653,7 @@ func die() -> void:
 		# 撃たれて死んでも弾を撒く（弱め）
 		for i in 6:
 			var a := TAU * float(i) / 6.0
-			Game.inst.spawn_ebullet(position, Vector2(cos(a), sin(a)) * _spd(150.0), _bullet_dmg() * 0.7, 5.0)
+			Game.inst.spawn_ebullet(position, Vector2(cos(a), sin(a)) * _spd(150.0), _bullet_dmg() * 0.7, 5.0, Cfg.C_EBULLET, 0.0, "火の玉の爆散")
 
 	Game.inst.on_enemy_killed(self)
 	queue_free()
@@ -670,6 +680,21 @@ func _draw() -> void:
 
 	_draw_body(c)
 	_draw_status()
+	# 攻撃の予兆：撃つ直前に光り、輪が縮む
+	if fire_t > 0.0 and fire_t < 0.35 and kind in ["grunt", "weaver", "turret", "splitter", "lantern", "oni", "caster", "kite"]:
+		var k := fire_t / 0.35
+		draw_arc(Vector2.ZERO, radius * (0.9 + k * 1.4), 0, TAU, 24, Color(1, 0.6, 0.7, 0.85 * (1.0 - k)), 2.0, true)
+		draw_circle(Vector2.ZERO, radius * 0.5, Color(1, 0.85, 0.9, 0.35 * (1.0 - k)))
+	# 突撃の予兆：狙いの線
+	if kind == "charger" and _state == 1:
+		var pl := _player()
+		if pl != null:
+			var d := (pl.position - position).normalized()
+			draw_line(Vector2.ZERO, d * 900.0, Color(1, 0.4, 0.5, 0.25 + 0.2 * sin(t * 30.0)), 2.0, true)
+	if kind == "bomber" and _state == 0 and position.y > 40.0:
+		var pl2 := _player()
+		if pl2 != null:
+			draw_line(Vector2.ZERO, (pl2.position - position).normalized() * 120.0, Color(1, 0.6, 0.3, 0.3), 1.5, true)
 
 	# ダメージを受けた個体だけ小さなHPバー
 	if hp < max_hp and kind != "mini":

@@ -4,6 +4,107 @@ extends RefCounted
 ## 神々の紋章を _draw で描く。UI（選択画面・HUD）と共用。
 
 
+## 神器の動きを小さな枡の中で実演する（カード用）
+static func weapon_preview(ci: CanvasItem, kami: String, r: Rect2, t: float, col: Color, alpha := 1.0) -> void:
+	var a := alpha
+	ci.draw_rect(r, Color(0.03, 0.02, 0.06, 0.7 * a))
+	ci.draw_rect(r, Cfg.with_a(col, 0.35 * a), false, 1.0)
+	var base := Vector2(r.position.x + r.size.x * 0.5, r.end.y - 12.0)
+	# 自機（小さな印）
+	ci.draw_circle(base, 3.0, Color(1, 1, 1, 0.9 * a))
+	ci.draw_arc(base, 5.5, 0, TAU, 12, Cfg.with_a(col, 0.6 * a), 1.0, true)
+	# 敵（枡の上部）
+	var foes := [Vector2(r.position.x + 16, r.position.y + 16), Vector2(r.end.x - 16, r.position.y + 26), Vector2(r.position.x + r.size.x * 0.5, r.position.y + 12)]
+	for f in foes:
+		ci.draw_circle(f, 4.0, Color(1, 0.4, 0.5, 0.8 * a))
+	var k := fmod(t, 1.4) / 1.4
+	match kami:
+		"ama":
+			ci.draw_line(base, Vector2(base.x, r.position.y + 4), Cfg.with_a(col, 0.3 * a), 9.0, true)
+			ci.draw_line(base, Vector2(base.x, r.position.y + 4), Cfg.with_a(col, 0.9 * a), 4.0, true)
+			ci.draw_line(base, Vector2(base.x, r.position.y + 4), Color(1, 1, 1, 0.9 * a), 1.5, true)
+		"susa":
+			var y := base.y - 12.0 - k * 48.0
+			ci.draw_arc(Vector2(base.x, y + 14), 22.0, PI + 0.4, TAU - 0.4, 14, Cfg.with_a(col, (1.0 - k) * a), 5.0, true)
+		"take":
+			if k < 0.35:
+				var f: Vector2 = foes[int(t) % 3]
+				ci.draw_line(Vector2(f.x + 8, r.position.y - 2), f, Color(1, 1, 0.8, a), 2.0, true)
+				ci.draw_line(f, foes[(int(t) + 1) % 3], Cfg.with_a(col, 0.8 * a), 1.5, true)
+		"tsuki":
+			for i in 2:
+				var ang := t * 3.0 + PI * float(i)
+				var bp := base + Vector2(cos(ang), sin(ang)) * 18.0
+				ci.draw_arc(bp, 6.0, ang + 0.2, ang + 3.0, 8, Cfg.with_a(col, 0.95 * a), 3.0, true)
+			ci.draw_arc(base, 18.0, 0, TAU, 24, Cfg.with_a(col, 0.2 * a), 1.0, true)
+		"uzume":
+			var kk := sin(k * PI)
+			var fp := Vector2(base.x + sin(t * 4.0) * 10.0, base.y - kk * 70.0)
+			ci.draw_arc(fp, 8.0, -PI * 0.5 - 1.1 + t * 8.0, -PI * 0.5 + 1.1 + t * 8.0, 10, Cfg.with_a(col, a), 4.0, true)
+		"inari":
+			for i in 3:
+				var kk2 := fmod(k + float(i) / 3.0, 1.0)
+				var f2: Vector2 = foes[i]
+				var pos := base.lerp(f2, kk2) + Vector2(sin(kk2 * 9.0 + float(i)) * 8.0, 0)
+				ci.draw_circle(pos, 3.0, Cfg.with_a(col, (1.0 - kk2 * 0.5) * a))
+		"suku":
+			var fp2 := Vector2(r.position.x + r.size.x * 0.5, r.position.y + 30.0)
+			ci.draw_circle(fp2, 18.0 + 4.0 * sin(t * 2.0), Cfg.with_a(col, 0.22 * a))
+			ci.draw_arc(fp2, 18.0 + 4.0 * sin(t * 2.0), 0, TAU, 20, Cfg.with_a(col, 0.6 * a), 1.0, true)
+			var gy := base.y - k * (base.y - fp2.y)
+			ci.draw_circle(Vector2(base.x, gy), 3.0, Cfg.C_PAPER)
+		"iza":
+			for i in 3:
+				var ang := -PI * 0.5 + (float(i) - 1.0) * 0.3
+				var pos := base + Vector2(cos(ang), sin(ang)) * (10.0 + k * 60.0)
+				ci.draw_line(pos, pos + Vector2(cos(ang), sin(ang)) * 8.0, Color(0.85, 0.95, 1.0, (1.0 - k) * a), 2.0, true)
+		"saru":
+			for i in 5:
+				var kk3 := fmod(k * 2.0 + float(i) * 0.2, 1.0)
+				var pos := Vector2(base.x + (float(i % 2) - 0.5) * 8.0, base.y - kk3 * 70.0)
+				ci.draw_arc(pos, 5.0, PI + 0.6, TAU - 0.6, 6, Cfg.with_a(col, (1.0 - kk3) * a), 2.0, true)
+
+
+## 使い魔の姿（カード用）
+static func familiar_preview(ci: CanvasItem, id: String, c: Vector2, t: float, col: Color, alpha := 1.0) -> void:
+	var bob := sin(t * 4.0) * 3.0
+	var a := alpha
+	match id:
+		"karasu":
+			var flap := sin(t * 10.0) * 8.0
+			var dark := Cfg.with_a(Color(0.12, 0.10, 0.18), a)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-4, bob), c + Vector2(-34, bob - 12 + flap), c + Vector2(-28, bob + 4)]), dark)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(4, bob), c + Vector2(34, bob - 12 + flap), c + Vector2(28, bob + 4)]), dark)
+			ci.draw_circle(c + Vector2(0, bob), 13.0, dark)
+			ci.draw_circle(c + Vector2(0, bob - 13), 9.0, Cfg.with_a(Color(0.16, 0.14, 0.22), a))
+			ci.draw_circle(c + Vector2(-3.5, bob - 15), 2.5, Cfg.with_a(Color(1, 0.85, 0.2), a))
+			ci.draw_circle(c + Vector2(3.5, bob - 15), 2.5, Cfg.with_a(Color(1, 0.85, 0.2), a))
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-3, bob - 10), c + Vector2(3, bob - 10), c + Vector2(0, bob - 3)]), Cfg.with_a(Color(0.6, 0.5, 0.3), a))
+		"neko":
+			var cc := Cfg.with_a(col, a)
+			ci.draw_circle(c + Vector2(0, bob + 4), 16.0, cc)
+			ci.draw_circle(c + Vector2(0, bob - 14), 12.0, cc)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-11, bob - 18), c + Vector2(-7, bob - 32), c + Vector2(-2, bob - 21)]), cc)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(11, bob - 18), c + Vector2(7, bob - 32), c + Vector2(2, bob - 21)]), cc)
+			for sgn in [-1.0, 1.0]:
+				var pts := PackedVector2Array()
+				for i in 7:
+					var kk := float(i) / 6.0
+					pts.append(c + Vector2(sgn * (8.0 + kk * 22.0) + sin(t * 4.0 + kk * 3.0 + sgn) * 4.0, bob + 8.0 + kk * 14.0))
+				ci.draw_polyline(pts, Cfg.with_a(col.darkened(0.15), a), 4.0, true)
+			ci.draw_circle(c + Vector2(-4.5, bob - 15), 2.2, Cfg.with_a(Cfg.C_INK, a))
+			ci.draw_circle(c + Vector2(4.5, bob - 15), 2.2, Cfg.with_a(Cfg.C_INK, a))
+			ci.draw_line(c + Vector2(-4, bob - 9), c + Vector2(4, bob - 9), Cfg.with_a(Cfg.C_INK, a), 1.5)
+		"shiki":
+			ci.draw_circle(c + Vector2(0, bob), 26.0, Cfg.with_a(Color(0.85, 0.75, 1.0), 0.15 * a))
+			var paper := Cfg.with_a(Cfg.C_PAPER, a)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, bob - 26), c + Vector2(10, bob - 8), c + Vector2(6, bob - 8), c + Vector2(13, bob + 18), c + Vector2(-13, bob + 18), c + Vector2(-6, bob - 8), c + Vector2(-10, bob - 8)]), paper)
+			ci.draw_line(c + Vector2(-20, bob - 4), c + Vector2(-6, bob - 6), paper, 4.0)
+			ci.draw_line(c + Vector2(20, bob - 4), c + Vector2(6, bob - 6), paper, 4.0)
+			ci.draw_rect(Rect2(c + Vector2(-4, bob - 2), Vector2(8, 10)), Cfg.with_a(Color(0.85, 0.2, 0.25), a))
+			ci.draw_line(c + Vector2(0, bob - 26), c + Vector2(0, bob - 18), Cfg.with_a(Cfg.C_INK, a), 1.5)
+
+
 static func draw(ci: CanvasItem, kind: String, c: Vector2, r: float, col: Color, col2: Color,
 		t: float, alpha := 1.0) -> void:
 	var a := Cfg.with_a(col, alpha)

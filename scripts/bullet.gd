@@ -30,6 +30,7 @@ var zone_dmg := 10.0
 var kb := 0.0              # 押し戻しの強さ
 var mode := ""             # "cloud": 一定距離で止まり雷雲になる  "vortex": 敵を引き寄せる
 var charmed := false       # 魅了された敵が撃った弾
+var source := "敵の弾"      # 敵弾の出どころ（死因の表示用）
 var split_on_hit := 0      # 命中時にこの数の小弾に砕ける
 var doom := 0.0            # 命中した敵に刻む宿命のダメージ（月読）
 var charm_chance := 0.0    # 命中した敵を魅了する確率（天宇受売）
@@ -199,7 +200,7 @@ func _on_area(a: Area2D) -> void:
 		if shape_kind == 4:
 			pierce = 999
 	else:
-		a.take_damage(dmg, false, global_position)
+		a.take_damage(dmg, false, global_position, source)
 		Fx.burst(global_position, color, 6, 130.0, 3.0, 0.25, true)
 
 	if pierce > 0:
@@ -348,6 +349,12 @@ func _draw() -> void:
 		11: # 風の刃：薄い三日月
 			draw_arc(Vector2(0, radius * 1.2), radius * 2.6, PI + 0.6, TAU - 0.6, 12, Cfg.with_a(color, 0.9), radius * 0.7, true)
 			draw_arc(Vector2(0, radius * 1.2), radius * 2.6, PI + 0.8, TAU - 0.8, 12, Color(1, 1, 1, 0.8), radius * 0.25, true)
+		12: # 式神の紙の鳥
+			var fl := sin(_t * 18.0) * 3.0
+			draw_colored_polygon(PackedVector2Array([Vector2(0, -radius * 1.6), Vector2(radius * 0.6, radius * 0.4), Vector2(0, 0), Vector2(-radius * 0.6, radius * 0.4)]), Cfg.C_PAPER)
+			draw_colored_polygon(PackedVector2Array([Vector2(0, -radius * 0.4), Vector2(radius * 1.8, radius * 0.2 + fl), Vector2(radius * 0.3, radius * 0.5)]), Cfg.C_PAPER)
+			draw_colored_polygon(PackedVector2Array([Vector2(0, -radius * 0.4), Vector2(-radius * 1.8, radius * 0.2 + fl), Vector2(-radius * 0.3, radius * 0.5)]), Cfg.C_PAPER)
+			draw_circle(Vector2(0, -radius * 0.2), radius * 0.3, Color(0.85, 0.2, 0.25, 0.9))
 		7: # 敵弾：鬼火
 			draw_circle(Vector2.ZERO, radius * 2.2, glow)
 			var fl2 := 1.0 + 0.25 * sin(_t * 26.0)

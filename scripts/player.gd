@@ -35,6 +35,11 @@ var gods: Array = []     # [主神, 副神, 副神]
 var kami_lv := {}        # 神 id -> 神格レベル
 var kami_xp := {}        # 神 id -> 神徳（現在の段階での蓄積）
 var weapons := {}        # 神 id -> Weapon
+var familiar_id := ""    # 使い魔
+var familiar: Familiar
+var kami_dmg := {}       # 神 id -> 与えたダメージの累計（貢献度の表示用）
+var last_hit_by := ""    # 最後に受けた攻撃の相手（死因の表示用）
+var grazes := 0
 
 # ---- 状態 ----
 var hp := 100.0
@@ -169,6 +174,16 @@ func base_damage() -> float:
 	return float(stats["damage"]) * (1.0 + float(level - 1) * 0.03)
 
 
+## 使い魔を連れる
+func set_familiar(id: String) -> void:
+	familiar_id = id
+	if familiar != null and is_instance_valid(familiar):
+		familiar.queue_free()
+	familiar = Familiar.new()
+	familiar.setup(id, self)
+	Game.inst.world.add_child.call_deferred(familiar)
+
+
 ## 神を迎える：神器がすぐに付く
 func add_god(kami_id: String) -> void:
 	if gods.has(kami_id) or gods.size() >= Boons.MAX_KAMI:
@@ -194,6 +209,7 @@ func add_kami_xp(kami_id: String, amount: float) -> void:
 	if lv >= 10:
 		return
 	kami_xp[kami_id] = float(kami_xp[kami_id]) + amount
+	kami_dmg[kami_id] = float(kami_dmg.get(kami_id, 0.0)) + amount
 	var need := Kami.kami_xp_need(lv)
 	if float(kami_xp[kami_id]) >= need:
 		kami_xp[kami_id] = float(kami_xp[kami_id]) - need
@@ -214,13 +230,37 @@ func kami_level_up(kami_id: String) -> void:
 	on_boons_changed()
 
 
+## 契約の代償：迎えた神ごとの軽いペナルティ
+func cost_mult(kind: String) -> float:
+	var m := 1.0
+	match kind:
+		"hp":
+			if gods.has("ama"): m *= 0.9
+			if gods.has("uzume"): m *= 0.9
+		"taken":
+			if gods.has("susa"): m *= 1.08
+			if gods.has("iza"): m *= 1.08
+		"cast_cd":
+			if gods.has("take"): m *= 1.15
+		"speed":
+			if gods.has("tsuki"): m *= 0.94
+		"magnet":
+			if gods.has("inari"): m *= 0.8
+		"gauge":
+			if gods.has("suku"): m *= 0.85
+		"dash_cd":
+			if gods.has("saru"): m *= 1.1
+	return m
+
+
 func on_boons_changed() -> void:
-	var base_hp := 100.0 + float(level - 1) * 3.0
+	var base_hp := (100.0 + float(level - 1) * 3.0) * cost_mult("hp")
 	var new_max := base_hp + (val("uzume_u5") if has("uzume_u5") else 0.0)
 	var diff := new_max - float(stats["max_hp"])
 	stats["max_hp"] = new_max
 	if diff > 0.0:
 		hp = minf(new_max, hp + diff)
+	hp = minf(hp, new_max)
 	stats["cast_max"] = 2 + (1 if has("saru_u5") else 0)
 	cast_charges = mini(cast_charges + 1, int(stats["cast_max"]))
 	# 眷属の狐
@@ -258,13 +298,15 @@ func move_speed() -> float:
 	var m := 1.0 + val("saru_u3") * 0.01
 	if gods.has("saru"):
 		m += 0.10
+	if familiar_id == "karasu":
+		m += 0.06
 	if haste_t > 0.0:
 		m += 0.35
-	return float(stats["speed"]) * m
+	return float(stats["speed"]) * m * cost_mult("speed")
 
 
 func dash_cd_time() -> float:
-	return float(stats["dash_cd"]) * (1.0 - val("saru_u4") * 0.01)
+	return float(stats["dash_cd"]) * (1.0 - val("saru_u4") * 0.01) * cost_mult("dash_cd")
 
 
 func _touch() -> Touch:
@@ -399,7 +441,7 @@ func _weapons(delta: float) -> void:
 
 
 func cast_cd_time() -> float:
-	return float(stats["cast_cd"]) * (1.0 - val("saru_u5") * 0.01)
+	return float(stats["cast_cd"]) * (1.0 - val("saru_u5") * 0.01) * cost_mult("cast_cd")
 
 
 ## 基本の弾：巫矢
@@ -531,7 +573,7 @@ func _cast_bullet(kami: String, shape: int, radius: float) -> Bullet:
 func add_call_gauge(amount: float) -> void:
 	if main_god() == "":
 		return
-	call_gauge = clampf(call_gauge + amount, 0.0, 1.0)
+	call_gauge = clampf(call_gauge + amount * cost_mult("gauge"), 0.0, 1.0)
 
 
 func _try_call() -> void:
@@ -546,6 +588,7 @@ func _try_call() -> void:
 	var k := Kami.kami(kami)
 	Sfx.play("flute", -4.0)
 	Sfx.play("taiko", -6.0)
+	Music.duck(1.6)
 	Fx.flash(Cfg.with_a(col, 0.55), 0.35)
 	Fx.ring(position, col, 20.0, 400.0, 0.6, 6.0)
 	Fx.shake_add(10.0)
@@ -678,21 +721,22 @@ func _contact() -> void:
 	for a in get_overlapping_areas():
 		if a is Enemy:
 			_contact_cd = 0.4
-			take_damage(float((a as Enemy).contact_dmg) * (a as Enemy).out_dmg_mult())
+			take_damage(float((a as Enemy).contact_dmg) * (a as Enemy).out_dmg_mult(), false, Vector2.ZERO, (a as Enemy).display_name() + "の体当たり")
 			return
 
 
+## かすり（グレイズ）：敵弾のすれすれを抜けると神招きゲージが少し溜まり、功徳にも加算される
 func _graze() -> void:
-	if not has("saru_leg"):
-		return
 	for b in get_tree().get_nodes_in_group("ebullet"):
 		if not is_instance_valid(b) or _grazed.has(b.get_instance_id()):
 			continue
 		var d: float = b.position.distance_to(position)
 		if d < 30.0 and d > radius + b.radius:
 			_grazed[b.get_instance_id()] = true
-			add_call_gauge(val("saru_leg") * 0.01)
-			Fx.sparks(b.position, Vector2.UP, Color(0.72, 1.0, 0.98), 2, 200.0)
+			grazes += 1
+			add_call_gauge(0.004 + val("saru_leg") * 0.01)
+			Fx.sparks(b.position, Vector2.UP, Color(1, 1, 1), 2, 200.0)
+			Fx.number(position + Vector2(0, -40), "かすり", Color(1, 1, 1, 0.6), 9.0)
 	if _grazed.size() > 400:
 		_grazed.clear()
 
@@ -714,14 +758,17 @@ func _on_area(a: Area2D) -> void:
 		p.queue_free()
 	elif a is Enemy and _contact_cd <= 0.0 and iframe <= 0.0:
 		_contact_cd = 0.4
-		take_damage(float((a as Enemy).contact_dmg) * (a as Enemy).out_dmg_mult())
+		take_damage(float((a as Enemy).contact_dmg) * (a as Enemy).out_dmg_mult(), false, Vector2.ZERO, (a as Enemy).display_name() + "の体当たり")
 
 
 # ---------- HP / XP ----------
 
-func take_damage(d: float, _crit := false, _at := Vector2.ZERO) -> void:
+func take_damage(d: float, _crit := false, _at := Vector2.ZERO, source := "") -> void:
 	if not alive or iframe > 0.0:
 		return
+	if source != "":
+		last_hit_by = source
+	d *= cost_mult("taken")
 	if shield > 0:
 		shield -= 1
 		shield_t = val("ama_u5") if has("ama_u5") else 99.0
@@ -734,7 +781,7 @@ func take_damage(d: float, _crit := false, _at := Vector2.ZERO) -> void:
 		return
 
 	hp -= d
-	iframe = 1.0
+	iframe = 1.0 * (1.25 if familiar_id == "shiki" else 1.0)
 	add_call_gauge(0.12)
 	Fx.shake_add(9.0)
 	Fx.flash(Color(1, 0.3, 0.4, 0.25), 0.15)
@@ -772,7 +819,7 @@ func add_xp(amount: float) -> void:
 
 
 func magnet_range() -> float:
-	return float(stats["magnet"])
+	return float(stats["magnet"]) * (1.35 if familiar_id == "neko" else 1.0) * cost_mult("magnet")
 
 
 func _die() -> void:

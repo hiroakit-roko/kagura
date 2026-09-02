@@ -124,6 +124,11 @@ func _run() -> void:
 	while _t < quit_at:
 		await _wait(0.25)
 		var g := Game.inst
+		if g.state == Game.St.FAMILIAR and g.ui.familiar_view.visible:
+			await _wait(0.8)
+			g.ui.familiar_view.hover = 1
+			await shot("01b_familiar.png")
+			g._on_familiar_chosen(String(Familiar.LIST[randi() % 3]["id"]))
 		if _t - dbg_t > 1.0 and OS.get_cmdline_user_args().has("--verbose-flow"):
 			dbg_t = _t
 			print("[tick] t=%.1f wave=%d state=%d lv=%d pend=%d enemies=%d" % [_t, g.wave, g.state, g.player.level, g.player.pending_levels, get_tree().get_nodes_in_group("enemy").size()])
@@ -133,7 +138,14 @@ func _run() -> void:
 			g.ui.kami_view.hover = 1
 			await _wait(0.3)
 			await shot("02_kami_hover.png")
-			g._on_kami_chosen(String(g.ui.kami_view.ids[randi() % g.ui.kami_view.ids.size()]))
+			var kid := String(g.ui.kami_view.ids[randi() % g.ui.kami_view.ids.size()])
+			g.ui.kami_view.visible = false
+			g.ui.ask_contract(kid, "主神", func(): g._on_kami_chosen(kid))
+			await _wait(0.8)
+			g.ui.confirm_view.hover = 0
+			await shot("02c_contract.png")
+			g.ui.confirm_view.visible = false
+			g._on_kami_chosen(kid)
 		elif g.state == Game.St.BOON and g.ui.boons_view.visible and not g._offers.is_empty():
 			# 選択画面中に敵と自機が止まっているか
 			var es := get_tree().get_nodes_in_group("enemy")
@@ -181,6 +193,7 @@ func _boon_test() -> void:
 	var g := Game.inst
 	for kid in Boons.kami_ids():
 		g.start_game()
+		g._on_familiar_chosen("neko")
 		var p := g.player
 		p.stats["max_hp"] = 9999.0
 		p.hp = 9999.0
@@ -212,6 +225,7 @@ func _boon_test() -> void:
 		g.player.pending_levels = 0
 	# 3 柱 + 双神
 	g.start_game()
+	g._on_familiar_chosen("shiki")
 	var p2 := g.player
 	p2.stats["max_hp"] = 9999.0
 	p2.hp = 9999.0
@@ -234,6 +248,7 @@ func _flow_test() -> void:
 	_no_ai = true
 	var g := Game.inst
 	g.start_game()
+	g._on_familiar_chosen("karasu")
 	await _wait(0.5)
 	print("[flow] force level up")
 	g.player.pending_levels = 1
@@ -258,6 +273,7 @@ func _flow_test() -> void:
 func _clear_test() -> void:
 	var g := Game.inst
 	g.start_game()
+	g._on_familiar_chosen("karasu")
 	var p := g.player
 	for kid in ["take", "ama", "inari"]:
 		p.add_god(kid)
@@ -311,6 +327,7 @@ func _drag(from: Vector2, to: Vector2, idx := 0) -> void:
 func _flick_test() -> void:
 	_no_ai = true
 	Game.inst.start_game()
+	Game.inst._on_familiar_chosen("karasu")
 	await _wait(1.5)
 	var p := Game.inst.player
 	# 1) 短いスワイプ：120ms で 60px 動かして離す
@@ -357,6 +374,7 @@ func _flick_test() -> void:
 ## ゲームオーバー → リスタートの動線を確認する短いテスト
 func _death_test() -> void:
 	Game.inst.start_game()
+	Game.inst._on_familiar_chosen("shiki")
 	await _wait(6.0)
 	print("[autoplay] forcing death (wave=%d score=%d)" % [Game.inst.wave, Game.inst.score])
 	Game.inst.player.take_damage(99999.0)
@@ -367,7 +385,10 @@ func _death_test() -> void:
 	_key(KEY_ENTER, true)
 	await _wait(0.1)
 	_key(KEY_ENTER, false)
-	await _wait(2.0)
+	await _wait(1.0)
+	if Game.inst.state == Game.St.FAMILIAR:
+		Game.inst._on_familiar_chosen("neko")
+	await _wait(1.0)
 	print("[autoplay] state after restart = %d (PLAY=%d) wave=%d hp=%.0f"
 			% [Game.inst.state, Game.St.PLAY, Game.inst.wave, Game.inst.player.hp])
 	await shot("91_restarted.png")

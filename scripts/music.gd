@@ -19,6 +19,7 @@ var _players := {}          # name -> AudioStreamPlayer
 var _target := {}           # name -> 目標音量(0..1)
 var _level := {}            # name -> 現在音量(0..1)
 var _current := ""
+var _duck := 0.0            # 一時的に音量を絞る残り秒数（神招きなど）
 
 
 func _ready() -> void:
@@ -41,9 +42,12 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_duck = maxf(0.0, _duck - delta)
 	for name in _players.keys():
 		var p: AudioStreamPlayer = _players[name]
 		var tgt: float = 0.0 if muted else float(_target[name])
+		if _duck > 0.0:
+			tgt *= 0.35
 		var cur: float = float(_level[name])
 		cur = move_toward(cur, tgt, delta / FADE)
 		_level[name] = cur
@@ -73,6 +77,11 @@ static func stop() -> void:
 	inst._current = ""
 	for k in inst._target.keys():
 		inst._target[k] = 0.0
+
+
+static func duck(sec: float) -> void:
+	if inst != null:
+		inst._duck = maxf(inst._duck, sec)
 
 
 static func set_muted(m: bool) -> void:

@@ -13,6 +13,7 @@ var _tint_cur := Color(0.45, 0.30, 0.80)
 var stage := 1
 var _t := 0.0
 var _path_y := 0.0
+var _scenery_y := 0.0
 
 
 func _ready() -> void:
@@ -77,6 +78,7 @@ func _process(delta: float) -> void:
 		if p.pos.y > Cfg.H + 10.0 or p.pos.x < -20.0 or p.pos.x > Cfg.W + 20.0:
 			_petals[i] = _new_petal(false)
 	_path_y = fmod(_path_y + 90.0 * speed * delta, 120.0)
+	_scenery_y = fmod(_scenery_y + 90.0 * speed * delta, 420.0)
 	queue_redraw()
 
 
@@ -128,6 +130,8 @@ func _draw() -> void:
 	draw_line(Vector2(Cfg.W * 0.5 - 150.0, -80), Vector2(Cfg.W * 0.5 - 150.0, Cfg.H + 80), pc, 2.0)
 	draw_line(Vector2(Cfg.W * 0.5 + 150.0, -80), Vector2(Cfg.W * 0.5 + 150.0, Cfg.H + 80), pc, 2.0)
 
+	_draw_scenery(mix)
+
 	# 雲（複数の楕円を重ねる）
 	for c2: Dictionary in _clouds:
 		var a := 0.05 if c2.far else 0.09
@@ -148,6 +152,59 @@ func _draw() -> void:
 		var s2: float = p.size
 		draw_colored_polygon(PackedVector2Array([
 			p.pos + d * s2 * 1.5, p.pos + n * s2 * 0.7, p.pos - d * s2 * 1.5, p.pos - n * s2 * 0.7]), petal_c)
+
+
+## ステージごとの景物：参道の鳥居と灯籠、拝殿の柱と提灯、奥宮の岩壁と霧
+func _draw_scenery(mix: Color) -> void:
+	var sil := Cfg.with_a(Color(0.02, 0.01, 0.04), 0.75)
+	var lit := Cfg.with_a(mix.lightened(0.6), 0.5)
+	match stage:
+		1:
+			for i in range(-1, 4):
+				var y := float(i) * 420.0 + _scenery_y
+				# 左右の灯籠
+				for x in [40.0, Cfg.W - 40.0]:
+					draw_rect(Rect2(x - 4, y + 30, 8, 60), sil)
+					draw_rect(Rect2(x - 12, y + 14, 24, 18), sil)
+					draw_rect(Rect2(x - 16, y + 8, 32, 6), sil)
+					draw_circle(Vector2(x, y + 23), 4.0 + sin(_t * 6.0 + float(i)) * 0.8, Color(1.0, 0.8, 0.5, 0.55))
+				# 鳥居（画面幅より広く、柱だけ見える）
+				var ty := y + 240.0
+				draw_rect(Rect2(-10, ty, Cfg.W + 20, 14), sil)
+				draw_rect(Rect2(-10, ty + 26, Cfg.W + 20, 8), sil)
+				draw_rect(Rect2(60, ty + 8, 14, 170), sil)
+				draw_rect(Rect2(Cfg.W - 74, ty + 8, 14, 170), sil)
+		2:
+			for i in range(-1, 4):
+				var y := float(i) * 420.0 + _scenery_y
+				# 拝殿の柱と提灯
+				for x in [28.0, Cfg.W - 28.0]:
+					draw_rect(Rect2(x - 9, y, 18, 420), Cfg.with_a(Color(0.05, 0.02, 0.05), 0.7))
+					draw_rect(Rect2(x - 12, y + 200, 24, 10), sil)
+				for x in [70.0, Cfg.W - 70.0]:
+					var ly := y + 120.0
+					draw_line(Vector2(x, ly - 30), Vector2(x, ly), sil, 2.0)
+					draw_circle(Vector2(x, ly + 14), 13.0, Color(1.0, 0.45, 0.35, 0.55))
+					draw_rect(Rect2(x - 6, ly - 2, 12, 4), sil)
+					draw_rect(Rect2(x - 6, ly + 26, 12, 4), sil)
+				# 屋根瓦の帯
+				draw_rect(Rect2(-10, y + 300, Cfg.W + 20, 6), Cfg.with_a(Color(0.05, 0.02, 0.05), 0.5))
+		_:
+			for i in range(-1, 4):
+				var y := float(i) * 420.0 + _scenery_y
+				# 岩壁
+				for sgn in [-1.0, 1.0]:
+					var x0: float = Cfg.W * 0.5 + float(sgn) * (Cfg.W * 0.5)
+					var pts := PackedVector2Array([Vector2(x0, y), Vector2(x0, y + 420)])
+					for j in 6:
+						var yy := y + 420.0 * float(6 - j) / 6.0
+						pts.append(Vector2(x0 - sgn * (30.0 + 25.0 * absf(sin(float(i * 7 + j) * 1.7))), yy))
+					draw_colored_polygon(pts, Cfg.with_a(Color(0.04, 0.02, 0.06), 0.85))
+				# 霧の帯
+				var fy := y + 200.0 + sin(_t * 0.5 + float(i)) * 10.0
+				_ellipse(Vector2(Cfg.W * 0.5 + sin(_t * 0.3 + float(i)) * 40.0, fy), Cfg.W * 0.7, 26.0, Cfg.with_a(Color(0.7, 0.6, 0.9), 0.06))
+				# 岩戸の裂け目の光
+				draw_line(Vector2(Cfg.W * 0.5 - 6, y + 40), Vector2(Cfg.W * 0.5 + 6, y + 140), lit, 1.5)
 
 
 func _ellipse(c: Vector2, rw: float, rh: float, col: Color) -> void:

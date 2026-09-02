@@ -3,7 +3,7 @@ extends Node2D
 
 ## ゲーム全体の進行役：ウェーブ生成・状態遷移・神と恩恵の受け渡し・ヒットストップ。
 
-enum St {TITLE, PLAY, KAMI, BOON, MIKI, PAUSE, OVER, CLEAR}
+enum St {TITLE, PLAY, KAMI, BOON, MIKI, PAUSE, OVER, CLEAR, FAMILIAR}
 
 static var inst: Game
 static var enemy_bullet_slow := 0.0
@@ -35,8 +35,11 @@ var _offer_min_rar := 0
 var _offer_reason := "level"
 var _rerolls := 0
 var _hitstop := 0.0
+var _hitstop_last := 0.0
 var _kami_choices: Array = []
 var _minion_t := 0.0
+var _tut_step := 0
+var _tut_t := 0.0
 
 const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6,
 	"spirit": 0.5, "lantern": 2.0, "kite": 1.2, "oni": 3.6, "caster": 3.0, "bomber": 1.5}
@@ -95,6 +98,7 @@ func _ready() -> void:
 	add_child(Touch.new())
 
 	ui.kami_chosen.connect(_on_kami_chosen)
+	ui.familiar_chosen.connect(_on_familiar_chosen)
 	ui.boon_chosen.connect(_on_boon_chosen)
 	ui.reroll_requested.connect(_on_reroll)
 	ui.miki_chosen.connect(_on_miki_chosen)
@@ -168,9 +172,22 @@ func start_game() -> void:
 	ui.overlay.visible = false
 	ui.hide_cards()
 	Music.play("stage")
-	ui.banner("参道を進め", "穢れを祓い、勾玉を集めよ。波を祓うと神が現れる", Cfg.C_PLAYER)
-	state = St.PLAY
-	get_tree().paused = false
+	_tut_step = 0
+	_tut_t = 0.0
+	# まず使い魔を選ぶ（時間は止まったまま）
+	_pause_for_choice(St.FAMILIAR)
+	ui.show_familiar_choice()
+
+
+func _on_familiar_chosen(id: String) -> void:
+	if state != St.FAMILIAR:
+		return
+	player.set_familiar(id)
+	var f := Familiar.info(id)
+	Sfx.play("suzu", -6.0)
+	_close_choice()
+	var touch := Touch.inst != null and Touch.inst.active
+	ui.banner(String(f["name"]) + " が付いてきた", "画面をなぞって移動。短くなぞって離すと疾走" if touch else "WASD で移動、Space で疾走", f["color"])
 
 
 # ---------- メインループ ----------
@@ -193,6 +210,8 @@ func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player) or not player.alive:
 		return
 
+	_tutorial(delta)
+
 	# レベルアップした瞬間に時間を止めて神との邂逅へ（敵も弾も止まる）
 	if player.pending_levels > 0:
 		if player.gods.is_empty():
@@ -204,8 +223,34 @@ func _process(delta: float) -> void:
 	_tick_wave(delta)
 
 
-## ヒットストップ：dur 秒（実時間）だけ時間の流れを scale に落とす
+## 序盤の導線：最初の 1 分だけ、状況に合わせて短い案内を出す
+func _tutorial(delta: float) -> void:
+	if _tut_step >= 3:
+		return
+	_tut_t += delta
+	match _tut_step:
+		0:
+			if _tut_t > 4.0:
+				_tut_step = 1
+				ui.banner("穢れを祓え", "敵を倒すと勾玉（経験値）が落ちる。拾って位を上げよ", Cfg.C_XP)
+		1:
+			if player.xp > 0.0 or _tut_t > 14.0:
+				_tut_step = 2
+				_tut_t = 0.0
+				ui.banner("位が上がると神が現れる", "3 柱から主神を選ぶ。選んだ瞬間、その神の神器が付く", Cfg.C_GOLD)
+		2:
+			if _tut_t > 9.0:
+				_tut_step = 3
+				ui.banner("Z で詠唱、X で神招き", "主神を迎えると使えるようになる。敵弾の間を抜けると「かすり」でゲージが溜まる", Color(0.9, 0.9, 1.0))
+
+
+## ヒットストップ：dur 秒（実時間）だけ時間の流れを scale に落とす。
+## 小さな止めは連続しすぎるとリズムが崩れるので間引く
 func hitstop(dur: float, scale := 0.05) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if dur < 0.07 and now - _hitstop_last < 0.22:
+		return
+	_hitstop_last = now
 	if dur <= _hitstop:
 		return
 	_hitstop = dur
@@ -263,15 +308,14 @@ func _start_wave() -> void:
 		world.add_child(b)
 		boss = b
 		_minion_t = 5.0
+		ui.boss_intro(b.boss_name, b.title_text(), b.is_final)
 		if b.is_final:
 			Music.play("lastboss")
-			ui.banner("大禍、顕現", b.boss_name + "　奥宮の主", Color(1, 0.3, 0.35))
 			Fx.flash(Color(1, 0.2, 0.3, 0.4), 0.6)
 			Sfx.play("taiko", 0.0, 0.55)
 			Sfx.play("flute", -6.0, 0.7)
 		else:
 			Music.play("boss")
-			ui.banner("大妖、来たる", b.boss_name, Color(1, 0.35, 0.4))
 			Sfx.play("taiko", -2.0, 0.7)
 		Sfx.play("warn", -6.0)
 		Fx.shake_add(6.0)
@@ -381,13 +425,14 @@ func spawn_deferred(n: Node) -> void:
 
 
 func spawn_ebullet(pos: Vector2, vel: Vector2, dmg: float, radius := 5.0,
-		col := Cfg.C_EBULLET, homing := 0.0) -> void:
+		col := Cfg.C_EBULLET, homing := 0.0, source := "敵の弾") -> void:
 	var b := Bullet.new()
 	b.radius = radius
 	b.color = col
 	b.shape_kind = 7
 	b.trail_len = 10.0
 	b.homing = homing
+	b.source = source
 	b.setup(pos, vel, dmg, false)
 	world.add_child(b)
 
@@ -442,7 +487,9 @@ func on_boss_killed(b: Boss) -> void:
 		return
 	_boss_reward = true
 	Music.play("stage")
-	hitstop(0.6, 0.15)
+	hitstop(0.9, 0.12)
+	Fx.flash(Color(1, 1, 1, 0.6), 0.5)
+	ui.banner("討伐", b.boss_name + "　+%d" % b.score, Color(1, 0.85, 0.4))
 	for i in 10:
 		_drop(b.position + Vector2(randf_range(-70, 70), randf_range(-70, 70)), b.xp / 10.0)
 	for i in 2:
@@ -452,7 +499,7 @@ func on_boss_killed(b: Boss) -> void:
 	var m := Pickup.new()
 	m.setup(b.position, Pickup.Kind.MIKI, 0.0)
 	spawn_deferred(m)
-	ui.banner("大妖、討伐", "+%d" % b.score, Color(1, 0.85, 0.4))
+
 
 
 func _drop(pos: Vector2, xp_total: float) -> void:
@@ -620,15 +667,27 @@ func _on_player_died() -> void:
 	var god_names := []
 	for g in player.gods:
 		god_names.append(String(Kami.kami(g)["name"]))
+	var total := 0.0
+	for k in player.kami_dmg.keys():
+		total += float(player.kami_dmg[k])
+	var best := ""
+	var best_v := 0.0
+	for k in player.kami_dmg.keys():
+		if float(player.kami_dmg[k]) > best_v:
+			best_v = float(player.kami_dmg[k])
+			best = String(k)
+	var mvp := "なし"
+	if best != "" and total > 0.0:
+		mvp = "%s（%d%%）" % [String(Kami.kami(best)["weapon"]), int(round(best_v / total * 100.0))]
 	ui.overlay.stats_lines = [
-		["到達", "第 %d 波" % wave],
+		["到達", "第%sの段　第 %d 波" % [Cfg.STAGE_KANJI[Cfg.stage_of(maxi(wave, 1)) - 1], wave]],
 		["功徳", str(score)],
-		["位", "Lv.%d" % player.level],
-		["討伐", str(kills)],
+		["討たれた相手", player.last_hit_by if player.last_hit_by != "" else "不明"],
+		["最も働いた神器", mvp],
+		["かすり", str(player.grazes)],
 		["神々", "・".join(god_names) if not god_names.is_empty() else "なし"],
-		["神格", "・".join(player.gods.map(func(g): return "Lv.%d" % int(player.kami_lv.get(g, 1)))) if not player.gods.is_empty() else "なし"],
-		["恩恵", str(player.boons.size())],
 	]
+	ui.overlay.tip = _death_tip()
 	ui.hide_cards()
 	await get_tree().create_timer(1.3, true, false, true).timeout
 	ui.overlay.visible = true
@@ -644,6 +703,19 @@ func toggle_pause() -> void:
 		get_tree().paused = false
 
 
+## 次に試すことの一言
+func _death_tip() -> String:
+	if player.gods.is_empty():
+		return "神を迎える前に倒れた。勾玉を優先して拾い、位を上げよう"
+	if player.gods.size() < 3:
+		return "副神の枠が空いていた。「新たな神」の札で神器を増やすと火力が伸びる"
+	if player.last_hit_by.ends_with("体当たり"):
+		return "体当たりで倒れた。疾走（短くなぞる／Space）の無敵で抜けよう"
+	if player.grazes < 5:
+		return "敵弾のすれすれを抜ける「かすり」で神招きゲージが溜まる。神招きで切り抜けよう"
+	return "神格は神器を当てるほど上がる。主神の神器が当たる位置取りを意識しよう"
+
+
 func _unhandled_input(e: InputEvent) -> void:
 	if not (e is InputEventKey) or not e.pressed or e.echo:
 		return
@@ -656,6 +728,8 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif k == KEY_P:
 		toggle_pause()
 	elif k == KEY_ESCAPE:
+		if ui.confirm_view.visible:
+			return   # 確認画面の「考え直す」に使う
 		if state == St.TITLE:
 			get_tree().quit()
 		else:

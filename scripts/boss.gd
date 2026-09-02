@@ -14,8 +14,18 @@ var spiral_a := 0.0
 var hover_x := 0.0
 var tier := 1
 var is_final := false
+# 固有ギミック
+var invuln := false          # 百目鬼：閉眼中は無敵
+var eye_t := 0.0             # 百目鬼：開眼/閉眼の切り替え
+var eye_open := true
+var dash_state := 0          # 荒魂：0 通常 1 狙い 2 突進 3 戻り
+var dash_t := 0.0
+var dash_dir := Vector2.DOWN
+var heads_alive := 8         # 八岐大蛇：残っている首
+var _heads_prev := 8
 
 const NAMES := ["荒魂", "百目鬼", "八岐大蛇"]
+const TITLES := ["参道を塞ぐ荒ぶる魂", "百の眼で見張る鬼", "八つの首を持つ大蛇"]
 
 
 func setup_boss(w: int) -> void:
@@ -51,6 +61,22 @@ func phase() -> int:
 	return 3
 
 
+func title_text() -> String:
+	return TITLES[mini(tier - 1, TITLES.size() - 1)]
+
+
+## 八岐大蛇：残っている首の位置（体の左右に扇状に並ぶ）
+func head_positions() -> Array:
+	var out: Array = []
+	var n := 8
+	for i in n:
+		if i >= heads_alive:
+			break
+		var a := PI + PI * float(i + 1) / float(n + 1)
+		out.append(position + Vector2(cos(a) * radius * 2.2, sin(a) * radius * 1.4 - radius * 0.3))
+	return out
+
+
 func _behavior(delta: float) -> void:
 	if entering:
 		position.y = move_toward(position.y, 175.0, 165.0 * delta)
@@ -59,6 +85,66 @@ func _behavior(delta: float) -> void:
 		return
 
 	var ph := phase()
+
+	# ---- 荒魂：狙いを定めてから突進し、戻る ----
+	if tier == 1 and not is_final:
+		if dash_state == 1:
+			dash_t -= delta
+			if dash_t <= 0.0:
+				dash_state = 2
+				dash_t = 0.7
+				var pl := _player()
+				dash_dir = ((pl.position - position).normalized() if pl != null else Vector2.DOWN)
+				Sfx.play("hit_storm", -4.0, 0.6)
+				Fx.shake_add(6.0)
+			return
+		elif dash_state == 2:
+			dash_t -= delta
+			position += dash_dir * 560.0 * delta
+			Fx.cone(position, -dash_dir, color, 2, 120.0, 0.6, 5.0, 0.3)
+			if dash_t <= 0.0 or position.y > Cfg.H - 120.0:
+				dash_state = 3
+			return
+		elif dash_state == 3:
+			position.y = move_toward(position.y, 175.0, 260.0 * delta)
+			position.x = lerpf(position.x, Cfg.W * 0.5, clampf(2.0 * delta, 0.0, 1.0))
+			if absf(position.y - 175.0) < 2.0:
+				dash_state = 0
+				atk_cd = 1.2
+			return
+
+	# ---- 百目鬼：開眼（無防備）と閉眼（無敵・弾幕）を繰り返す ----
+	if tier == 2 and not is_final:
+		eye_t -= delta
+		if eye_t <= 0.0:
+			eye_open = not eye_open
+			eye_t = 4.5 if eye_open else 2.6
+			invuln = not eye_open
+			if eye_open:
+				Fx.ring(position, Color(1, 1, 1), radius, radius * 3.0, 0.4, 4.0)
+				Sfx.play("suzu", -6.0, 0.9)
+				Game.inst.ui.banner_small("開眼　いま撃て", Color(1, 0.9, 0.6))
+			else:
+				Fx.burst(position, color, 14, 200.0, 4.0, 0.4, true)
+				Sfx.play("warn", -14.0, 1.4)
+				Game.inst.ui.banner_small("閉眼　弾を弾き返す", Color(1, 0.6, 0.6))
+
+	# ---- 八岐大蛇：首が減るたびに短い硬直と怒りの弾幕 ----
+	if is_final:
+		heads_alive = maxi(1, int(ceil(hp / max_hp * 8.0)))
+		if heads_alive < _heads_prev:
+			_heads_prev = heads_alive
+			Fx.shake_add(10.0)
+			Fx.ring(position, Color(1, 1, 1), radius, radius * 4.0, 0.5, 5.0)
+			Sfx.play("taiko", -2.0, 0.7)
+			Game.inst.hitstop(0.25, 0.1)
+			Game.inst.ui.banner_small("首を断った　残り %d" % heads_alive, Color(1, 0.8, 0.6))
+			burst_left = 0
+			atk_cd = 0.4
+			burst_kind = "heads"
+			burst_left = 2
+			burst_gap = 0.35
+
 	# ふわふわ移動
 	hover_x = Cfg.W * 0.5 + sin(t * (0.45 + 0.16 * float(ph))) * (Cfg.W * 0.30)
 	position.x = lerpf(position.x, hover_x, clampf(2.2 * delta, 0.0, 1.0))
@@ -84,6 +170,18 @@ func _choose_attack(ph: int) -> void:
 		2: opts = ["spiral", "shotgun", "radial", "summon"] if not is_final else ["spiral", "shotgun", "wall", "summon"]
 		_: opts = ["spiral2", "shotgun", "summon", "wall", "spiral2"]
 	burst_kind = opts[randi() % opts.size()]
+	# 荒魂：たまに突進
+	if tier == 1 and not is_final and ph >= 2 and randf() < 0.35 and dash_state == 0:
+		dash_state = 1
+		dash_t = 0.8
+		Sfx.play("warn", -10.0, 0.8)
+		return
+	# 百目鬼：閉眼中は螺旋に寄せる、開眼中は隙の大きい攻撃
+	if tier == 2 and not is_final:
+		burst_kind = ["spiral", "spiral2", "radial"][randi() % 3] if not eye_open else ["aimed", "shotgun", "summon"][randi() % 3]
+	# 八岐大蛇：首から吐く弾幕を混ぜる
+	if is_final and randf() < 0.45:
+		burst_kind = "heads"
 	spiral_a = randf() * TAU
 	match burst_kind:
 		"radial":
@@ -113,6 +211,10 @@ func _choose_attack(ph: int) -> void:
 		"wall":
 			burst_left = 2
 			burst_gap = 0.5
+			atk_cd = 1.6
+		"heads":
+			burst_left = 3
+			burst_gap = 0.4
 			atk_cd = 1.6
 	burst_t = 0.0
 
@@ -148,6 +250,15 @@ func _do_burst_shot(ph: int) -> void:
 				m.position = position + Vector2(randf_range(-70, 70), randf_range(20, 60))
 				Game.inst.spawn_deferred(m)
 			Sfx.play("warn", -18.0, 1.6)
+		"heads":
+			# 首ごとに自機へ向けて吐く
+			_on_fire()
+			var pl := _player()
+			for hpos0 in head_positions():
+				var hpos: Vector2 = hpos0
+				var a: float = ((pl.position - hpos).normalized().angle() if pl != null else PI * 0.5) + randf_range(-0.15, 0.15)
+				Game.inst.spawn_ebullet(hpos, Vector2(cos(a), sin(a)) * (spd + 40.0), _bullet_dmg(), 6.0, Cfg.C_EBULLET, 0.0, boss_name + "の吐息")
+			Sfx.play("eshot", -10.0, 0.6, 0.05)
 		"wall":
 			_on_fire()
 			var gap := randi_range(1, 6)
@@ -156,11 +267,17 @@ func _do_burst_shot(ph: int) -> void:
 					continue
 				var x := 45.0 + float(i) * (Cfg.W - 90.0) / 7.0
 				Game.inst.spawn_ebullet(Vector2(x, position.y + 40.0),
-						Vector2(0, spd * 0.85), _bullet_dmg(), 6.0)
+						Vector2(0, spd * 0.85), _bullet_dmg(), 6.0, Cfg.C_EBULLET, 0.0, boss_name + "の弾幕")
 			Sfx.play("eshot", -12.0, 0.7, 0.05)
 
 
 func take_damage(d: float, crit: bool, at: Vector2, quiet := false) -> void:
+	if invuln:
+		# 閉眼中：弾を弾く
+		if not quiet:
+			Fx.sparks(at, Vector2.DOWN, Color(1, 1, 1), 3, 200.0)
+			Fx.number(at + Vector2(0, -radius), "無効", Color(1, 1, 1, 0.7), 11.0)
+		return
 	var before := phase()
 	super(d, crit, at, quiet)
 	if hp > 0.0 and phase() != before:
@@ -208,6 +325,31 @@ func _draw() -> void:
 			var a0 := t * (0.5 + 0.3 * float(ph)) * dir + TAU * float(i) / float(seg)
 			draw_circle(Vector2(cos(a0), sin(a0)) * rr, 5.0 - float(ring_i), Cfg.with_a(c, 0.6))
 
+	# 八岐大蛇：首
+	if is_final:
+		for hpos0 in head_positions():
+			var lp: Vector2 = (hpos0 as Vector2) - position
+			var mid := lp * 0.5 + Vector2(0, -20.0 + sin(t * 2.0 + lp.x * 0.02) * 6.0)
+			draw_line(Vector2.ZERO, mid, c.darkened(0.3), 10.0, true)
+			draw_line(mid, lp, c.darkened(0.3), 8.0, true)
+			draw_circle(lp, 14.0, c)
+			draw_circle(lp + Vector2(-4, -3), 3.0, Color(1, 0.95, 0.6))
+			draw_circle(lp + Vector2(4, -3), 3.0, Color(1, 0.95, 0.6))
+			draw_colored_polygon(PackedVector2Array([lp + Vector2(-5, 6), lp + Vector2(5, 6), lp + Vector2(0, 14)]), Color(1, 0.95, 0.85))
+	# 百目鬼：閉眼中は鈍い色、開眼中は大きな眼
+	if tier == 2 and not is_final:
+		if invuln:
+			c = c.darkened(0.45)
+			draw_arc(Vector2.ZERO, radius * 1.15, 0, TAU, 40, Color(1, 1, 1, 0.35 + 0.15 * sin(t * 10.0)), 3.0, true)
+		else:
+			draw_circle(Vector2(0, -radius * 0.1), radius * 0.5, Color(1, 1, 0.95))
+			draw_circle(Vector2(0, -radius * 0.1), radius * 0.26, Color(0.9, 0.2, 0.3))
+			draw_circle(Vector2(0, -radius * 0.1), radius * 0.12, Cfg.C_INK)
+	# 荒魂：狙いの線
+	if tier == 1 and not is_final and dash_state == 1:
+		var pl := _player()
+		if pl != null:
+			draw_line(Vector2.ZERO, (pl.position - position).normalized() * 1200.0, Color(1, 0.4, 0.5, 0.25 + 0.2 * sin(t * 30.0)), 3.0, true)
 	# 本体：鬼の面
 	var hex := PackedVector2Array()
 	for i in 6:
