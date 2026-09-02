@@ -93,7 +93,8 @@ func _draw() -> void:
 			pts.append(Vector2(r * 1.7, r * 1.1))
 			pts.append(Vector2(r * 1.15, r * 0.2))
 			draw_colored_polygon(pts, c)
-			draw_circle(Vector2(-r * 0.2, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.85))
+			draw_polyline(pts + PackedVector2Array([pts[0]]), Color(1, 1, 1, 0.9), 1.5, true)
+			draw_circle(Vector2(-r * 0.2, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.95))
 		Kind.HEAL:
 			# 御札：縦長の紙と朱印
 			draw_rect(Rect2(-6, -11, 12, 22), Cfg.C_PAPER)

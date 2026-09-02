@@ -73,6 +73,26 @@ const SLOT_HINT := [
 ]
 
 
+# ステージ構成：8 波ごとに 1 ステージ。各ステージの最後の波がボス、第 3 ステージの最後がラスボス
+const STAGE_LEN := 8
+const STAGE_COUNT := 3
+const STAGE_NAME := ["参道", "拝殿", "奥宮"]
+const STAGE_KANJI := ["一", "二", "三"]
+const STAGE_TINT := [Color(0.45, 0.30, 0.80), Color(0.75, 0.30, 0.45), Color(0.25, 0.20, 0.55)]
+
+
+static func stage_of(wave: int) -> int:
+	return clampi(int((wave - 1) / STAGE_LEN) + 1, 1, STAGE_COUNT)
+
+
+static func is_boss_wave(wave: int) -> bool:
+	return wave % STAGE_LEN == 0
+
+
+static func is_final_wave(wave: int) -> bool:
+	return wave == STAGE_LEN * STAGE_COUNT
+
+
 static func play_rect() -> Rect2:
 	return Rect2(MARGIN, MARGIN, W - MARGIN * 2.0, H - MARGIN * 2.0)
 

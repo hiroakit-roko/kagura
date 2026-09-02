@@ -10,6 +10,7 @@ var _petals: Array = []
 var speed := 1.0
 var tint := Color(0.45, 0.30, 0.80)
 var _tint_cur := Color(0.45, 0.30, 0.80)
+var stage := 1
 var _t := 0.0
 var _path_y := 0.0
 
@@ -81,8 +82,10 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	# 画面シェイクで端が見えないよう少し広めに塗る
-	var top := Cfg.C_BG.lerp(_tint_cur, 0.18)
-	var bottom := Cfg.C_BG.lerp(_tint_cur, 0.05).darkened(0.3)
+	var stint: Color = Cfg.STAGE_TINT[clampi(stage - 1, 0, Cfg.STAGE_TINT.size() - 1)]
+	var mix := _tint_cur.lerp(stint, 0.5)
+	var top := Cfg.C_BG.lerp(mix, 0.18 + 0.06 * float(stage - 1))
+	var bottom := Cfg.C_BG.lerp(mix, 0.05).darkened(0.3)
 	var steps := 12
 	for i in steps:
 		var k0 := float(i) / float(steps)
@@ -95,8 +98,11 @@ func _draw() -> void:
 	var mp := Vector2(Cfg.W - 110.0, 150.0)
 	draw_circle(mp, 120.0, Cfg.with_a(_tint_cur.lightened(0.4), 0.05))
 	draw_circle(mp, 70.0, Cfg.with_a(_tint_cur.lightened(0.5), 0.07))
-	draw_circle(mp, 42.0, Color(0.93, 0.90, 0.80, 0.55))
-	draw_circle(mp + Vector2(-14, -8), 38.0, top.lerp(Color(0.93, 0.90, 0.80, 0.55), 0.35))
+	var moon_col: Color = [Color(0.93, 0.90, 0.80, 0.55), Color(1.0, 0.72, 0.55, 0.6), Color(0.85, 0.75, 1.0, 0.65)][clampi(stage - 1, 0, 2)]
+	var mr := 42.0 + 10.0 * float(stage - 1)
+	draw_circle(mp, mr, moon_col)
+	if stage < 3:
+		draw_circle(mp + Vector2(-14, -8), mr * 0.9, top.lerp(moon_col, 0.35))
 
 	# 星
 	var sizes := [1.0, 1.6, 2.4]

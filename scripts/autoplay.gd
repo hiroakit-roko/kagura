@@ -104,6 +104,12 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--flicktest"):
 		await _flick_test()
 		return
+	if OS.get_cmdline_user_args().has("--cleartest"):
+		await _clear_test()
+		return
+	if OS.get_cmdline_user_args().has("--flowtest"):
+		await _flow_test()
+		return
 
 	Game.inst.start_game()
 	# 自動プレイなので長く生き延びるようタフにしておく
@@ -114,9 +120,13 @@ func _run() -> void:
 	var last := 0.0
 	var idx := 10
 	var boon_shots := 0
+	var dbg_t := 0.0
 	while _t < quit_at:
 		await _wait(0.25)
 		var g := Game.inst
+		if _t - dbg_t > 1.0 and OS.get_cmdline_user_args().has("--verbose-flow"):
+			dbg_t = _t
+			print("[tick] t=%.1f wave=%d state=%d lv=%d pend=%d enemies=%d" % [_t, g.wave, g.state, g.player.level, g.player.pending_levels, get_tree().get_nodes_in_group("enemy").size()])
 		if g.state == Game.St.KAMI and g.ui.kami_view.visible:
 			await _wait(0.9)
 			await shot("02_kami.png")
@@ -125,7 +135,13 @@ func _run() -> void:
 			await shot("02_kami_hover.png")
 			g._on_kami_chosen(String(g.ui.kami_view.ids[randi() % g.ui.kami_view.ids.size()]))
 		elif g.state == Game.St.BOON and g.ui.boons_view.visible and not g._offers.is_empty():
+			# 選択画面中に敵と自機が止まっているか
+			var es := get_tree().get_nodes_in_group("enemy")
+			var before: Vector2 = (es[0].position if not es.is_empty() else Vector2.ZERO)
+			var pb := g.player.position
 			await _wait(0.8)
+			if not es.is_empty() and is_instance_valid(es[0]):
+				print("[freeze] enemy moved=%.1f player moved=%.1f (both should be 0)" % [before.distance_to(es[0].position), pb.distance_to(g.player.position)])
 			boon_shots += 1
 			if boon_shots <= 4:
 				g.ui.boons_view.hover = 0
@@ -138,6 +154,9 @@ func _run() -> void:
 		if g.state == Game.St.OVER:
 			await shot("99_gameover.png")
 			break
+		if g.state == Game.St.CLEAR and g.ui.overlay.visible:
+			await shot("97_clear.png")
+			break
 		if g.boss != null and is_instance_valid(g.boss) and not g.boss.entering:
 			await shot("50_boss.png")
 			if g.boss.hp / g.boss.max_hp < 0.5:
@@ -148,6 +167,8 @@ func _run() -> void:
 			last = _t
 			await shot("%02d_play_w%d.png" % [idx, g.wave])
 			idx += 1
+			print("[autoplay] t=%.0f wave=%d fps=%d enemies=%d bullets=%d state=%d lv=%d" % [_t, g.wave, Engine.get_frames_per_second(),
+					get_tree().get_nodes_in_group("enemy").size(), get_tree().get_nodes_in_group("ebullet").size(), g.state, g.player.level])
 
 	await shot("98_final.png")
 	print("[autoplay] finished at t=%.1f wave=%d score=%d gods=%s boons=%s" % [
@@ -208,6 +229,67 @@ func _boon_test() -> void:
 	get_tree().quit()
 
 
+## 主神選択 → 恩恵 → 数回のレベルアップの流れを高速に確認する（ハング調査用）
+func _flow_test() -> void:
+	_no_ai = true
+	var g := Game.inst
+	g.start_game()
+	await _wait(0.5)
+	print("[flow] force level up")
+	g.player.pending_levels = 1
+	await _wait(0.3)
+	print("[flow] state=%d kami_view=%s" % [g.state, str(g.ui.kami_view.visible)])
+	g._on_kami_chosen(String(g.ui.kami_view.ids[0]))
+	print("[flow] after kami: state=%d offers=%d" % [g.state, g._offers.size()])
+	await _wait(0.3)
+	for i in 6:
+		if g.state == Game.St.BOON:
+			print("[flow] pick boon %d: %s" % [i, str(g._offers.map(func(o): return o["type"]))])
+			g._on_boon_chosen(0)
+		await _wait(0.3)
+		g.player.pending_levels = 1
+		await _wait(0.3)
+		print("[flow] loop %d state=%d gods=%s" % [i, g.state, str(g.player.gods)])
+	print("[flow] done")
+	get_tree().quit()
+
+
+## ラスボス（第 3 ステージ最後）→ 踏破画面までを確認する
+func _clear_test() -> void:
+	var g := Game.inst
+	g.start_game()
+	var p := g.player
+	for kid in ["take", "ama", "inari"]:
+		p.add_god(kid)
+		p.kami_lv[kid] = 8
+	p.stats["max_hp"] = 9999.0
+	p.hp = 9999.0
+	g.wave = Cfg.STAGE_LEN * Cfg.STAGE_COUNT - 1   # 次の波がラスボス
+	g._wave_active = false
+	g._between = 0.5
+	await _wait(3.0)
+	await shot("80_lastboss.png")
+	print("[cleartest] boss=%s final=%s music=%s" % [str(g.boss != null), str(g.boss.is_final if g.boss else false), Music.inst._current])
+	# 流れの確認が目的なのでボスの HP は削っておく
+	if g.boss != null:
+		g.boss.hp = minf(g.boss.hp, 400.0)
+	var t0 := 0.0
+	while g.state != Game.St.CLEAR and g.state != Game.St.OVER and t0 < 90.0:
+		await _wait(0.5)
+		t0 += 0.5
+		# 回復で上限に戻されないよう毎回タフにしておく（テスト用）
+		p.stats["max_hp"] = 9999.0
+		p.hp = 9999.0
+		if g.state == Game.St.BOON or g.state == Game.St.KAMI or g.state == Game.St.MIKI:
+			g._close_choice()
+			p.pending_levels = 0
+	print("[cleartest] state=%d (CLEAR=%d) after %.1fs" % [g.state, Game.St.CLEAR, t0])
+	await _wait(3.0)
+	await shot("81_clear.png")
+	print("[cleartest] overlay=%s mode=%d music=%s" % [str(g.ui.overlay.visible), g.ui.overlay.mode, Music.inst._current])
+	get_tree().quit()
+
+
 ## スワイプで疾走が出るかを合成タッチイベントで確認する
 func _touch(pressed: bool, pos: Vector2, idx := 0) -> void:
 	var e := InputEventScreenTouch.new()
@@ -254,7 +336,7 @@ func _flick_test() -> void:
 		_drag(cur, nxt)
 		cur = nxt
 	await _wait(0.05)
-	print("[flicktest] fast drag -> dash_t=%.2f" % p.dash_t)
+	print("[flicktest] fast drag (no release) -> dash_t=%.2f (should be 0)" % p.dash_t)
 	_touch(false, cur)
 	await _wait(2.5)
 	# 3) ゆっくり動かす（疾走してはいけない）

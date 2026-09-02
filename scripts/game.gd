@@ -3,7 +3,7 @@ extends Node2D
 
 ## ゲーム全体の進行役：ウェーブ生成・状態遷移・神と恩恵の受け渡し・ヒットストップ。
 
-enum St {TITLE, PLAY, KAMI, BOON, MIKI, PAUSE, OVER}
+enum St {TITLE, PLAY, KAMI, BOON, MIKI, PAUSE, OVER, CLEAR}
 
 static var inst: Game
 static var enemy_bullet_slow := 0.0
@@ -36,8 +36,13 @@ var _offer_reason := "level"
 var _rerolls := 0
 var _hitstop := 0.0
 var _kami_choices: Array = []
+var _minion_t := 0.0
 
-const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6}
+const COST := {"grunt": 1.0, "weaver": 1.4, "charger": 1.8, "turret": 2.4, "splitter": 2.6,
+	"spirit": 0.5, "lantern": 2.0, "kite": 1.2, "oni": 3.6, "caster": 3.0, "bomber": 1.5}
+## 敵の解禁ウェーブ
+const UNLOCK := {"grunt": 1, "spirit": 2, "weaver": 2, "charger": 3, "lantern": 4, "kite": 5,
+	"turret": 6, "oni": 7, "splitter": 8, "caster": 9, "bomber": 11}
 
 
 func _ready() -> void:
@@ -65,10 +70,14 @@ func _ready() -> void:
 	_fit_viewport()
 	get_tree().root.size_changed.connect(_fit_viewport)
 
+	# Game は PROCESS_MODE_ALWAYS なので、子はそのまま継承すると選択画面中も動いてしまう。
+	# 敵・弾・自機・背景は明示的にポーズ対象にする（UI・エフェクト・BGM だけ動き続ける）。
 	stars = Starfield.new()
+	stars.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(stars)
 
 	world = Node2D.new()
+	world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(world)
 
 	fx = Fx.new()
@@ -219,6 +228,22 @@ func _tick_wave(delta: float) -> void:
 		en.position = Vector2(float(e["x"]), float(e["y"]))
 		world.add_child(en)
 
+	# ボス戦中は雑魚の増援が周期的に出る
+	if boss != null and is_instance_valid(boss) and not boss.entering:
+		_minion_t -= delta
+		if _minion_t <= 0.0:
+			_minion_t = maxf(3.0, 6.5 - float(boss.tier) * 1.0 - (1.0 if boss.is_final else 0.0))
+			var kinds := ["grunt", "weaver", "spirit"]
+			if boss.tier >= 2: kinds.append_array(["charger", "kite"])
+			if boss.tier >= 3: kinds.append_array(["splitter", "bomber"])
+			var n := 2 + boss.tier
+			for i in n:
+				var en2 := Enemy.new()
+				en2.setup(kinds[randi() % kinds.size()], wave)
+				en2.position = Vector2(Cfg.W * (float(i + 1) / float(n + 1)), -46.0 - float(i) * 20.0)
+				world.add_child(en2)
+			Sfx.play("warn", -18.0, 1.5, 0.5)
+
 	if _plan_i >= _plan.size() and get_tree().get_nodes_in_group("enemy").is_empty():
 		_clear_wave()
 
@@ -228,22 +253,37 @@ func _start_wave() -> void:
 	_wave_t = 0.0
 	_plan_i = 0
 	_wave_active = true
+	var st := Cfg.stage_of(wave)
+	stars.stage = st
 
-	if wave % 5 == 0:
+	if Cfg.is_boss_wave(wave):
 		_plan.clear()
 		var b := Boss.new()
 		b.setup_boss(wave)
 		world.add_child(b)
 		boss = b
-		Music.play("boss")
-		ui.banner("大妖、来たる", b.boss_name, Color(1, 0.35, 0.4))
-		Sfx.play("taiko", -2.0, 0.7)
+		_minion_t = 5.0
+		if b.is_final:
+			Music.play("lastboss")
+			ui.banner("大禍、顕現", b.boss_name + "　奥宮の主", Color(1, 0.3, 0.35))
+			Fx.flash(Color(1, 0.2, 0.3, 0.4), 0.6)
+			Sfx.play("taiko", 0.0, 0.55)
+			Sfx.play("flute", -6.0, 0.7)
+		else:
+			Music.play("boss")
+			ui.banner("大妖、来たる", b.boss_name, Color(1, 0.35, 0.4))
+			Sfx.play("taiko", -2.0, 0.7)
 		Sfx.play("warn", -6.0)
 		Fx.shake_add(6.0)
 	else:
 		_plan = _build_wave(wave)
-		ui.banner("第 %d 波" % wave, "", Color(0.85, 0.8, 1.0))
-		Sfx.play("clap", -10.0)
+		if (wave - 1) % Cfg.STAGE_LEN == 0:
+			ui.banner("第%sの段　%s" % [Cfg.STAGE_KANJI[st - 1], Cfg.STAGE_NAME[st - 1]], "第 %d 波" % wave, Cfg.C_GOLD)
+			Sfx.play("taiko", -8.0, 1.0)
+			Sfx.play("suzu", -10.0)
+		else:
+			ui.banner("第 %d 波" % wave, "", Color(0.85, 0.8, 1.0))
+			Sfx.play("clap", -10.0)
 
 
 func _on_leveled_up() -> void:
@@ -259,7 +299,7 @@ func _clear_wave() -> void:
 	_between = 1.5
 	if player != null and is_instance_valid(player):
 		player.heal(6.0, true)
-		player.add_xp(10.0 + float(wave) * 3.0)   # 取りこぼしても必ず成長できるよう保証
+		player.add_xp(8.0 + float(wave) * 2.5)   # 取りこぼしても必ず成長できるよう保証
 		score += 50 * wave
 	if _boss_reward:
 		_boss_reward = false
@@ -275,40 +315,60 @@ func _clear_wave() -> void:
 
 
 func _build_wave(w: int) -> Array:
-	var kinds := ["grunt"]
-	if w >= 2: kinds.append("weaver")
-	if w >= 3: kinds.append("charger")
-	if w >= 6: kinds.append("turret")
-	if w >= 8: kinds.append("splitter")
+	# 解禁済みの敵から毎回 3〜4 種を選び、順番に混ぜて単調にならないようにする
+	var avail: Array = []
+	for k in UNLOCK.keys():
+		if w >= int(UNLOCK[k]):
+			avail.append(k)
+	avail.shuffle()
+	var kinds: Array = avail.slice(0, mini(avail.size(), 3 + (1 if w >= 6 else 0)))
+	if w >= 3 and not kinds.has("grunt") and randf() < 0.5:
+		kinds.append("grunt")
+	var ki := 0
 
-	var budget := 8.0 + float(w) * 3.0
+	var budget := 8.0 + float(w) * 3.0 + float(w * w) * 0.12
 	var out: Array = []
 	var tt := 0.7
+	var pace := clampf(1.0 - float(w) * 0.02, 0.55, 1.0)   # 後半は間隔が詰まる
 	var guard := 0
-	while budget > 0.0 and guard < 60:
+	while budget > 0.0 and guard < 80:
 		guard += 1
-		var k: String = kinds[randi() % kinds.size()]
+		var k: String = kinds[ki % kinds.size()]
+		ki += 1
 		var n := randi_range(3, 5)
-		if k == "turret" or k == "splitter":
-			n = randi_range(1, 2)
-		elif k == "charger":
-			n = randi_range(2, 3)
-		var pattern := randi() % 3
+		match k:
+			"turret", "splitter", "oni": n = randi_range(1, 2)
+			"charger", "lantern", "caster": n = randi_range(2, 3)
+			"spirit": n = randi_range(5, 7)
+			"kite", "bomber": n = randi_range(3, 4)
+		var pattern := randi() % 4
+		var side := 1.0 if randf() < 0.5 else -1.0
 		for i in n:
 			var x := 0.0
 			var y := -46.0
+			if k == "kite":
+				# 凧は横から入ってくる
+				x = -40.0 if side > 0.0 else Cfg.W + 40.0
+				y = randf_range(40.0, 220.0)
+				out.append({"kind": k, "x": x, "y": y, "t": tt})
+				tt += 0.25 * pace
+				budget -= float(COST[k])
+				continue
 			match pattern:
 				0: # 横一列
 					x = Cfg.W * (float(i + 1) / float(n + 1))
 				1: # V字
 					x = Cfg.W * 0.5 + (float(i) - float(n - 1) * 0.5) * 66.0
 					y -= absf(float(i) - float(n - 1) * 0.5) * 42.0
+				2: # 縦の列（片側から蛇行）
+					x = Cfg.W * 0.5 + side * 180.0
+					y -= float(i) * 46.0
 				_: # ばらまき
 					x = randf_range(60.0, Cfg.W - 60.0)
 			out.append({"kind": k, "x": clampf(x, 44.0, Cfg.W - 44.0), "y": y, "t": tt})
-			tt += 0.2
+			tt += 0.2 * pace
 			budget -= float(COST[k])
-		tt += randf_range(0.6, 1.1)
+		tt += randf_range(0.6, 1.1) * pace
 	out.sort_custom(func(a, b): return float(a["t"]) < float(b["t"]))
 	return out
 
@@ -321,12 +381,13 @@ func spawn_deferred(n: Node) -> void:
 
 
 func spawn_ebullet(pos: Vector2, vel: Vector2, dmg: float, radius := 5.0,
-		col := Cfg.C_EBULLET) -> void:
+		col := Cfg.C_EBULLET, homing := 0.0) -> void:
 	var b := Bullet.new()
 	b.radius = radius
 	b.color = col
 	b.shape_kind = 7
 	b.trail_len = 10.0
+	b.homing = homing
 	b.setup(pos, vel, dmg, false)
 	world.add_child(b)
 
@@ -373,6 +434,12 @@ func on_boss_killed(b: Boss) -> void:
 	kills += 1
 	score += b.score
 	boss = null
+	if b.is_final:
+		score += 5000
+		Music.stop()
+		hitstop(1.2, 0.1)
+		_on_cleared()
+		return
 	_boss_reward = true
 	Music.play("stage")
 	hitstop(0.6, 0.15)
@@ -389,13 +456,13 @@ func on_boss_killed(b: Boss) -> void:
 
 
 func _drop(pos: Vector2, xp_total: float) -> void:
-	var n := clampi(int(round(xp_total / 3.0)), 1, 6)
-	for i in n:
+	# 勾玉は敵弾と紛れないよう数を絞る：確率で 1 個だけ落とし、価値をまとめる
+	var chance := clampf(0.30 + xp_total * 0.03, 0.3, 0.8)
+	if randf() < chance:
 		var p := Pickup.new()
-		p.setup(pos + Vector2(randf_range(-10, 10), randf_range(-10, 10)),
-				Pickup.Kind.XP, xp_total / float(n))
+		p.setup(pos + Vector2(randf_range(-6, 6), randf_range(-6, 6)), Pickup.Kind.XP, xp_total / chance * 0.75)
 		spawn_deferred(p)
-	if randf() < 0.055:
+	if randf() < 0.045:
 		var h := Pickup.new()
 		h.setup(pos, Pickup.Kind.HEAL, 12.0)
 		spawn_deferred(h)
@@ -518,6 +585,33 @@ func _close_choice() -> void:
 
 
 # ---------- 状態 ----------
+
+## 踏破：ラスボス撃破
+func _on_cleared() -> void:
+	state = St.CLEAR
+	_wave_active = false
+	Fx.flash(Color(1, 1, 1, 0.8), 1.0)
+	Sfx.play("flute", 0.0)
+	Sfx.play("suzu", -4.0)
+	Sfx.play("levelup", -4.0)
+	ui.overlay.mode = 2
+	var god_names := []
+	for g in player.gods:
+		god_names.append(String(Kami.kami(g)["name"]))
+	ui.overlay.stats_lines = [
+		["功徳", str(score)],
+		["位", "Lv.%d" % player.level],
+		["討伐", str(kills)],
+		["神々", "・".join(god_names) if not god_names.is_empty() else "なし"],
+		["神格", "・".join(player.gods.map(func(g): return "Lv.%d" % int(player.kami_lv.get(g, 1)))) if not player.gods.is_empty() else "なし"],
+	]
+	ui.hide_cards()
+	await get_tree().create_timer(2.4, true, false, true).timeout
+	if state != St.CLEAR:
+		return
+	ui.overlay.visible = true
+	get_tree().paused = true
+
 
 func _on_player_died() -> void:
 	Music.stop()

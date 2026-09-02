@@ -9,6 +9,7 @@ static var inst: Music
 const TRACKS := {
 	"stage": "res://music/stage.mp3",
 	"boss": "res://music/boss.mp3",
+	"lastboss": "res://music/lastboss.mp3",
 }
 const BASE_DB := -9.0
 const FADE := 1.6          # クロスフェードの秒数

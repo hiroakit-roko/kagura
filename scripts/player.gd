@@ -40,7 +40,7 @@ var weapons := {}        # 神 id -> Weapon
 var hp := 100.0
 var level := 1
 var xp := 0.0
-var xp_next := 40.0
+var xp_next := 50.0
 var pending_levels := 0
 var alive := true
 
@@ -63,6 +63,8 @@ var call_kind := ""
 var call_tick := 0.0
 var call_power := 1.0
 var haste_t := 0.0           # 道開き：移動と連射が速くなる時間
+var dash_mult := 1.0         # 疾走の距離倍率（神の強化で伸ばす余地）
+var _dash_ready_ping := true
 var _contact_cd := 0.0
 var _ghost_t := 0.0
 var _miracle_cd := 0.0
@@ -111,6 +113,12 @@ func _physics_process(delta: float) -> void:
 	_contact_cd = maxf(0.0, _contact_cd - delta)
 	_miracle_cd = maxf(0.0, _miracle_cd - delta)
 	haste_t = maxf(0.0, haste_t - delta)
+
+	# 疾走が使えるようになった瞬間を知らせる
+	if dash_cool <= 0.0 and not _dash_ready_ping:
+		_dash_ready_ping = true
+		Fx.ring(position + Vector2(0, 30), Color(1, 1, 1), 6.0, 30.0, 0.25, 2.0)
+		Sfx.play("suzu", -24.0, 1.8)
 
 	_move(delta)
 	_animate(delta)
@@ -277,7 +285,7 @@ func _move(delta: float) -> void:
 	if dash_t > 0.0:
 		dash_t -= delta
 		iframe = maxf(iframe, 0.05)
-		position += dash_dir * move_speed() * 3.6 * delta
+		position += dash_dir * move_speed() * 2.6 * dash_mult * delta
 		_ghost_t -= delta
 		if _ghost_t <= 0.0:
 			_ghost_t = 0.025
@@ -311,6 +319,7 @@ func _move(delta: float) -> void:
 func _start_dash(dir: Vector2) -> void:
 	dash_t = 0.18
 	dash_cool = dash_cd_time()
+	_dash_ready_ping = false
 	dash_dir = dir
 	var col := kami_color(main_god()) if main_god() != "" else Cfg.C_PLAYER
 	Fx.ring(position, Color(1, 1, 1), 8.0, 70.0, 0.25, 4.0)
@@ -755,7 +764,7 @@ func add_xp(amount: float) -> void:
 	while xp >= xp_next:
 		xp -= xp_next
 		level += 1
-		xp_next = 34.0 + float(level) * 18.0 + pow(float(level), 1.5) * 2.0
+		xp_next = 36.0 + float(level) * 20.0 + pow(float(level), 1.5) * 2.5
 		pending_levels += 1
 		stats["max_hp"] = float(stats["max_hp"]) + 3.0
 		hp += 3.0
@@ -828,6 +837,10 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, radius, Color(1, 0.4, 0.5, 0.75))
 		draw_arc(Vector2.ZERO, radius + 4.0, 0.0, TAU, 24, Color(1, 1, 1, 0.5), 1.0, true)
 
+	# 疾走のクールダウン：足元の輪が満ちると使える
 	if dash_cool > 0.0:
 		var k2 := 1.0 - dash_cool / maxf(0.01, dash_cd_time())
-		draw_arc(Vector2(0, 34), 12.0, -PI * 0.5, -PI * 0.5 + TAU * k2, 18, Color(1, 1, 1, 0.3), 2.0, true)
+		draw_arc(Vector2(0, 34), 16.0, 0, TAU, 24, Color(0, 0, 0, 0.45), 4.0, true)
+		draw_arc(Vector2(0, 34), 16.0, -PI * 0.5, -PI * 0.5 + TAU * k2, 24, Color(1, 1, 1, 0.75), 3.0, true)
+		var f: Font = Game.inst.ui.font_bold
+		draw_string(f, Vector2(-20, 58), "%.1f" % dash_cool, HORIZONTAL_ALIGNMENT_CENTER, 40, 10, Color(1, 1, 1, 0.8))

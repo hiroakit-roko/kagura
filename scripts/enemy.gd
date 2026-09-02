@@ -63,7 +63,8 @@ const STATUS_GLYPH := {
 func setup(k: String, w: int) -> void:
 	kind = k
 	wave = w
-	var hs := 1.5 + float(w) * 0.38
+	# 後半は神器も強くなるので、HP は二乗で伸ばして終盤ほど厳しくする
+	var hs := 1.5 + float(w) * 0.38 + float(w * w) * 0.022
 	var ss := 1.08 + float(w) * 0.03
 	_phase = randf() * TAU
 	_dir = 1.0 if randf() < 0.5 else -1.0
@@ -120,6 +121,59 @@ func setup(k: String, w: int) -> void:
 			xp = 2.5
 			contact_dmg = 9.0
 			color = Color(0.45, 1.0, 0.65)
+		"spirit":   # 人魂：群れで漂う。すぐ死ぬが数が多い
+			max_hp = 8.0 * hs
+			speed = 150.0 * ss
+			radius = 11.0
+			score = 6
+			xp = 2.0
+			contact_dmg = 8.0
+			color = Color(0.70, 0.85, 1.0)
+		"lantern":  # 提灯お化け：上部に留まり、大きく遅い弾を 3 方向に
+			max_hp = 34.0 * hs
+			speed = 60.0
+			radius = 18.0
+			score = 30
+			xp = 8.0
+			contact_dmg = 14.0
+			color = Color(1.0, 0.55, 0.35)
+			fire_t = randf_range(1.5, 2.5)
+		"kite":     # 凧：横から斜めに横切る
+			max_hp = 20.0 * hs
+			speed = 230.0 * ss
+			radius = 14.0
+			score = 22
+			xp = 6.0
+			contact_dmg = 12.0
+			color = Color(1.0, 0.35, 0.35)
+			fire_t = randf_range(0.8, 1.6)
+		"oni":      # 小鬼：硬くて遅い。定期的に全方位弾
+			max_hp = 95.0 * hs
+			speed = 42.0 * ss
+			radius = 24.0
+			score = 60
+			xp = 16.0
+			contact_dmg = 26.0
+			color = Color(0.85, 0.25, 0.30)
+			fire_t = 2.0
+		"caster":   # 陰陽師：上部で瞬間移動しながら誘導弾
+			max_hp = 40.0 * hs
+			speed = 80.0
+			radius = 16.0
+			score = 45
+			xp = 12.0
+			contact_dmg = 12.0
+			color = Color(0.85, 0.75, 1.0)
+			fire_t = 1.8
+			_state_t = 3.0
+		"bomber":   # 火の玉：自機へ突っ込み、近づくか死ぬと弾を撒く
+			max_hp = 26.0 * hs
+			speed = 120.0 * ss
+			radius = 13.0
+			score = 20
+			xp = 7.0
+			contact_dmg = 18.0
+			color = Color(1.0, 0.62, 0.25)
 	hp = max_hp
 
 
@@ -386,6 +440,78 @@ func _behavior(delta: float) -> void:
 			if p2 != null:
 				dir = (p2.position - position).normalized()
 			position += dir.lerp(Vector2.DOWN, 0.35) * speed * delta
+		"spirit":
+			position.y += speed * 0.6 * delta
+			position.x += sin(t * 2.6 + _phase) * 120.0 * delta
+			position.y += cos(t * 1.7 + _phase) * 40.0 * delta
+		"lantern":
+			var target_y := 160.0 + 100.0 * (0.5 + 0.5 * sin(_phase))
+			if position.y < target_y:
+				position.y += speed * delta
+			else:
+				position.x += sin(t * 0.7 + _phase) * 50.0 * delta
+				position.y += 8.0 * delta
+			fire_t -= delta
+			if fire_t <= 0.0 and position.y >= target_y - 20.0:
+				fire_t = _cool(2.6, 3.4)
+				_shoot_aimed(3, 16.0, _spd(150.0), 9.0)
+		"kite":
+			if _state == 0:
+				_state = 1
+				_dir = 1.0 if position.x < Cfg.W * 0.5 else -1.0
+			position.x += speed * _dir * delta
+			position.y += (70.0 + sin(t * 3.0 + _phase) * 90.0) * delta
+			fire_t -= delta
+			if fire_t <= 0.0 and position.x > 30.0 and position.x < Cfg.W - 30.0:
+				fire_t = _cool(1.2, 2.0)
+				_emit(PI * 0.5, 1, 0.0, _spd(220.0))
+			if (position.x < -60.0 and _dir < 0.0) or (position.x > Cfg.W + 60.0 and _dir > 0.0):
+				queue_free()
+		"oni":
+			position.y += speed * delta
+			fire_t -= delta
+			if fire_t <= 0.0 and position.y > 40.0:
+				fire_t = _cool(3.2, 4.0)
+				_shoot_radial(10 + mini(6, int(wave / 5)), _spd(170.0), randf() * TAU)
+				Fx.ring(position, color, radius * 0.6, radius * 1.8, 0.25)
+		"caster":
+			if position.y < 130.0:
+				position.y += speed * delta
+			else:
+				_state_t -= delta
+				if _state_t <= 0.0:
+					# 瞬間移動
+					_state_t = randf_range(3.0, 4.5)
+					Fx.burst(position, color, 10, 160.0, 3.0, 0.35, true)
+					position.x = randf_range(60.0, Cfg.W - 60.0)
+					position.y = randf_range(110.0, 220.0)
+					Fx.ring(position, color, 4.0, radius * 3.0, 0.3, 2.0)
+					_spawn_in = 0.3
+				fire_t -= delta
+				if fire_t <= 0.0 and _spawn_in <= 0.0:
+					fire_t = _cool(2.4, 3.2)
+					var p3 := _player()
+					if p3 != null:
+						for i in 2:
+							var a := (p3.position - position).normalized().angle() + (float(i) - 0.5) * 0.6
+							Game.inst.spawn_ebullet(position, Vector2(cos(a), sin(a)) * _spd(180.0), _bullet_dmg(), 6.0, Color(0.85, 0.7, 1.0), 1.8)
+						_on_fire()
+						Sfx.play("eshot", -14.0, 1.3, 0.05)
+		"bomber":
+			var p4 := _player()
+			if _state == 0 and position.y > 90.0:
+				_state = 1
+				if p4 != null:
+					_charge_dir = (p4.position - position).normalized()
+			if _state == 0:
+				position.y += speed * delta
+			else:
+				speed = minf(speed + 260.0 * delta, 420.0)
+				position += _charge_dir * speed * delta
+				Fx.cone(position, -_charge_dir, color, 1, 60.0, 0.5, 3.0, 0.25)
+				if p4 != null and position.distance_to(p4.position) < 70.0:
+					_explode()
+					return
 
 
 # ---------- 射撃 ----------
@@ -401,15 +527,15 @@ func _spd(base: float) -> float:
 
 
 func _bullet_dmg() -> float:
-	return (9.0 + float(wave) * 1.0) * out_dmg_mult()
+	return (9.0 + float(wave) * 1.1 + float(wave * wave) * 0.02) * out_dmg_mult()
 
 
-func _shoot_aimed(count: int, spread_deg: float, spd: float) -> void:
+func _shoot_aimed(count: int, spread_deg: float, spd: float, radius_b := 5.0) -> void:
 	var target := _aim_target()
 	if target == null:
 		return
 	var base := (target.position - position).normalized().angle()
-	_emit(base, count, spread_deg, spd)
+	_emit(base, count, spread_deg, spd, radius_b)
 
 
 func _shoot_spread(count: int, spread_deg: float, spd: float) -> void:
@@ -427,13 +553,29 @@ func _shoot_radial(count: int, spd: float, offset := 0.0) -> void:
 	Sfx.play("eshot", -14.0, 0.85, 0.04)
 
 
-func _emit(base: float, count: int, spread_deg: float, spd: float) -> void:
+func _emit(base: float, count: int, spread_deg: float, spd: float, radius_b := 5.0) -> void:
 	_on_fire()
 	var step := deg_to_rad(spread_deg)
 	for i in count:
 		var a := base + (float(i) - float(count - 1) * 0.5) * step
-		_spawn(Vector2(cos(a), sin(a)) * spd)
+		_spawn(Vector2(cos(a), sin(a)) * spd, radius_b)
 	Sfx.play("eshot", -16.0, randf_range(0.9, 1.1), 0.04)
+
+
+## 火の玉：弾を撒いて消える
+func _explode() -> void:
+	if hp <= 0.0:
+		return
+	Fx.burst(position, color, 16, 260.0, 4.0, 0.5)
+	Fx.ring(position, color, 6.0, 60.0, 0.3, 4.0)
+	Sfx.play("explode", -10.0, 1.2)
+	_on_fire()
+	for i in 8:
+		var a := TAU * float(i) / 8.0 + randf_range(-0.1, 0.1)
+		_spawn(Vector2(cos(a), sin(a)) * _spd(190.0), 6.0)
+	hp = 0.0
+	Game.inst.on_enemy_killed(self)
+	queue_free()
 
 
 ## 魅了中は仲間を狙う
@@ -453,12 +595,12 @@ func _aim_target() -> Node2D:
 	return _player()
 
 
-func _spawn(vel: Vector2) -> void:
+func _spawn(vel: Vector2, radius_b := 5.0) -> void:
 	if st["charm"] > 0.0:
 		# 魅了された敵の弾は自機側の弾として飛ぶ
 		Game.inst.spawn_charmed_bullet(position, vel * 1.3, _bullet_dmg() * 1.5)
 	else:
-		Game.inst.spawn_ebullet(position, vel, _bullet_dmg(), 5.0)
+		Game.inst.spawn_ebullet(position, vel, _bullet_dmg() * (1.0 + (radius_b - 5.0) * 0.08), radius_b)
 
 
 ## 攻撃するたび帯電ダメージ
@@ -497,6 +639,11 @@ func die() -> void:
 			m.setup("mini", wave)
 			m.position = position + Vector2(-22.0 + 44.0 * float(i), 0)
 			Game.inst.spawn_deferred(m)
+	if kind == "bomber":
+		# 撃たれて死んでも弾を撒く（弱め）
+		for i in 6:
+			var a := TAU * float(i) / 6.0
+			Game.inst.spawn_ebullet(position, Vector2(cos(a), sin(a)) * _spd(150.0), _bullet_dmg() * 0.7, 5.0)
 
 	Game.inst.on_enemy_killed(self)
 	queue_free()
@@ -586,6 +733,67 @@ func _draw_body(c: Color) -> void:
 		"mini":
 			draw_circle(Vector2.ZERO, r, c)
 			draw_circle(Vector2.ZERO, r * 0.45, Color(1, 1, 1, 0.85))
+		"spirit":
+			# 人魂：尾を引く青白い炎
+			var tail := Vector2(-sin(t * 2.6 + _phase) * 6.0, -r * 2.2)
+			draw_colored_polygon(PackedVector2Array([Vector2(-r * 0.8, 0), tail, Vector2(r * 0.8, 0)]), Cfg.with_a(c, 0.5))
+			draw_circle(Vector2.ZERO, r, c)
+			draw_circle(Vector2(-r * 0.3, -r * 0.1), r * 0.15, Cfg.C_INK)
+			draw_circle(Vector2(r * 0.3, -r * 0.1), r * 0.15, Cfg.C_INK)
+		"lantern":
+			# 提灯：丸い紙に骨、下に房
+			draw_rect(Rect2(-r * 0.6, -r * 1.25, r * 1.2, r * 0.25), Cfg.C_INK)
+			draw_circle(Vector2.ZERO, r, c)
+			for i in 5:
+				var yy := -r + r * 2.0 * float(i + 1) / 6.0
+				var hw := sqrt(maxf(0.0, r * r - yy * yy))
+				draw_line(Vector2(-hw, yy), Vector2(hw, yy), Color(0.4, 0.1, 0.1, 0.6), 1.0)
+			draw_rect(Rect2(-r * 0.6, r * 1.0, r * 1.2, r * 0.25), Cfg.C_INK)
+			draw_line(Vector2(0, r * 1.25), Vector2(0, r * 1.7), Cfg.with_a(c, 0.9), 2.0)
+			# 一つ目と口
+			draw_circle(Vector2(0, -r * 0.2), r * 0.32, Color(1, 1, 0.9))
+			draw_circle(Vector2(0, -r * 0.2), r * 0.14, Cfg.C_INK)
+			draw_arc(Vector2(0, r * 0.35), r * 0.3, 0.2, PI - 0.2, 10, Cfg.C_INK, 2.0, true)
+		"kite":
+			# 凧：赤い菱形に骨と尾
+			var pts4 := PackedVector2Array([Vector2(0, -r * 1.3), Vector2(r, 0), Vector2(0, r * 1.3), Vector2(-r, 0)])
+			draw_colored_polygon(pts4, c)
+			draw_polyline(pts4 + PackedVector2Array([pts4[0]]), Color(1, 1, 1, 0.8), 1.5, true)
+			draw_line(Vector2(0, -r * 1.3), Vector2(0, r * 1.3), Color(1, 1, 1, 0.6), 1.0)
+			draw_line(Vector2(-r, 0), Vector2(r, 0), Color(1, 1, 1, 0.6), 1.0)
+			draw_circle(Vector2(0, 0), r * 0.3, Color(1, 1, 1, 0.9))
+			draw_circle(Vector2(0, 0), r * 0.14, Cfg.C_INK)
+			for i in 3:
+				var tp := Vector2(-_dir * float(i + 1) * 9.0, r * 1.3 + sin(t * 8.0 + float(i)) * 4.0)
+				draw_circle(tp, 2.5, Cfg.with_a(c, 0.8 - 0.2 * float(i)))
+		"oni":
+			# 小鬼：大きな体に角と牙
+			draw_circle(Vector2.ZERO, r, c)
+			draw_arc(Vector2.ZERO, r, 0, TAU, 28, Color(0, 0, 0, 0.35), 2.0, true)
+			for sgn in [-1.0, 1.0]:
+				draw_colored_polygon(PackedVector2Array([Vector2(sgn * r * 0.35, -r * 0.7), Vector2(sgn * r * 0.5, -r * 1.35), Vector2(sgn * r * 0.7, -r * 0.6)]), Color(1, 0.95, 0.85))
+				draw_circle(Vector2(sgn * r * 0.35, -r * 0.15), r * 0.18, Color(1, 0.95, 0.6))
+				draw_circle(Vector2(sgn * r * 0.35, -r * 0.15), r * 0.08, Cfg.C_INK)
+			draw_arc(Vector2(0, r * 0.3), r * 0.4, 0.3, PI - 0.3, 12, Cfg.C_INK, 3.0, true)
+			for i in 4:
+				var x := (float(i) - 1.5) * r * 0.22
+				draw_colored_polygon(PackedVector2Array([Vector2(x - 2, r * 0.45), Vector2(x + 2, r * 0.45), Vector2(x, r * 0.7)]), Color(1, 0.95, 0.85))
+		"caster":
+			# 陰陽師：白い衣と烏帽子、周りを回る式神の珠
+			draw_colored_polygon(PackedVector2Array([Vector2(-r, r), Vector2(r, r), Vector2(r * 0.35, -r * 0.5), Vector2(-r * 0.35, -r * 0.5)]), Cfg.C_PAPER)
+			draw_circle(Vector2(0, -r * 0.7), r * 0.4, Color(1, 0.9, 0.85))
+			draw_rect(Rect2(-r * 0.3, -r * 1.5, r * 0.6, r * 0.55), Cfg.C_INK)
+			draw_line(Vector2(-r * 0.4, r * 0.2), Vector2(r * 0.4, r * 0.2), Cfg.with_a(c, 0.9), 2.0)
+			for i in 3:
+				var a := t * 3.0 + TAU * float(i) / 3.0
+				draw_circle(Vector2(cos(a), sin(a)) * r * 1.5, 3.0, Cfg.with_a(c, 0.9))
+		"bomber":
+			# 火の玉：揺れる炎、突撃中は激しく
+			var fl := 1.0 + (0.35 if _state == 1 else 0.15) * sin(t * 30.0)
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(0, -r * 2.2 * fl), Vector2(r * 1.1, 0), Vector2(0, r * 1.1), Vector2(-r * 1.1, 0)]), c)
+			draw_circle(Vector2.ZERO, r * 0.6, Color(1, 0.95, 0.7, 0.95))
+			draw_circle(Vector2.ZERO, r * 0.3, Color(1, 0.4, 0.2))
 
 
 func _draw_status() -> void:

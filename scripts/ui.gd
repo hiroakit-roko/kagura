@@ -356,7 +356,7 @@ class HudView:
 		if g == null:
 			return
 		var p := g.player
-		if g.state in [Game.St.PLAY, Game.St.KAMI, Game.St.BOON, Game.St.MIKI, Game.St.PAUSE]:
+		if g.state in [Game.St.PLAY, Game.St.KAMI, Game.St.BOON, Game.St.MIKI, Game.St.PAUSE, Game.St.CLEAR]:
 			if p != null and is_instance_valid(p):
 				_draw_hp(p)
 				_draw_xp(p)
@@ -513,12 +513,15 @@ class HudView:
 
 	func _draw_top(g: Game) -> void:
 		var cx := Cfg.W * 0.5
-		Ui.txt(self, ui.font_display, Vector2(0, 36), "第 %d 波" % g.wave, 22,
+		var st := Cfg.stage_of(maxi(g.wave, 1))
+		Ui.txt(self, ui.font, Vector2(0, 14), "第%sの段　%s" % [Cfg.STAGE_KANJI[st - 1], Cfg.STAGE_NAME[st - 1]], 10,
+				Cfg.with_a(Ui.GOLD, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		Ui.txt(self, ui.font_display, Vector2(0, 38), "第 %d 波" % g.wave, 22,
 				Color(1, 1, 1, 0.95), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		draw_line(Vector2(cx - 90, 24), Vector2(cx - 52, 24), Cfg.with_a(Ui.GOLD, 0.7), 1.0)
-		draw_line(Vector2(cx + 52, 24), Vector2(cx + 90, 24), Cfg.with_a(Ui.GOLD, 0.7), 1.0)
-		draw_colored_polygon(PackedVector2Array([Vector2(cx - 48, 24), Vector2(cx - 44, 20), Vector2(cx - 40, 24), Vector2(cx - 44, 28)]), Cfg.with_a(Ui.GOLD, 0.9))
-		draw_colored_polygon(PackedVector2Array([Vector2(cx + 40, 24), Vector2(cx + 44, 20), Vector2(cx + 48, 24), Vector2(cx + 44, 28)]), Cfg.with_a(Ui.GOLD, 0.9))
+		draw_line(Vector2(cx - 96, 27), Vector2(cx - 58, 27), Cfg.with_a(Ui.GOLD, 0.7), 1.0)
+		draw_line(Vector2(cx + 58, 27), Vector2(cx + 96, 27), Cfg.with_a(Ui.GOLD, 0.7), 1.0)
+		draw_colored_polygon(PackedVector2Array([Vector2(cx - 54, 27), Vector2(cx - 50, 23), Vector2(cx - 46, 27), Vector2(cx - 50, 31)]), Cfg.with_a(Ui.GOLD, 0.9))
+		draw_colored_polygon(PackedVector2Array([Vector2(cx + 46, 27), Vector2(cx + 50, 23), Vector2(cx + 54, 27), Vector2(cx + 50, 31)]), Cfg.with_a(Ui.GOLD, 0.9))
 		Ui.txt(self, ui.font, Vector2(0, 22), "功徳", 10, Color(0.85, 0.8, 0.95, 0.85),
 				HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W - 18)
 		Ui.txt(self, ui.font_display, Vector2(0, 42), str(g.score), 18, Color(1, 1, 1, 0.95),
@@ -934,8 +937,37 @@ class OverlayView:
 	func _draw() -> void:
 		if mode == 0:
 			_title()
+		elif mode == 2:
+			_clear()
 		else:
 			_over()
+
+	func _clear() -> void:
+		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.03, 0.02, 0.06, 0.82))
+		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Cfg.with_a(Cfg.C_GOLD, 0.06), 52.0, _t)
+		var c := Vector2(Cfg.W * 0.5, 150.0)
+		for i in 16:
+			var ang := _t * 0.3 + TAU * float(i) / 16.0
+			draw_line(c + Vector2(cos(ang), sin(ang)) * 40.0, c + Vector2(cos(ang), sin(ang)) * (160.0 + 30.0 * sin(_t * 2.0 + float(i))),
+					Cfg.with_a(Cfg.C_GOLD, 0.12), 6.0, true)
+		draw_circle(c, 46.0, Cfg.with_a(Cfg.C_GOLD, 0.25))
+		draw_circle(c, 34.0, Color(1, 0.97, 0.85, 0.9))
+		Ui.txt(self, ui.font_display, Vector2(0, 250), "踏破", 66, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		Ui.txt(self, ui.font, Vector2(0, 284), "奥宮の穢れは祓われ、参道に朝日が差した", 13, Color(1, 0.95, 0.85, 0.9),
+				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+		var y := 340.0
+		for row: Array in stats_lines:
+			Ui.txt(self, ui.font, Vector2(0, y), String(row[0]), 15,
+					Color(0.85, 0.8, 0.65), HORIZONTAL_ALIGNMENT_RIGHT, Cfg.W * 0.5 - 14.0)
+			Ui.txt(self, ui.font_display, Vector2(Cfg.W * 0.5 + 14.0, y), String(row[1]), 18,
+					Color(1, 1, 1), HORIZONTAL_ALIGNMENT_LEFT)
+			y += 30.0
+		var g := Game.inst
+		if g != null and g.player != null and is_instance_valid(g.player):
+			ui.hud._draw_build_on(self, g.player, y + 20.0)
+		var blink := 0.55 + 0.45 * sin(_t * 4.0)
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップ / ENTER でもう一度　　ESC で題目へ", 20,
+				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _title() -> void:
 		if _tex != null:

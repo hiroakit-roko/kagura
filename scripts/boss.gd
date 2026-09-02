@@ -13,19 +13,21 @@ var burst_gap := 0.12
 var spiral_a := 0.0
 var hover_x := 0.0
 var tier := 1
+var is_final := false
 
-const NAMES := ["荒魂", "百目鬼", "八岐大蛇", "土蜘蛛", "大禍津日神"]
+const NAMES := ["荒魂", "百目鬼", "八岐大蛇"]
 
 
 func setup_boss(w: int) -> void:
 	wave = w
-	tier = int(w / 5)
+	tier = Cfg.stage_of(w)
+	is_final = Cfg.is_final_wave(w)
 	kind = "boss"
 	is_boss = true
 	boss_name = NAMES[mini(tier - 1, NAMES.size() - 1)]
-	max_hp = 1100.0 * (1.0 + float(tier - 1) * 0.9)
+	max_hp = 1300.0 * (1.0 + float(tier - 1) * 1.0) * (1.6 if is_final else 1.0)
 	hp = max_hp
-	radius = 56.0
+	radius = 56.0 if not is_final else 70.0
 	speed = 70.0
 	contact_dmg = 30.0
 	score = 500 * tier
@@ -78,8 +80,8 @@ func _behavior(delta: float) -> void:
 func _choose_attack(ph: int) -> void:
 	var opts: Array
 	match ph:
-		1: opts = ["radial", "aimed", "radial"]
-		2: opts = ["spiral", "shotgun", "radial", "summon"]
+		1: opts = ["radial", "aimed", "radial"] if not is_final else ["radial", "aimed", "spiral"]
+		2: opts = ["spiral", "shotgun", "radial", "summon"] if not is_final else ["spiral", "shotgun", "wall", "summon"]
 		_: opts = ["spiral2", "shotgun", "summon", "wall", "spiral2"]
 	burst_kind = opts[randi() % opts.size()]
 	spiral_a = randf() * TAU
@@ -120,7 +122,7 @@ func _bullet_dmg() -> float:
 
 
 func _do_burst_shot(ph: int) -> void:
-	var spd := 200.0 + 14.0 * float(ph) + float(tier) * 14.0
+	var spd := 200.0 + 14.0 * float(ph) + float(tier) * 14.0 + (30.0 if is_final else 0.0)
 	match burst_kind:
 		"radial":
 			_shoot_radial(12 + ph * 3, spd, randf() * TAU)

@@ -3,7 +3,8 @@ extends CanvasLayer
 
 ## スマホ向けのタッチ操作。
 ##   - 画面のどこでも指を滑らせると、その移動量ぶん自機が動く（相対移動。指で自機が隠れない）
-##   - 画面下の丸ボタンで 疾走 / 詠唱 / 神招き、右上の小ボタンで小休止
+##   - 短くなぞってすぐ離す（スワイプ）と、その方向へ疾走。指を離さない速い移動では出ない
+##   - 画面下の丸ボタンで 詠唱 / 神招き、右上の小ボタンで小休止
 ##   - 最初のタッチで表示され、キーボードを触ると隠れる
 ##   - 選択画面やタイトルは、タッチから生成されるマウスイベントで既存の UI がそのまま動く
 
@@ -11,10 +12,9 @@ static var inst: Touch
 
 const SENS := 1.25          # 指の移動量に対する自機の移動倍率
 const BTN_R := 50.0
-const FLICK_SPEED := 900.0  # 直近 80ms の移動がこの速さ（px/秒、ゲーム座標）を超えると疾走
-const FLICK_WINDOW := 0.08
-const SWIPE_TIME := 0.28    # 置いてから離すまでがこれより短く
-const SWIPE_DIST := 24.0    # これ以上動いていれば、短いスワイプとして疾走
+const SWIPE_TIME := 0.30    # 置いてから離すまでがこれより短く
+const SWIPE_FRAMES := 20    # （低 fps 端末向け）またはこのフレーム数以内で
+const SWIPE_DIST := 22.0    # これ以上動いていれば、スワイプとして疾走
 
 var active := false
 var move_dir := Vector2.ZERO
@@ -132,7 +132,7 @@ func _unhandled_input(e: InputEvent) -> void:
 				var df := Engine.get_process_frames() - _touch_start_frame
 				var dp := st.position - _touch_start_pos
 				# 低 fps の端末でも判定がぶれないよう、時間かフレーム数のどちらかで「短い」とみなす
-				if _flick_cd <= 0.0 and (dt < SWIPE_TIME or df <= 18) and dp.length() >= SWIPE_DIST and g.state == Game.St.PLAY:
+				if _flick_cd <= 0.0 and (dt < SWIPE_TIME or df <= SWIPE_FRAMES) and dp.length() >= SWIPE_DIST and g.state == Game.St.PLAY:
 					_flick = dp.normalized()
 					_flick_cd = 0.5
 				_move_id = -1
@@ -147,17 +147,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			_delta += dg.relative * SENS
 			if dg.relative.length() > 0.5:
 				move_dir = move_dir.lerp(dg.relative.normalized(), 0.5)
-			# 直近の短い区間の移動量から速さを出す（端末や倍率に依存しない）
-			var now := Time.get_ticks_msec() / 1000.0
-			_hist.append([now, dg.position])
-			while _hist.size() > 0 and now - float(_hist[0][0]) > FLICK_WINDOW:
-				_hist.remove_at(0)
-			if _flick_cd <= 0.0 and _hist.size() >= 2:
-				var span: float = now - float(_hist[0][0])
-				var moved: Vector2 = dg.position - _hist[0][1]
-				if span > 0.02 and moved.length() / span > FLICK_SPEED and moved.length() > 30.0:
-					_flick = moved.normalized()
-					_flick_cd = 0.5
+			# 疾走はスワイプ（離したとき）のみ。指を離さない速い移動では出さない
 
 
 # =====================================================================
@@ -227,6 +217,16 @@ class TouchView:
 			if sub != "":
 				Ui.txt(self, ui.font, Vector2(c.x - r, c.y + 20.0), sub, 12, Cfg.with_a(col, a),
 						HORIZONTAL_ALIGNMENT_CENTER, r * 2.0)
+
+		# 疾走の状態（画面下中央の小さな札）
+		var dk := 1.0 - p.dash_cool / maxf(0.01, p.dash_cd_time())
+		var dc := Vector2(Cfg.W * 0.5, Cfg.H - 110.0)
+		var dcol := p.kami_color(p.main_god()) if p.main_god() != "" else Color(0.9, 0.9, 1.0)
+		draw_rect(Rect2(dc.x - 46, dc.y - 14, 92, 28), Color(0.05, 0.03, 0.09, 0.55))
+		draw_rect(Rect2(dc.x - 46, dc.y - 14, 92, 28), Cfg.with_a(dcol, 0.35), false, 1.0)
+		draw_rect(Rect2(dc.x - 42, dc.y + 6, 84.0 * dk, 4), Cfg.with_a(dcol if dk >= 1.0 else Color(0.8, 0.85, 1.0), 0.9))
+		Ui.txt(self, ui.font_display, Vector2(dc.x - 46, dc.y + 2), "疾走" if dk >= 1.0 else "疾走 %.1f" % p.dash_cool, 12,
+				Color(1, 1, 1, 0.9 if dk >= 1.0 else 0.6), HORIZONTAL_ALIGNMENT_CENTER, 92)
 
 		# 操作ヒント（最初の数秒だけ）
 		if g.wave <= 1 and tc._t < 12.0:
