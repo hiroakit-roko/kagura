@@ -268,7 +268,7 @@ func on_boons_changed() -> void:
 	if diff > 0.0:
 		hp = minf(new_max, hp + diff)
 	hp = minf(hp, new_max)
-	stats["cast_max"] = 2 + (1 if has("saru_u5") else 0)
+	stats["cast_max"] = 2
 	cast_charges = mini(cast_charges + 1, int(stats["cast_max"]))
 	# 眷属の狐
 	var want := int(round(val("inari_u4"))) if has("inari_u4") else 0
@@ -468,7 +468,7 @@ func _weapons(delta: float) -> void:
 
 
 func cast_cd_time() -> float:
-	return float(stats["cast_cd"]) * (1.0 - val("saru_u5") * 0.01) * cost_mult("cast_cd")
+	return float(stats["cast_cd"]) * cost_mult("cast_cd")
 
 
 ## 基本の弾：巫矢
