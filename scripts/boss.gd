@@ -312,9 +312,7 @@ func _draw() -> void:
 	if st["frozen"] > 0.0:
 		c = c.lerp(Color(0.75, 0.92, 1.0), 0.6)
 	var ph := phase()
-	var glow := color
-	glow.a = 0.16
-	draw_circle(Vector2.ZERO, radius * 2.1, glow)
+	Fx.glow(self, Vector2.ZERO, radius * 2.8, Cfg.with_a(color, 0.45))
 
 	# 回転する外殻（数珠のように連なる珠）
 	for ring_i in 2:

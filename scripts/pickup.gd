@@ -98,7 +98,7 @@ func color_of() -> Color:
 func _draw() -> void:
 	var c := color_of()
 	var pulse := 1.0 + 0.12 * sin(_t * 7.0)
-	draw_circle(Vector2.ZERO, (13.0 if kind != Kind.MIKI else 22.0) * pulse, Cfg.with_a(c, 0.20))
+	Fx.glow(self, Vector2.ZERO, (20.0 if kind != Kind.MIKI else 30.0) * pulse, Cfg.with_a(c, 0.6))
 	Pickup.draw_shape(self, kind, c, _t, pulse)
 
 

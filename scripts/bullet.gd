@@ -293,13 +293,13 @@ func _draw() -> void:
 	glow.a = 0.30
 	match shape_kind:
 		1: # 御札：細長い紙に朱印
-			draw_circle(Vector2.ZERO, radius * 2.0, glow)
+			Fx.glow(self, Vector2.ZERO, radius * 3.0, Cfg.with_a(color, 0.75))
 			draw_rect(Rect2(-4.5, -9, 9, 18), Cfg.C_PAPER)
 			draw_rect(Rect2(-4.5, -9, 9, 18), color, false, 1.2)
 			draw_rect(Rect2(-2.5, -5, 5, 6), Color(0.85, 0.2, 0.25, 0.95))
 			draw_line(Vector2(0, 3), Vector2(0, 7), Cfg.C_INK, 1.2)
 		2: # 詠唱の珠：大きな光球
-			draw_circle(Vector2.ZERO, radius * 2.4, Cfg.with_a(color, 0.18))
+			Fx.glow(self, Vector2.ZERO, radius * 3.4, Cfg.with_a(color, 0.6))
 			draw_circle(Vector2.ZERO, radius * 1.4, Cfg.with_a(color, 0.55))
 			draw_circle(Vector2.ZERO, radius * 0.9, color)
 			draw_circle(Vector2(-radius * 0.3, -radius * 0.3), radius * 0.35, Color(1, 1, 1, 0.9))
@@ -307,7 +307,7 @@ func _draw() -> void:
 				var a := _t * 5.0 + TAU * float(i) / 3.0
 				draw_circle(Vector2(cos(a), sin(a)) * radius * 1.6, 2.0, Color(1, 1, 1, 0.7))
 		3: # 狐火：揺れる炎
-			draw_circle(Vector2.ZERO, radius * 2.2, glow)
+			Fx.glow(self, Vector2.ZERO, radius * 3.2, Cfg.with_a(color, 0.75))
 			var fl := 1.0 + 0.2 * sin(_t * 30.0)
 			draw_colored_polygon(PackedVector2Array([
 				Vector2(0, -radius * 2.4 * fl), Vector2(radius * 1.1, 0), Vector2(0, radius * 1.2),
@@ -325,7 +325,7 @@ func _draw() -> void:
 				var p := Vector2(0, w * 0.6) + Vector2(cos(a), sin(a)) * w
 				draw_circle(p + Vector2(0, -4.0 - 3.0 * sin(_t * 12.0 + float(i))), 3.0, Color(1, 1, 1, 0.8))
 		5: # 光鏡：大きな円盤
-			draw_circle(Vector2.ZERO, radius * 1.15, Cfg.with_a(color, 0.16))
+			Fx.glow(self, Vector2.ZERO, radius * 1.8, Cfg.with_a(color, 0.5))
 			draw_circle(Vector2.ZERO, radius, Cfg.with_a(Color(1, 1, 0.95), 0.35))
 			draw_arc(Vector2.ZERO, radius, 0, TAU, 40, color, 3.0, true)
 			draw_arc(Vector2.ZERO, radius * 0.7, _t * 2.0, _t * 2.0 + 2.5, 20, Color(1, 1, 1, 0.8), 2.0, true)
@@ -333,7 +333,7 @@ func _draw() -> void:
 				var a := _t * 1.5 + TAU * float(i) / 8.0
 				draw_line(Vector2(cos(a), sin(a)) * radius * 0.8, Vector2(cos(a), sin(a)) * radius * 1.0, Color(1, 1, 1, 0.6), 1.5, true)
 		6: # 渦
-			draw_circle(Vector2.ZERO, radius * 1.3, Cfg.with_a(color, 0.14))
+			Fx.glow(self, Vector2.ZERO, radius * 2.0, Cfg.with_a(color, 0.5))
 			for i in 3:
 				var a0 := -_t * 6.0 + TAU * float(i) / 3.0
 				for j in 6:
@@ -343,7 +343,7 @@ func _draw() -> void:
 					draw_circle(Vector2(cos(a), sin(a)) * rr, 2.5 + k * 2.0, Cfg.with_a(color, 0.9 - k * 0.5))
 			draw_circle(Vector2.ZERO, radius * 0.3, Color(1, 1, 1, 0.9))
 		8: # 舞扇：開いた扇
-			draw_circle(Vector2.ZERO, radius * 1.3, Cfg.with_a(color, 0.14))
+			Fx.glow(self, Vector2.ZERO, radius * 2.0, Cfg.with_a(color, 0.5))
 			var a0 := -PI * 0.5 - 1.15
 			var a1 := -PI * 0.5 + 1.15
 			draw_arc(Vector2(0, radius * 0.5), radius * 1.15, a0, a1, 22, Cfg.C_PAPER, radius * 0.5, true)
@@ -354,7 +354,7 @@ func _draw() -> void:
 			draw_circle(Vector2(0, radius * 0.5), radius * 0.16, Cfg.C_INK)
 			draw_circle(Vector2(0, -radius * 0.5), radius * 0.28, Color(0.85, 0.2, 0.3, 0.9))
 		9: # 瓢箪
-			draw_circle(Vector2.ZERO, radius * 2.0, glow)
+			Fx.glow(self, Vector2.ZERO, radius * 3.0, Cfg.with_a(color, 0.75))
 			draw_circle(Vector2(0, radius * 0.5), radius * 1.0, Cfg.C_PAPER)
 			draw_circle(Vector2(0, -radius * 0.55), radius * 0.7, Cfg.C_PAPER)
 			draw_arc(Vector2(0, radius * 0.5), radius * 1.0, 0, TAU, 16, color, 1.5, true)
@@ -362,7 +362,7 @@ func _draw() -> void:
 			draw_rect(Rect2(-radius * 0.25, -radius * 1.5, radius * 0.5, radius * 0.4), color)
 			draw_circle(Vector2(0, radius * 0.6), radius * 0.4, Color(0.85, 0.2, 0.25, 0.85))
 		10: # 氷柱：細長い結晶
-			draw_circle(Vector2.ZERO, radius * 2.0, Cfg.with_a(color, 0.2))
+			Fx.glow(self, Vector2.ZERO, radius * 3.0, Cfg.with_a(color, 0.6))
 			draw_colored_polygon(PackedVector2Array([
 				Vector2(0, -radius * 3.2), Vector2(radius * 0.9, -radius * 0.6), Vector2(radius * 0.6, radius * 1.4),
 				Vector2(-radius * 0.6, radius * 1.4), Vector2(-radius * 0.9, -radius * 0.6)]), color)
@@ -377,7 +377,7 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([Vector2(0, -radius * 0.4), Vector2(-radius * 1.8, radius * 0.2 + fl), Vector2(-radius * 0.3, radius * 0.5)]), Cfg.C_PAPER)
 			draw_circle(Vector2(0, -radius * 0.2), radius * 0.3, Color(0.85, 0.2, 0.25, 0.9))
 		7: # 敵弾：鬼火
-			draw_circle(Vector2.ZERO, radius * 2.2, glow)
+			Fx.glow(self, Vector2.ZERO, radius * 3.2, Cfg.with_a(color, 0.75))
 			var fl2 := 1.0 + 0.25 * sin(_t * 26.0)
 			draw_circle(Vector2.ZERO, radius * 1.1, color)
 			draw_colored_polygon(PackedVector2Array([
@@ -389,7 +389,7 @@ func _draw() -> void:
 					radius * 2.2, true)
 			draw_line(Vector2(0, trail_len * 0.55), Vector2.ZERO,
 					Color(color.r, color.g, color.b, 0.4), radius * 1.2, true)
-			draw_circle(Vector2.ZERO, radius * 2.2, glow)
+			Fx.glow(self, Vector2.ZERO, radius * 3.2, Cfg.with_a(color, 0.75))
 			# 進行方向に伸びたカプセル状のコア
 			draw_line(Vector2(0, radius * 0.7), Vector2(0, -radius * 0.9), color, radius * 2.0, true)
 			draw_line(Vector2(0, radius * 0.3), Vector2(0, -radius * 0.6),

@@ -766,13 +766,19 @@ class HudView:
 		draw_rect(Rect2(0, y - 41, Cfg.W, 1), Color(1, 1, 1, a * 0.25))
 		Ui.txt(self, ui.font_display, Vector2(0, y), banner_text, 32, c, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		if banner_icon >= 0:
-			# アイテムの絵を題の左に大きく
+			# アイテムの絵を題の左に大きく（絵があれば絵、無ければ形）
 			var tw := ui.font_display.get_string_size(banner_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x
-			var ip := Vector2(Cfg.W * 0.5 - tw * 0.5 - 34.0, y - 12.0)
-			draw_circle(ip, 22.0, Cfg.with_a(c, 0.18))
-			draw_set_transform(ip, 0.0, Vector2(1.7, 1.7))
-			Pickup.draw_shape(self, banner_icon, c, _t, 1.0)
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			var ip := Vector2(Cfg.W * 0.5 - tw * 0.5 - 40.0, y - 12.0)
+			var itex := Ui.art("item/" + ["xp", "heal", "miki", "orb"][banner_icon] if banner_icon < 4 else "")
+			if itex != null:
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_texture_rect(itex, Rect2(ip - Vector2(30, 30), Vector2(60, 60)), false, Color(1, 1, 1, a))
+				draw_rect(Rect2(ip - Vector2(30, 30), Vector2(60, 60)), Cfg.with_a(c, 0.8 * a), false, 1.5)
+			else:
+				draw_circle(ip, 22.0, Cfg.with_a(c, 0.18))
+				draw_set_transform(ip, 0.0, Vector2(1.7, 1.7))
+				Pickup.draw_shape(self, banner_icon, c, _t, 1.0)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if banner_sub != "":
 			Ui.txt(self, ui.font, Vector2(0, y + 26), banner_sub, 15,
 					Color(1, 1, 1, a * 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1794,11 +1800,20 @@ class RelicView:
 			var rr := r.grow((3.0 if sel else 0.0) - (1.0 - pop) * 20.0)
 			card_bg(rr, Cfg.C_GOLD, sel, pop)
 			var c := rr.position + Vector2(rr.size.x * 0.5, 74)
-			# 宝物の印：金の輪と文字
-			draw_circle(c, 40.0 + (4.0 * sin(_t * 3.0) if sel else 0.0), Cfg.with_a(Cfg.C_GOLD, 0.12 * pop))
-			draw_arc(c, 32.0, 0, TAU, 40, Cfg.with_a(Cfg.C_GOLD, 0.9 * pop), 2.0, true)
-			draw_arc(c, 26.0, _t * 1.2, _t * 1.2 + 4.0, 24, Cfg.with_a(Cfg.C_GOLD, 0.5 * pop), 1.0, true)
-			Ui.txt(self, ui.font_display, Vector2(c.x - 30, c.y + 12), String(o["mark"]), 30, Color(1, 0.96, 0.85, pop), HORIZONTAL_ALIGNMENT_CENTER, 60, false)
+			var tex := Ui.art("relic/" + String(o["id"]))
+			if tex != null:
+				# 宝物の絵（正方形）
+				var pr := Rect2(rr.position.x + 4, rr.position.y + 4, rr.size.x - 8, 126)
+				Ui.draw_cover(self, tex, pr, pop, 0.5)
+				for gi in 5:
+					var kk := float(gi) / 5.0
+					draw_rect(Rect2(pr.position.x, pr.end.y - 30.0 + kk * 30.0, pr.size.x, 30.0 / 5.0 + 1.0), Color(0.08, 0.06, 0.12, 0.85 * kk * pop))
+			else:
+				# 宝物の印：金の輪と文字
+				draw_circle(c, 40.0 + (4.0 * sin(_t * 3.0) if sel else 0.0), Cfg.with_a(Cfg.C_GOLD, 0.12 * pop))
+				draw_arc(c, 32.0, 0, TAU, 40, Cfg.with_a(Cfg.C_GOLD, 0.9 * pop), 2.0, true)
+				draw_arc(c, 26.0, _t * 1.2, _t * 1.2 + 4.0, 24, Cfg.with_a(Cfg.C_GOLD, 0.5 * pop), 1.0, true)
+				Ui.txt(self, ui.font_display, Vector2(c.x - 30, c.y + 12), String(o["mark"]), 30, Color(1, 0.96, 0.85, pop), HORIZONTAL_ALIGNMENT_CENTER, 60, false)
 			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 148), String(o["name"]), 20, Color(1, 1, 1, pop), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 			Ui.para(self, ui.font, Vector2(rr.position.x + 14, rr.position.y + 172), String(o["desc"]), rr.size.x - 28, 13, 3, Color(0.92, 0.94, 1.0, pop * 0.95), HORIZONTAL_ALIGNMENT_CENTER)
 			Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 10), "[%d]" % (i + 1), 12, Cfg.with_a(Cfg.C_GOLD, pop))

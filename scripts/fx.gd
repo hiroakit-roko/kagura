@@ -14,7 +14,9 @@ var _slashes: Array = []
 var _zones: Array = []
 var _ghosts: Array = []
 var _rays: Array = []
+var _puffs: Array = []     # やわらかい光の膨らみ（爆発・宿命・撃破）
 var shake := 0.0
+static var GLOW: Texture2D   # 中心が白く外へ溶ける丸い光。発光の質感はほぼこれで作る
 var flash_col := Color(1, 1, 1, 0)
 var flash_t := 0.0
 var font: Font
@@ -25,6 +27,38 @@ func _ready() -> void:
 	inst = self
 	z_index = Cfg.Z_FX
 	top_level = true
+	_ensure_glow()
+	# 光は足し合わせで描く（重なった所が白く飽和し、ネオンの質感になる）
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	material = m
+
+
+static func _ensure_glow() -> void:
+	if GLOW != null:
+		return
+	var n := 96
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in n:
+		for x in n:
+			var d := Vector2(float(x) + 0.5 - float(n) * 0.5, float(y) + 0.5 - float(n) * 0.5).length() / (float(n) * 0.5)
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			a = a * a * (1.0 + 0.6 * a)   # 中心を少し強く、外は滑らかに
+			img.set_pixel(x, y, Color(1, 1, 1, minf(a, 1.0)))
+	GLOW = ImageTexture.create_from_image(img)
+
+
+## やわらかい光を 1 枚置く（どの CanvasItem からでも使える）
+static func glow(ci: CanvasItem, pos: Vector2, r: float, color: Color) -> void:
+	_ensure_glow()
+	ci.draw_texture_rect(GLOW, Rect2(pos - Vector2(r, r), Vector2(r * 2.0, r * 2.0)), false, color)
+
+
+## 光の膨らみ：r0 → r1 に広がりながら消える
+static func puff(pos: Vector2, r0: float, r1: float, color: Color, life := 0.35) -> void:
+	if inst == null:
+		return
+	inst._puffs.append({"pos": pos, "r0": r0, "r1": r1, "color": color, "life": life, "maxlife": life})
 
 
 func _process(delta: float) -> void:
@@ -50,7 +84,7 @@ func _process(delta: float) -> void:
 		t.pos += t.vel * delta
 		t.vel.y += 130.0 * delta
 
-	for arr in [_bolts, _rings, _slashes, _zones, _ghosts, _rays]:
+	for arr in [_bolts, _rings, _slashes, _zones, _ghosts, _rays, _puffs]:
 		for i in range(arr.size() - 1, -1, -1):
 			arr[i].life -= delta
 			if arr[i].life <= 0.0:
@@ -60,6 +94,13 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	for pf: Dictionary in _puffs:
+		var kp: float = 1.0 - pf.life / pf.maxlife
+		var rr: float = lerpf(pf.r0, pf.r1, 1.0 - (1.0 - kp) * (1.0 - kp))
+		var cp: Color = pf.color
+		cp.a *= (1.0 - kp) * 0.9
+		Fx.glow(self, pf.pos, rr, cp)
+		Fx.glow(self, pf.pos, rr * 0.45, Color(1, 1, 1, cp.a * 0.7))
 	for z: Dictionary in _zones:
 		var k: float = 1.0 - z.life / z.maxlife
 		var col: Color = z.color
@@ -126,6 +167,8 @@ func _draw() -> void:
 		var col6: Color = p.color
 		col6.a *= k5
 		var s2: float = p.size * (k5 * 0.7 + 0.3)
+		if int(p.shape) == 0:
+			Fx.glow(self, p.pos, s2 * 3.0, Cfg.with_a(col6, col6.a * 0.35))
 		match int(p.shape):
 			0:
 				draw_rect(Rect2(p.pos - Vector2(s2, s2) * 0.5, Vector2(s2, s2)), col6)

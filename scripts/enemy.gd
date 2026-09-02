@@ -660,6 +660,7 @@ func die() -> void:
 		return
 	Fx.burst(position, color, 16, 300.0, 5.0, 0.55)
 	Fx.ring(position, color, radius * 0.5, radius * 4.0, 0.3)
+	Fx.puff(position, radius * 1.2, radius * 4.5, Cfg.with_a(color, 0.9), 0.4)
 	Fx.shake_add(3.0)
 	Sfx.play("explode", -10.0, randf_range(0.9, 1.15), 0.02)
 
@@ -689,9 +690,7 @@ func _draw() -> void:
 		c = c.lerp(Color(0.75, 0.92, 1.0), 0.7)
 	elif int(st["chill"]["stacks"]) > 0:
 		c = c.lerp(Color(0.6, 0.85, 1.0), 0.06 * float(st["chill"]["stacks"]))
-	var glow := color
-	glow.a = 0.18
-	draw_circle(Vector2.ZERO, radius * 1.9, glow)
+	Fx.glow(self, Vector2.ZERO, radius * 2.6, Cfg.with_a(color, 0.5))
 
 	if _spawn_in > 0.0:
 		var k := _spawn_in / 0.35

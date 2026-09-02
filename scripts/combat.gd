@@ -274,6 +274,7 @@ static func lightning(en: Enemy, dmg: float, from: Vector2, chains: int, used: D
 		return
 	used[en.get_instance_id()] = true
 	Fx.bolt(from, en.position, Color(1.0, 0.97, 0.7))
+	Fx.puff(en.position, 6.0, en.radius * 2.6, Color(1.0, 0.97, 0.7, 0.9), 0.22)
 	Fx.sparks(en.position, Vector2.UP, Color(1.0, 0.97, 0.7), 5, 300.0)
 	Fx.ring(en.position, Color(1.0, 0.97, 0.7), 4.0, en.radius * 2.0, 0.2, 3.0)
 	Sfx.play("hit_thunder", -12.0, randf_range(0.9, 1.2), 0.04)
@@ -328,6 +329,7 @@ static func doom_trigger(en: Enemy, dmg: float) -> void:
 	Fx.ring(pos, col, 6.0, r, 0.35, 6.0)
 	Fx.ring(pos, Color(1, 1, 1), 4.0, r * 0.6, 0.25, 3.0)
 	Fx.zone(pos, r, col, 0.35)
+	Fx.puff(pos, r * 0.3, r * 1.1, Cfg.with_a(col, 0.9), 0.4)
 	Fx.burst(pos, col, 14, 260.0, 3.5, 0.45, true)
 	Fx.slash(pos, randf() * TAU, en.radius * 1.6, Color(1, 1, 1), 2.6, 0.2, 7.0)
 	Sfx.play("doom", -8.0, randf_range(0.9, 1.1), 0.05)
@@ -388,6 +390,7 @@ static func collide(_en: Enemy, _other: Enemy) -> void:
 static func shatter(en: Enemy) -> void:
 	var col := Color(0.8, 0.95, 1.0)
 	Fx.burst(en.position, col, 16, 260.0, 4.0, 0.5)
+	Fx.puff(en.position, en.radius, en.radius * 3.5, Cfg.with_a(col, 0.9), 0.35)
 	Fx.ring(en.position, col, 8.0, en.radius * 3.0, 0.3, 4.0)
 	Fx.rays(en.position, col, 8, 4.0, 40.0, 0.25)
 	Sfx.play("hit_ice", -6.0, 0.7)
