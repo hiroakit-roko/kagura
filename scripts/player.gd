@@ -207,9 +207,19 @@ func dash_cd_time() -> float:
 	return float(stats["dash_cd"]) * (1.0 - val("saru_p3") * 0.01)
 
 
+func _touch() -> Touch:
+	return Touch.inst if (Touch.inst != null and Touch.inst.active) else null
+
+
 func _move(delta: float) -> void:
 	focus = Input.is_key_pressed(KEY_SHIFT)
 	var dir := _input_dir()
+	var tc := _touch()
+	var touch_move := Vector2.ZERO
+	if tc != null:
+		touch_move = tc.consume_move()
+		if dir == Vector2.ZERO and touch_move.length() > 0.01:
+			dir = touch_move.normalized()
 	_move_dir = dir
 
 	if dash_t > 0.0:
@@ -226,10 +236,20 @@ func _move(delta: float) -> void:
 		if dash_t <= 0.0:
 			_on_dash_end()
 	else:
-		if Input.is_key_pressed(KEY_SPACE) and dash_cool <= 0.0 and dir != Vector2.ZERO:
+		var want_dash := Input.is_key_pressed(KEY_SPACE)
+		if tc != null and tc.take("dash"):
+			want_dash = true
+			if dir == Vector2.ZERO:
+				dir = tc.move_dir if tc.move_dir.length() > 0.1 else Vector2.UP
+		if want_dash and dash_cool <= 0.0 and dir != Vector2.ZERO:
 			_start_dash(dir)
-		var sp := move_speed() * (0.42 if focus else 1.0)
-		position += dir * sp * delta
+		if tc != null and touch_move != Vector2.ZERO:
+			# タッチは相対移動：指の移動量ぶんだけ動く（速度上限は疾走と同じ）
+			var maxlen := move_speed() * 3.6 * delta
+			position += touch_move.limit_length(maxlen)
+		else:
+			var sp := move_speed() * (0.42 if focus else 1.0)
+			position += dir * sp * delta
 
 	var r := Cfg.play_rect()
 	position.x = clampf(position.x, r.position.x + 10.0, r.end.x - 10.0)
@@ -383,9 +403,10 @@ func _weapons(delta: float) -> void:
 			cast_charges += 1
 			cast_cd = cast_cd_time()
 			Sfx.play("suzu", -22.0, 1.4)
-	if Input.is_key_pressed(KEY_Z) or Input.is_key_pressed(KEY_J):
+	var tc := _touch()
+	if Input.is_key_pressed(KEY_Z) or Input.is_key_pressed(KEY_J) or (tc != null and tc.take("cast")):
 		_try_cast()
-	if Input.is_key_pressed(KEY_X) or Input.is_key_pressed(KEY_K):
+	if Input.is_key_pressed(KEY_X) or Input.is_key_pressed(KEY_K) or (tc != null and tc.take("call")):
 		_try_call()
 
 

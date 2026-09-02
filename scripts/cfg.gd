@@ -4,7 +4,9 @@ extends RefCounted
 ## 画面・当たり判定レイヤ・配色などの共通定数。
 
 const W := 640.0
-const H := 960.0
+## 基準の高さ。縦長の端末（スマホ）では横幅を基準に伸ばすので、実行時に Game が更新する。
+const H_BASE := 960.0
+static var H := 960.0
 const MARGIN := 20.0
 
 # 衝突レイヤ（ビットマスク値）

@@ -58,10 +58,11 @@ func _ready() -> void:
 	add_child(we)
 
 	cam = Camera2D.new()
-	cam.position = Vector2(Cfg.W * 0.5, Cfg.H * 0.5)
 	cam.ignore_rotation = true
 	add_child(cam)
 	cam.make_current()
+	_fit_viewport()
+	get_tree().root.size_changed.connect(_fit_viewport)
 
 	stars = Starfield.new()
 	add_child(stars)
@@ -80,6 +81,8 @@ func _ready() -> void:
 	fx.font = ui.font
 	fx.font_big = ui.font_display
 
+	add_child(Touch.new())
+
 	ui.kami_chosen.connect(_on_kami_chosen)
 	ui.boon_chosen.connect(_on_boon_chosen)
 	ui.reroll_requested.connect(_on_reroll)
@@ -92,6 +95,27 @@ func _ready() -> void:
 	# 開発用：`godot -- --capture` で自動プレイ＆スクリーンショット
 	if OS.get_cmdline_user_args().has("--capture"):
 		add_child(Autoplay.new())
+
+
+## 画面の縦横比に合わせて表示領域を決める。
+## 基準（640×960）より縦長の画面（スマホ）では、横幅を合わせて高さを伸ばし、黒帯をなくす。
+func _fit_viewport() -> void:
+	var win := get_tree().root
+	var size := Vector2(win.size)
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	var aspect := size.y / size.x
+	var base_aspect := Cfg.H_BASE / Cfg.W
+	if aspect > base_aspect * 1.01:
+		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP_WIDTH
+		Cfg.H = floorf(Cfg.W * aspect)
+	else:
+		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+		Cfg.H = Cfg.H_BASE
+	cam.position = Vector2(Cfg.W * 0.5, Cfg.H * 0.5)
+	if player != null and is_instance_valid(player):
+		var r := Cfg.play_rect()
+		player.position.y = clampf(player.position.y, r.position.y + 60.0, r.end.y - 30.0)
 
 
 func _show_title() -> void:
@@ -500,6 +524,15 @@ func _on_player_died() -> void:
 	get_tree().paused = true
 
 
+func toggle_pause() -> void:
+	if state == St.PLAY:
+		state = St.PAUSE
+		get_tree().paused = true
+	elif state == St.PAUSE:
+		state = St.PLAY
+		get_tree().paused = false
+
+
 func _unhandled_input(e: InputEvent) -> void:
 	if not (e is InputEventKey) or not e.pressed or e.echo:
 		return
@@ -509,12 +542,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			sfx.muted = not sfx.muted
 			ui.banner("音 " + ("OFF" if sfx.muted else "ON"), "", Color(0.8, 0.9, 1.0))
 	elif k == KEY_P:
-		if state == St.PLAY:
-			state = St.PAUSE
-			get_tree().paused = true
-		elif state == St.PAUSE:
-			state = St.PLAY
-			get_tree().paused = false
+		toggle_pause()
 	elif k == KEY_ESCAPE:
 		if state == St.TITLE:
 			get_tree().quit()

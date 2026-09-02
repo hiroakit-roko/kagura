@@ -20,7 +20,7 @@ env:
 
 jobs:
   export-web:
-    name: Export Web (Godot ${{ env.GODOT_VERSION }})
+    name: Export Web (Godot 4.7.1)
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.7.1

@@ -20,6 +20,12 @@ window/size/viewport_width=640
 window/size/viewport_height=960
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
+window/handheld/orientation=1
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true
+pointing/android/enable_long_press_as_right_click=false
 
 [rendering]
 

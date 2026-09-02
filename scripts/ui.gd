@@ -295,7 +295,8 @@ class HudView:
 				_draw_hp(p)
 				_draw_xp(p)
 				_draw_gods(p)
-				_draw_skills(p)
+				if not (Touch.inst != null and Touch.inst.active):
+					_draw_skills(p)
 			_draw_top(g)
 			_draw_boss(g)
 		if banner_t > 0.0:
@@ -304,7 +305,7 @@ class HudView:
 			draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.03, 0.06, 0.6))
 			Ui.txt(self, ui.font_display, Vector2(0, 460), "小休止", 52, Color(1, 1, 1),
 					HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-			Ui.txt(self, ui.font, Vector2(0, 500), "P で再開", 18,
+			Ui.txt(self, ui.font, Vector2(0, 500), "画面をタップ か P で再開" if (Touch.inst != null and Touch.inst.active) else "P で再開", 18,
 					Color(0.85, 0.9, 1.0, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 			if p != null and is_instance_valid(p):
 				_draw_boon_list(p, 560.0)
@@ -844,7 +845,7 @@ class OverlayView:
 		Ui.txt(self, ui.font_display, Vector2(0, 252 + bob), "八百万の加護を纏いて、穢れを祓え", 17, Color(1, 0.9, 0.75, 0.95),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
-		var y := 706.0
+		var y := Cfg.H - 254.0
 		var lines := [
 			["移動", "WASD / 矢印"], ["疾走", "Space（短い無敵）"], ["詠唱", "Z / J（強い一撃・2 発）"],
 			["神招き", "X / K（ゲージが 1/4 以上で発動）"], ["低速", "Shift"], ["小休止 / 音", "P / M"],
@@ -854,10 +855,10 @@ class OverlayView:
 			Ui.txt(self, ui.font, Vector2(260, y), String(l[1]), 13, Color(0.9, 0.92, 1.0, 0.9))
 			y += 22.0
 
-		Ui.txt(self, ui.font, Vector2(0, 856), "神々から恩恵を受け、主神と 2 柱の副神とともに参道を登れ。", 13,
+		Ui.txt(self, ui.font, Vector2(0, Cfg.H - 104.0), "神々から恩恵を受け、主神と 2 柱の副神とともに参道を登れ。", 13,
 				Color(0.85, 0.86, 1.0, 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, 908), "ENTER / SPACE で はじめる", 22,
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 52.0), "タップ / ENTER で はじめる", 22,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _over() -> void:
@@ -878,7 +879,7 @@ class OverlayView:
 		if g != null and g.player != null and is_instance_valid(g.player):
 			_draw_boons(g.player, y + 20.0)
 		var blink := 0.55 + 0.45 * sin(_t * 4.0)
-		Ui.txt(self, ui.font_display, Vector2(0, 880), "ENTER でもう一度　　ESC で題目へ", 20,
+		Ui.txt(self, ui.font_display, Vector2(0, Cfg.H - 80.0), "タップ / ENTER でもう一度　　ESC で題目へ", 20,
 				Color(1, 1, 1, blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
 	func _draw_boons(p: Player, y0: float) -> void:
