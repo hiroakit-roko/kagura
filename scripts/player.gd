@@ -350,8 +350,11 @@ func _move(delta: float) -> void:
 		if want_dash and dash_cool <= 0.0 and dir != Vector2.ZERO:
 			_start_dash(dir)
 		if tc != null and touch_move != Vector2.ZERO:
+			# スマホ：指の移動量に追従する。移動速度の補正ぶんだけ追従率が変わるので、
+			# 速い自機は同じ指の動きでより遠くへ、遅い自機は粘るように動く（速度の恩恵・代償が意味を持つ）
+			var sens := move_speed() / maxf(float(stats["speed"]), 1.0)
 			var maxlen := move_speed() * 3.6 * delta
-			position += touch_move.limit_length(maxlen)
+			position += (touch_move * sens).limit_length(maxlen)
 		else:
 			var sp := move_speed() * (0.42 if focus else 1.0)
 			position += dir * sp * delta
