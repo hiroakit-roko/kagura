@@ -261,8 +261,10 @@ func _process(delta: float) -> void:
 	_tutorial(delta)
 
 	# レベルアップした瞬間に時間を止めて神との邂逅へ（敵も弾も止まる）
+	#   位 2 → 主神、位 4・7 → 副神（迎えるだけで神器が付き、他の選択は続かない）
+	#   それ以外 → 迎えている神の恩恵 3 択
 	if player.pending_levels > 0:
-		if player.gods.is_empty():
+		if Boons.recruit_due(player):
 			_open_kami_choice()
 		else:
 			_open_boons("level", Cfg.Rar.COMMON, "")
@@ -573,24 +575,28 @@ func _pause_for_choice(new_state: int) -> void:
 	ui.hud.banner_t = 0.0   # 選択画面とバナーが重ならないように
 
 
-## 主神の選択（最初のレベルアップ）
+## 神を迎える（位 2 で主神、位 4・7 で副神）。迎えること自体が報酬で、他の選択は続かない
 func _open_kami_choice() -> void:
 	_pause_for_choice(St.KAMI)
-	_kami_choices = Boons.roll_kami_choices(3)
+	_kami_choices = Boons.roll_kami_choices(player, 3)
 	Sfx.play("descend", -6.0)
-	ui.show_kami_choice(_kami_choices)
+	ui.show_kami_choice(_kami_choices, "主神" if player.gods.is_empty() else "副神")
 
 
 func _on_kami_chosen(id: String) -> void:
 	if state != St.KAMI:
 		return
+	var main := player.gods.is_empty()
 	player.add_god(id)
-	Sfx.play("descend", -4.0, 1.2)
-	Fx.flash(Cfg.with_a(Kami.kami(id)["color"], 0.5), 0.5)
+	Sfx.play("descend", -4.0, 1.2 if main else 1.3)
+	Fx.flash(Cfg.with_a(Kami.kami(id)["color"], 0.5 if main else 0.4), 0.5)
 	var k := Kami.kami(id)
-	ui.banner(String(k["weapon"]) + " を授かった", String(k["weapon_desc"]), k["color"])
-	# 主神はすぐに神器の強化も授ける（稀以上）
-	_open_boons("main", Cfg.Rar.RARE, id)
+	if main:
+		ui.banner(String(k["weapon"]) + " を授かった", String(k["weapon_desc"]), k["color"])
+	else:
+		ui.banner(String(k["name"]) + " が副神となった", String(k["weapon"]) + "（半分の威力）が加わった", k["color"])
+	player.pending_levels = maxi(0, player.pending_levels - 1)
+	_close_choice()
 
 
 ## 恩恵の提示。kami_id を省略すると抽選で神を決める
@@ -617,9 +623,8 @@ func _open_boons(reason: String, min_rar: int, kami_id: String) -> void:
 		return
 	Sfx.play("levelup", -8.0)
 	var title := "神との邂逅"
-	match reason:
-		"main": title = "主神の恩恵"
-		"boss": title = "討伐の褒賞"
+	if reason == "boss":
+		title = "討伐の褒賞"
 	ui.show_boons(kid, _offers, _rerolls, title)
 
 
@@ -637,17 +642,11 @@ func _on_boon_chosen(idx: int) -> void:
 		return
 	var o: Dictionary = _offers[idx]
 	Boons.take(player, o)
-	if String(o["type"]) == "recruit":
-		var k := Kami.kami(String(o["kami"]))
-		ui.banner(String(k["name"]) + " が副神となった", String(k["weapon"]) + "（半分の威力）が加わった", k["color"])
-		Sfx.play("descend", -6.0, 1.3)
-		Fx.flash(Cfg.with_a(k["color"], 0.4), 0.4)
-	else:
-		var b: Dictionary = o["boon"]
-		var col: Color = Cfg.RAR_COLOR[int(o["rar"])]
-		ui.banner(String(b["name"]), Kami.describe(b, int(player.boons[b["id"]]["rar"]), int(player.boons[b["id"]]["lv"])), col)
-		Sfx.play("suzu", -6.0)
-	if _offer_reason in ["level", "main"]:
+	var b: Dictionary = o["boon"]
+	var col: Color = Cfg.RAR_COLOR[int(o["rar"])]
+	ui.banner(String(b["name"]), Kami.describe(b, int(player.boons[b["id"]]["rar"]), int(player.boons[b["id"]]["lv"])), col)
+	Sfx.play("suzu", -6.0)
+	if _offer_reason == "level":
 		player.pending_levels = maxi(0, player.pending_levels - 1)
 	_close_choice()
 

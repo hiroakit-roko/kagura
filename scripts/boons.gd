@@ -3,14 +3,17 @@ extends RefCounted
 
 ## 恩恵の抽選・取得（Hades の部屋報酬〜恩恵選択の流れを模したもの）。
 ##
-##   - 主神は専用画面で 3 柱から選ぶ（roll_kami_choices）。選んだ瞬間に神器が付く
-##   - レベルアップごとに、迎えている神のうち 1 柱が現れて 3 枚を提示する
+##   - 神を迎える瞬間はそれ自体が報酬（神器が付く）で、他の選択は続かない
+##       ・位 2（最初のレベルアップ）で 3 柱から主神を選ぶ
+##       ・位 4 と位 7 で、残る神から 3 柱が現れ副神を迎える（神器は半分の威力）
+##   - それ以外のレベルアップは、迎えている神のうち 1 柱が現れて 3 枚を提示する
 ##       ・その神の神器の強化（重ねて取れる）
-##       ・まだ枠があれば「新たな神を迎える」カード（副神になり、神器が半分の威力で付く）
-##       ・条件を満たせば 伝説（主神のみ）／双神
+##       ・条件を満たせば 伝説（主神のみ）／双神／禍神の取引
 ##   - 神酒（Pom of Power 相当）は神を 1 柱選んで神格を 1 上げる
 
 const MAX_KAMI := 3
+## i 柱目の神を迎える位（主神・副神①・副神②）
+const RECRUIT_LEVELS := [2, 4, 7]
 ## レアリティの基礎確率（凡 / 稀 / 秀 / 英）
 const RAR_WEIGHTS := [56.0, 30.0, 12.0, 2.0]
 
@@ -19,9 +22,22 @@ static func kami_ids() -> Array:
 	return Kami.LIST.map(func(k): return String(k["id"]))
 
 
-## 主神選択の候補 3 柱
-static func roll_kami_choices(n := 3) -> Array:
-	var pool := kami_ids()
+## 次に神を迎える位。もう枠がなければ -1
+static func next_recruit_level(p: Player) -> int:
+	if p.gods.size() >= MAX_KAMI:
+		return -1
+	return int(RECRUIT_LEVELS[p.gods.size()])
+
+
+## 今のレベルアップで新たな神を迎える番か
+static func recruit_due(p: Player) -> bool:
+	var need := next_recruit_level(p)
+	return need > 0 and p.level >= need
+
+
+## 神を迎える候補 3 柱（すでに迎えている神は除く）
+static func roll_kami_choices(p: Player, n := 3) -> Array:
+	var pool := kami_ids().filter(func(id): return p == null or not p.gods.has(id))
 	pool.shuffle()
 	return pool.slice(0, n)
 
@@ -32,7 +48,7 @@ static func pick_kami(p: Player) -> String:
 	var weights: Array = []
 	for id in p.gods:
 		var has_pool := not pool_for(p, id).is_empty() or not legendary_for(p, id).is_empty() \
-				or not duos_for(p, id).is_empty() or p.gods.size() < MAX_KAMI
+				or not duos_for(p, id).is_empty()
 		if not has_pool:
 			continue
 		candidates.append(id)
@@ -119,7 +135,8 @@ static func roll_rarity(p: Player, kami_id: String, min_rar := Cfg.Rar.COMMON) -
 
 
 ## 神 kami_id からの提示。各要素は
-##   {"type": "upgrade"|"legendary"|"duo"|"recruit", "boon": Dictionary, "rar": int, "kami": String}
+##   {"type": "upgrade"|"legendary"|"duo"|"curse", "boon": Dictionary, "rar": int, "kami": String}
+##   （新たな神は専用画面で迎えるので、ここには混ざらない）
 static func offer(p: Player, kami_id: String, count := 3, min_rar := Cfg.Rar.COMMON) -> Array:
 	var out: Array = []
 	var leg := legendary_for(p, kami_id)
@@ -136,15 +153,6 @@ static func offer(p: Player, kami_id: String, count := 3, min_rar := Cfg.Rar.COM
 		if not avail.is_empty():
 			var c: Dictionary = avail[randi() % avail.size()]
 			out.append({"type": "curse", "boon": c, "rar": Cfg.Rar.HEROIC, "kami": kami_id})
-
-	# 新たな神を迎えるカード（枠があるとき。2 柱目までは出やすい）
-	if p.gods.size() < MAX_KAMI:
-		var chance := 0.75 if p.gods.size() == 1 else 0.55
-		if randf() < chance:
-			var others := kami_ids().filter(func(id): return not p.gods.has(id))
-			if not others.is_empty():
-				var nk: String = others[randi() % others.size()]
-				out.append({"type": "recruit", "boon": {}, "rar": Cfg.Rar.RARE, "kami": nk})
 
 	var pool := pool_for(p, kami_id)
 	pool.shuffle()

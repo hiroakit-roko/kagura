@@ -140,7 +140,7 @@ func _run() -> void:
 			await shot("02_kami_hover.png")
 			var kid := String(g.ui.kami_view.ids[randi() % g.ui.kami_view.ids.size()])
 			g.ui.kami_view.visible = false
-			g.ui.ask_contract(kid, "主神", func(): g._on_kami_chosen(kid))
+			g.ui.ask_contract(kid, g.ui.kami_view.role, func(): g._on_kami_chosen(kid))
 			await _wait(0.8)
 			g.ui.confirm_view.hover = 0
 			await shot("02c_contract.png")
@@ -251,20 +251,28 @@ func _flow_test() -> void:
 	g._on_familiar_chosen("karasu")
 	await _wait(0.5)
 	print("[flow] force level up")
+	g.player.level = 2
 	g.player.pending_levels = 1
 	await _wait(0.3)
-	print("[flow] state=%d kami_view=%s" % [g.state, str(g.ui.kami_view.visible)])
+	print("[flow] state=%d kami_view=%s role=%s" % [g.state, str(g.ui.kami_view.visible), g.ui.kami_view.role])
 	g._on_kami_chosen(String(g.ui.kami_view.ids[0]))
-	print("[flow] after kami: state=%d offers=%d" % [g.state, g._offers.size()])
+	print("[flow] after kami: state=%d (PLAY=%d) gods=%s" % [g.state, Game.St.PLAY, str(g.player.gods)])
 	await _wait(0.3)
-	for i in 6:
-		if g.state == Game.St.BOON:
-			print("[flow] pick boon %d: %s" % [i, str(g._offers.map(func(o): return o["type"]))])
-			g._on_boon_chosen(0)
-		await _wait(0.3)
+	# 位 3〜9 まで順に上げる：位 4 と 7 で副神の選択、それ以外は恩恵 3 択のはず
+	for i in 7:
+		g.player.level += 1
 		g.player.pending_levels = 1
 		await _wait(0.3)
-		print("[flow] loop %d state=%d gods=%s" % [i, g.state, str(g.player.gods)])
+		if g.state == Game.St.KAMI:
+			print("[flow] lv%d KAMI role=%s ids=%s" % [g.player.level, g.ui.kami_view.role, str(g.ui.kami_view.ids)])
+			g._on_kami_chosen(String(g.ui.kami_view.ids[0]))
+		elif g.state == Game.St.BOON:
+			print("[flow] lv%d BOON from %s: %s" % [g.player.level, g._offer_kami, str(g._offers.map(func(o): return o["type"]))])
+			g._on_boon_chosen(0)
+		else:
+			print("[flow] lv%d state=%d" % [g.player.level, g.state])
+		await _wait(0.3)
+		print("[flow]   -> state=%d gods=%s" % [g.state, str(g.player.gods)])
 	print("[flow] done")
 	get_tree().quit()
 

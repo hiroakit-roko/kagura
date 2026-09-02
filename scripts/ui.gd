@@ -220,9 +220,10 @@ func show_familiar_choice() -> void:
 	familiar_view.visible = true
 
 
-func show_kami_choice(ids: Array) -> void:
+func show_kami_choice(ids: Array, role := "主神") -> void:
 	hide_cards()
 	kami_view.ids = ids
+	kami_view.role = role
 	kami_view.anim = 0.0
 	kami_view.hover = -1
 	kami_view.visible = true
@@ -376,20 +377,14 @@ func _unhandled_input(e: InputEvent) -> void:
 			Sfx.play("select", -8.0)
 			var kid := String(kami_view.ids[idx])
 			kami_view.visible = false
-			ask_contract(kid, "主神", func(): kami_chosen.emit(kid))
+			ask_contract(kid, kami_view.role, func(): kami_chosen.emit(kid))
 	elif boons_view.visible:
 		if click.x >= 0:
 			idx = boons_view.card_at(click)
 		if idx >= 0 and idx < boons_view.offers.size():
 			Sfx.play("select", -8.0)
-			var o: Dictionary = boons_view.offers[idx]
-			if String(o["type"]) == "recruit":
-				boons_view.visible = false
-				var chosen := idx
-				ask_contract(String(o["kami"]), "副神", func(): boon_chosen.emit(chosen))
-			else:
-				Fx.shake_add(3.0)
-				boon_chosen.emit(idx)
+			Fx.shake_add(3.0)
+			boon_chosen.emit(idx)
 	elif miki_view.visible:
 		if click.x >= 0:
 			idx = miki_view.card_at(click)
@@ -562,6 +557,14 @@ class HudView:
 			Ui.txt(self, ui.font, Vector2(c.x + r + 12.0, y + 43.0 if main else y + 40.0), String(k["weapon"]) + ("" if main else "（半）"), 9,
 					Color(1, 1, 1, 0.7))
 			y += r * 2.0 + 22.0
+		# 次に神を迎える位（枠が残っているとき）
+		var nxt := Boons.next_recruit_level(p)
+		if nxt > 0:
+			var lbl := ("主神" if p.gods.is_empty() else "副神") + "　位 %d で迎える" % nxt
+			draw_rect(Rect2(12, y - 6.0, 150, 18), Color(0.5, 0.5, 0.65, 0.18))
+			draw_rect(Rect2(12, y - 6.0, 150, 18), Color(0.7, 0.7, 0.85, 0.35), false, 1.0)
+			Ui.txt(self, ui.font, Vector2(20, y + 7.0), lbl, 9, Color(0.9, 0.9, 1.0, 0.7))
+			y += 20.0
 		_draw_chips(p, y + 2.0)
 
 	func _draw_chips(p: Player, y0: float) -> void:
@@ -918,6 +921,7 @@ class KamiChoiceView:
 	extends ChoiceView
 
 	var ids: Array = []
+	var role := "主神"
 
 	const CW := 190.0
 	const CH := 590.0
@@ -934,12 +938,17 @@ class KamiChoiceView:
 		return Rect2(x, CY, CW, CH)
 
 	func _draw() -> void:
+		var main := role == "主神"
 		backdrop(Cfg.C_GOLD)
-		Ui.txt(self, ui.font_display, Vector2(0, 104), "主神を選べ", 44, Cfg.with_a(Cfg.C_GOLD, anim),
+		Ui.txt(self, ui.font_display, Vector2(0, 104), "主神を選べ" if main else "副神を迎えよ", 44, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 134), "選んだ瞬間に、その神の神器（自動で撃つ武器）が付く。伝説の恩恵は主神からのみ。", 12,
+		var l1 := "選んだ瞬間に、その神の神器（自動で撃つ武器）が付く。伝説の恩恵は主神からのみ。" if main \
+				else "迎えた瞬間に、その神の神器が半分の威力で加わる。迎えること自体が今回の報酬。"
+		var l2 := "位 4 と位 7 で新たな神が現れ、副神として 2 柱まで迎えられる。" if main \
+				else "詠唱と神招きは主神の技のまま。副神の神器も当てるほど神格が上がる。"
+		Ui.txt(self, ui.font, Vector2(0, 134), l1, 12,
 				Color(0.9, 0.9, 1.0, 0.85 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
-		Ui.txt(self, ui.font, Vector2(0, 152), "のちに迎える 2 柱は副神となり、神器が半分の威力で加わる。", 12,
+		Ui.txt(self, ui.font, Vector2(0, 152), l2, 12,
 				Color(0.9, 0.9, 1.0, 0.7 * anim), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		for i in ids.size():
 			_draw_card(i)
@@ -960,8 +969,8 @@ class KamiChoiceView:
 		Ui.txt(self, ui.font_display, Vector2(r.position.x + 14, r.position.y + 22), "仕組み", 14, Cfg.with_a(Cfg.C_GOLD, a))
 		var lines := [
 			"① 神を迎えると神器（自動発射の武器）が付く。主神は 100%、副神は 50% の威力。",
-			"② 神器は敵に当てるほど神徳が溜まり、神格が上がって強くなる。神酒でも 1 段上がる。",
-			"③ 位が上がるごとに神が現れ、神器の形を変える強化を 3 枚提示する。1 枚選ぶ。",
+			"② 位 2 で主神、位 4 と位 7 で副神を迎える。迎えるだけで報酬になり、他の選択は続かない。",
+			"③ それ以外の位上がりでは神が現れ、神器の形を変える強化を 3 枚提示する。1 枚選ぶ。",
 		]
 		var y := r.position.y + 42.0
 		for l: String in lines:
@@ -1155,7 +1164,7 @@ class BoonsView:
 				Ui.txt(self, ui.font, Vector2(r.position.x + 54, r.position.y + 48), String(k["weapon"]) + "  ×%.2f" % p.kami_power(id), 10, Color(1, 1, 1, 0.75 * a))
 			else:
 				Ui.panel(self, r, Color(0.5, 0.5, 0.6), a * 0.6, 0.5)
-				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 34), "空き（副神を迎えられる）", 10, Color(1, 1, 1, 0.45 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
+				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 34), "空き（位 %d で副神を迎える）" % int(Boons.RECRUIT_LEVELS[i]), 10, Color(1, 1, 1, 0.45 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
 
 	func _draw_card(i: int) -> void:
 		var o: Dictionary = offers[i]
@@ -1168,7 +1177,7 @@ class BoonsView:
 			return
 		var k := Kami.kami(String(o["kami"]))
 		var kc: Color = k["color"]
-		var col: Color = Cfg.RAR_COLOR[rar] if type != "recruit" else kc
+		var col: Color = Cfg.RAR_COLOR[rar]
 		if type == "curse":
 			_draw_curse_card(i, o, r, sel, pop)
 			return
@@ -1178,7 +1187,7 @@ class BoonsView:
 		var w := rr.size.x - 28.0
 		card_bg(rr, col, sel, a)
 		var special := type == "legendary" or type == "duo"
-		if special or type == "recruit":
+		if special:
 			for j in 10:
 				var ang := _t * 0.5 + TAU * float(j) / 10.0
 				var c := rr.position + rr.size * 0.5
@@ -1187,51 +1196,34 @@ class BoonsView:
 
 		# 上帯：種類とレアリティ
 		draw_rect(Rect2(rr.position + Vector2(0, 3), Vector2(rr.size.x, 30.0)), Cfg.with_a(col, (0.30 if sel else 0.20) * a))
-		match type:
-			"recruit":
-				Ui.txt(self, ui.font_display, rr.position + Vector2(12, 25), "新たな神", 16, Cfg.with_a(col, a))
-				Ui.txt(self, ui.font, rr.position + Vector2(90, 24), "副神として迎える", 10, Color(1, 1, 1, a * 0.85))
-			_:
-				Ui.txt(self, ui.font_display, rr.position + Vector2(12, 26), Cfg.RAR_NAME[rar], 18, Cfg.with_a(col, a))
-				Ui.txt(self, ui.font, rr.position + Vector2(36, 24), Cfg.RAR_LONG[rar], 10, Cfg.with_a(col, a * 0.9))
-				var label: String = {"upgrade": "神器の強化", "legendary": "伝説", "duo": "双神"}[type]
-				draw_rect(Rect2(rr.end.x - 78, rr.position.y + 8, 68, 20), Cfg.with_a(kc, 0.35 * a))
-				Ui.txt(self, ui.font_bold, Vector2(rr.end.x - 78, rr.position.y + 23), label, 11, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 68)
+		Ui.txt(self, ui.font_display, rr.position + Vector2(12, 26), Cfg.RAR_NAME[rar], 18, Cfg.with_a(col, a))
+		Ui.txt(self, ui.font, rr.position + Vector2(36, 24), Cfg.RAR_LONG[rar], 10, Cfg.with_a(col, a * 0.9))
+		var label: String = {"upgrade": "神器の強化", "legendary": "伝説", "duo": "双神"}[type]
+		draw_rect(Rect2(rr.end.x - 78, rr.position.y + 8, 68, 20), Cfg.with_a(kc, 0.35 * a))
+		Ui.txt(self, ui.font_bold, Vector2(rr.end.x - 78, rr.position.y + 23), label, 11, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 68)
 
-		if type == "recruit":
-			Emblem.draw(self, String(k["emblem"]), rr.position + Vector2(rr.size.x * 0.5 - 40, 74), 22.0, kc, k["color2"], _t, a * 0.95)
-			Emblem.weapon_preview(self, String(k["id"]), Rect2(rr.position.x + rr.size.x * 0.5 - 8, rr.position.y + 40, 70.0, 70.0), _t, kc, a)
-		else:
-			Emblem.draw(self, String(k["emblem"]), rr.position + Vector2(rr.size.x * 0.5, 74), 26.0, kc, k["color2"], _t, a * 0.95)
+		Emblem.draw(self, String(k["emblem"]), rr.position + Vector2(rr.size.x * 0.5, 74), 26.0, kc, k["color2"], _t, a * 0.95)
 		if type == "duo":
 			var k2 := Kami.kami(String(o["boon"]["kami2"]))
 			Emblem.draw(self, String(k2["emblem"]), rr.position + Vector2(rr.size.x * 0.5 + 34, 88), 16.0, k2["color"], k2["color2"], _t, a * 0.95)
 
 		var p := Game.inst.player
-		if type == "recruit":
-			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 128), String(k["name"]), 19, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-			Ui.txt(self, ui.font_bold, Vector2(x0, rr.position.y + 148), "得意　" + String(k["role"]), 11, Cfg.with_a(kc.lightened(0.2), a))
-			Ui.txt(self, ui.font, Vector2(x0, rr.position.y + 168), "神器 " + String(k["weapon"]) + "（半分の威力）", 11, Color(1, 0.9, 0.7, a))
-			Ui.para(self, ui.font, Vector2(x0, rr.position.y + 186), String(k["weapon_desc"]), w, 11, 3, Color(0.9, 0.92, 1.0, a * 0.9))
-			if String(k["status"]) != "":
-				Ui.para(self, ui.font, Vector2(x0, rr.position.y + 240), "神威 " + String(k["status"]) + "：" + String(k["status_desc"]), w, 10, 3, Color(0.85, 0.9, 1.0, a * 0.8))
-		else:
-			var b: Dictionary = o["boon"]
-			var cur_lv := int(p.boons[b["id"]]["lv"]) if (p != null and p.boons.has(b["id"])) else 0
-			var show_rar := maxi(rar, int(p.boons[b["id"]]["rar"])) if (p != null and p.boons.has(b["id"])) else rar
-			Ui.txt(self, ui.font_display, rr.position + Vector2(0, 128), String(b["name"]), 19,
-					Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-			Ui.txt(self, ui.font, rr.position + Vector2(0, 146), String(k["name"]) + "の神器 " + String(k["weapon"]) + " を強める" if type == "upgrade" else String(k["name"]), 10,
-					Cfg.with_a(kc, a * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-			Ui.para(self, ui.font, Vector2(x0, rr.position.y + 168), Kami.describe(b, show_rar, cur_lv + 1), w, 12, 5, Color(0.9, 0.92, 1.0, a * 0.95))
-			if cur_lv > 0:
-				var prev := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv))
-				var nxt := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv + 1))
-				draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(Cfg.C_GOLD, 0.12 * a))
-				Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "重ねる  ×%d → ×%d" % [cur_lv, cur_lv + 1], 11, Cfg.with_a(Cfg.C_GOLD, a))
-				Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), prev + "  →  " + nxt, 11, Color(1, 1, 1, a * 0.9))
-			elif special:
-				Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 26), "重ねることはできない", 10, Cfg.with_a(col, a * 0.8), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+		var b: Dictionary = o["boon"]
+		var cur_lv := int(p.boons[b["id"]]["lv"]) if (p != null and p.boons.has(b["id"])) else 0
+		var show_rar := maxi(rar, int(p.boons[b["id"]]["rar"])) if (p != null and p.boons.has(b["id"])) else rar
+		Ui.txt(self, ui.font_display, rr.position + Vector2(0, 128), String(b["name"]), 19,
+				Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+		Ui.txt(self, ui.font, rr.position + Vector2(0, 146), String(k["name"]) + "の神器 " + String(k["weapon"]) + " を強める" if type == "upgrade" else String(k["name"]), 10,
+				Cfg.with_a(kc, a * 0.9), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
+		Ui.para(self, ui.font, Vector2(x0, rr.position.y + 168), Kami.describe(b, show_rar, cur_lv + 1), w, 12, 5, Color(0.9, 0.92, 1.0, a * 0.95))
+		if cur_lv > 0:
+			var prev := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv))
+			var nxt := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv + 1))
+			draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(Cfg.C_GOLD, 0.12 * a))
+			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "重ねる  ×%d → ×%d" % [cur_lv, cur_lv + 1], 11, Cfg.with_a(Cfg.C_GOLD, a))
+			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), prev + "  →  " + nxt, 11, Color(1, 1, 1, a * 0.9))
+		elif special:
+			Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 26), "重ねることはできない", 10, Cfg.with_a(col, a * 0.8), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))
 
 
