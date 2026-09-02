@@ -703,7 +703,7 @@ class ConfirmView:
 
 	func load_portrait() -> void:
 		portrait = null
-		var path := "res://image/kami/%s.png" % kami_id
+		var path := "res://image/kami/%s.jpg" % kami_id
 		if ResourceLoader.exists(path):
 			portrait = load(path)
 
