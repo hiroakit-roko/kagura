@@ -26,6 +26,9 @@ var _beam_hits := 0
 var _eclipse_t := 0.0
 var _fans: Array = []      # 舞扇：飛んでいる扇（Bullet）
 var _alt := 0
+var _focus := {}           # 天照：敵ごとに光線を当て続けた秒数（暁の熱）
+var _erased := {}          # 天照：陽炎の判定をすでに行った敵弾
+var _spin := 0.0           # 月読：刃の回転角
 
 
 func setup(kami_id: String, player: Player) -> void:
@@ -99,7 +102,10 @@ func _beam(delta: float) -> void:
 	var w := beam_width()
 	var origin := p.position + Vector2(0, -30)
 	var hit_any := false
-	for d0 in beam_dirs():
+	var focus_max := p.val("ama_u9") * 0.01 if p.has("ama_u9") else 0.0
+	var hit_ids := {}
+	var dirs := beam_dirs()
+	for d0 in dirs:
 		var d: Vector2 = d0
 		var n: Vector2 = d.orthogonal()
 		for e in _enemies():
@@ -110,8 +116,38 @@ func _beam(delta: float) -> void:
 			var side: float = absf(rel.dot(n))
 			if side <= w * 0.5 + e.radius * 0.8:
 				hit_any = true
-				Combat.hit(e, dmg, e.position + Vector2(randf_range(-6, 6), randf_range(-6, 6)),
+				var id: int = e.get_instance_id()
+				hit_ids[id] = true
+				var dmg_e := dmg
+				if focus_max > 0.0:
+					# 暁の熱：同じ敵に当て続けるほど威力が上がる（2 秒で最大）
+					var f: float = float(_focus.get(id, 0.0)) + 0.1
+					_focus[id] = f
+					dmg_e *= 1.0 + focus_max * clampf(f / 2.0, 0.0, 1.0)
+				Combat.hit(e, dmg_e, e.position + Vector2(randf_range(-6, 6), randf_range(-6, 6)),
 						{"tag": "beam", "kami": "ama", "dir": d, "crit": randf() < p.crit_chance(), "quiet": true})
+	if focus_max > 0.0:
+		for id in _focus.keys():
+			if not hit_ids.has(id):
+				_focus.erase(id)
+	# 陽炎：光線に触れた敵弾が蒸発する
+	if p.has("ama_u7"):
+		var chance := p.val("ama_u7") * 0.01
+		for eb in get_tree().get_nodes_in_group("ebullet"):
+			if not is_instance_valid(eb) or _erased.has(eb.get_instance_id()):
+				continue
+			for d0 in dirs:
+				var d: Vector2 = d0
+				var rel: Vector2 = eb.position - origin
+				if rel.dot(d) < 0.0 or absf(rel.dot(d.orthogonal())) > w * 0.5 + 4.0:
+					continue
+				_erased[eb.get_instance_id()] = true
+				if randf() < chance:
+					Fx.sparks(eb.position, Vector2.UP, col, 3, 200.0)
+					eb.vanish()
+				break
+		if _erased.size() > 400:
+			_erased.clear()
 	if hit_any and randf() < 0.5:
 		Sfx.play("hit_light", -22.0, randf_range(0.9, 1.1), 0.08)
 	# 日食（伝説）
@@ -134,24 +170,27 @@ func _beam(delta: float) -> void:
 func _wave() -> void:
 	if cd > 0.0:
 		return
-	cd = _rate(0.95)
+	cd = _rate(0.95 * (1.0 - p.val("susa_u6") * 0.01))
 	var lv: int = p.kami_lv.get(kami, 1)
 	var size := 70.0 * (1.0 + p.val("susa_u2") * 0.01) * (1.0 + 0.05 * float(lv / 3))
 	var reach := 260.0 * (1.0 + p.val("susa_u3") * 0.01)
 	var dmg := base_dmg() * 3.6 * power() * (1.0 + p.val("susa_u1") * 0.01)
+	if p.has("susa_u9"):
+		# 怒りの海：画面の敵が多いほど強い
+		dmg *= 1.0 + p.val("susa_u9") * 0.01 * float(mini(_enemies().size(), 10))
 	var count := 2 if p.has("susa_leg") else 1
 	for i in count:
 		var b := Bullet.new()
 		b.shape_kind = 4
 		b.radius = size
 		b.pierce = 999
-		b.kb = 620.0
+		b.kb = 620.0 * (1.0 + p.val("susa_u8") * 0.01)
 		b.kami = "susa"
 		b.tag = "wave"
 		b.color = col
 		b.life = reach / 420.0
 		b.crit_chance = p.crit_chance()
-		if p.has("susa_leg"):
+		if p.has("susa_leg") or p.has("susa_u7"):
 			b.eraser = true
 		var start := p.position + Vector2(0, -30 - float(i) * 60.0)
 		b.setup(start, Vector2(0, -420.0), dmg, true)
@@ -187,7 +226,20 @@ func _lightning() -> void:
 		if best != null:
 			target = best
 	var chains := 1 + (int(round(p.val("take_u3"))) if p.has("take_u3") else 0)
-	Combat.lightning(target, dmg, Vector2(target.position.x + randf_range(-40, 40), -30.0), chains)
+	var tpos: Vector2 = target.position
+	Combat.lightning(target, dmg, Vector2(tpos.x + randf_range(-40, 40), -30.0), chains)
+	# 遠雷：もう 1 体にも同時に落ちる
+	if p.has("take_u9") and es.size() > 1 and randf() < p.val("take_u9") * 0.01:
+		var other: Node2D = es[randi() % es.size()]
+		if other == target:
+			other = es[(es.find(other) + 1) % es.size()]
+		if other != target and is_instance_valid(other):
+			Combat.lightning(other, dmg * 0.8, Vector2(other.position.x + randf_range(-40, 40), -30.0), 0)
+	# 雷雲：落ちた所に雲が残り、落雷を続ける
+	if p.has("take_u7"):
+		var z := Zone.new()
+		z.setup(tpos + Vector2(0, -40), "cloud", 90.0, p.val("take_u7"), dmg * 0.45, col)
+		Game.inst.spawn_deferred(z)
 	Fx.flash(Cfg.with_a(col, 0.08), 0.08)
 
 
@@ -204,12 +256,30 @@ func blade_radius() -> float:
 	return 72.0 * (1.0 + p.val("tsuki_u4") * 0.01)
 
 
+func blade_size() -> float:
+	return 22.0 * (1.0 + p.val("tsuki_u8") * 0.01)
+
+
 func _blades(delta: float) -> void:
 	var n := blade_count()
 	var r := blade_radius()
 	var dmg := base_dmg() * 1.1 * power() * (1.0 + p.val("tsuki_u5") * 0.01)
 	var doom := base_dmg() * 3.0 * power() * (1.0 + p.val("tsuki_u2") * 0.01)
-	var spin := t * 2.6
+	_spin += delta * 2.6 * (1.0 + p.val("tsuki_u6") * 0.01)
+	var spin := _spin
+	var br := blade_size()
+	# 月の盾：刃が触れた敵弾を消す
+	if p.has("tsuki_u8"):
+		for eb in get_tree().get_nodes_in_group("ebullet"):
+			if not is_instance_valid(eb):
+				continue
+			for i in n:
+				var a := spin + TAU * float(i) / float(n)
+				var bp := p.position + Vector2(cos(a), sin(a)) * r
+				if bp.distance_to(eb.position) <= br + eb.radius:
+					Fx.sparks(eb.position, Vector2.UP, col, 2, 160.0)
+					eb.vanish()
+					break
 	for e in _enemies():
 		var id: int = e.get_instance_id()
 		if float(_blade_hit.get(id, 0.0)) > t:
@@ -217,7 +287,7 @@ func _blades(delta: float) -> void:
 		for i in n:
 			var a := spin + TAU * float(i) / float(n)
 			var bp := p.position + Vector2(cos(a), sin(a)) * r
-			if bp.distance_to(e.position) <= 22.0 + e.radius:
+			if bp.distance_to(e.position) <= br + e.radius:
 				_blade_hit[id] = t + 0.28
 				Combat.hit(e, dmg, e.position, {"tag": "blade", "kami": "tsuki", "dir": (e.position - p.position).normalized(),
 						"crit": randf() < p.crit_chance(), "doom": doom})
@@ -235,7 +305,7 @@ func _fan() -> void:
 	if cd > 0.0:
 		return
 	var lv: int = p.kami_lv.get(kami, 1)
-	cd = _rate(1.6)
+	cd = _rate(1.6 * (1.0 - p.val("uzume_u7") * 0.01))
 	var n := 1 + (int(round(p.val("uzume_u1"))) if p.has("uzume_u1") else 0)
 	var size := 1.0 + p.val("uzume_u2") * 0.01 + 0.06 * float(lv / 3)
 	var dmg := base_dmg() * 1.5 * power() * size
@@ -249,7 +319,9 @@ func _fan() -> void:
 		b.tag = "fan"
 		b.color = col
 		b.mode = "boomerang"
-		b.life = 3.2
+		b.turn_dist = 330.0 * (1.0 + p.val("uzume_u6") * 0.01)
+		b.return_mult = 1.0 + p.val("uzume_u8") * 0.01
+		b.life = 3.2 + p.val("uzume_u6") * 0.01
 		b.crit_chance = p.crit_chance()
 		b.charm_chance = p.val("uzume_u4") * 0.01 if p.has("uzume_u4") else 0.0
 		var a := -PI * 0.5 + (float(i) - float(n - 1) * 0.5) * deg_to_rad(22.0)
@@ -266,7 +338,7 @@ func _foxfire() -> void:
 	if cd > 0.0:
 		return
 	var lv: int = p.kami_lv.get(kami, 1)
-	cd = _rate(0.42)
+	cd = _rate(0.42 * (1.0 - p.val("inari_u6") * 0.01))
 	var n := 1 + (int(round(p.val("inari_u1"))) if p.has("inari_u1") else 0) + lv / 4
 	var dmg := base_dmg() * 0.75 * power() * (1.0 + p.val("inari_u2") * 0.01)
 	var target := Combat.nearest_enemy(p.position, 900.0)
@@ -282,7 +354,7 @@ func _foxfire() -> void:
 func _gourd() -> void:
 	if cd > 0.0:
 		return
-	cd = _rate(2.2)
+	cd = _rate(2.2 * (1.0 - p.val("suku_u6") * 0.01))
 	var lv: int = p.kami_lv.get(kami, 1)
 	var target := Combat.nearest_enemy(p.position, 900.0)
 	var to := Vector2(p.position.x, p.position.y - 300.0)
@@ -313,13 +385,15 @@ func _shards() -> void:
 	if cd > 0.0:
 		return
 	var lv: int = p.kami_lv.get(kami, 1)
-	cd = _rate(0.7)
+	cd = _rate(0.7 * (1.0 - p.val("iza_u6") * 0.01))
 	var n := 3 + (int(round(p.val("iza_u1"))) if p.has("iza_u1") else 0) + 2 * (lv / 5)
 	var dmg := base_dmg() * 0.9 * power() * (1.0 + p.val("iza_u2") * 0.01)
+	var pierce := int(round(p.val("iza_u8"))) if p.has("iza_u8") else 0
 	for i in n:
 		var b := Bullet.new()
 		b.shape_kind = 10
 		b.radius = 5.0
+		b.pierce = pierce
 		b.kami = "iza"
 		b.tag = "shard"
 		b.color = Color(0.85, 0.95, 1.0)
@@ -338,14 +412,21 @@ func _wind() -> void:
 	if cd > 0.0:
 		return
 	var lv: int = p.kami_lv.get(kami, 1)
-	cd = _rate(0.13 / (1.0 + p.val("saru_u1") * 0.01))
+	var rate := 1.0 + p.val("saru_u1") * 0.01
+	if p.has("saru_u9") and p.graze_buff_t > 0.0:
+		rate *= 1.0 + p.val("saru_u9") * 0.01   # 道開き：かすった直後は連射が速い
+	cd = _rate(0.13 / rate)
 	var dmg := base_dmg() * 0.45 * power() * (1.0 + p.val("saru_u2") * 0.01)
+	if p.has("saru_u7") and p.dash_buff_t > 0.0:
+		dmg *= 1.0 + p.val("saru_u7") * 0.01     # 追い風：疾走直後は威力が高い
 	var n := 1 + lv / 4
+	var pierce := int(round(p.val("saru_u6"))) if p.has("saru_u6") else 0
 	_alt = (_alt + 1) % 2
 	for i in n:
 		var b := Bullet.new()
 		b.shape_kind = 11
 		b.radius = 4.0
+		b.pierce = pierce
 		b.kami = "saru"
 		b.tag = "wind"
 		b.color = col
@@ -384,15 +465,16 @@ func _draw() -> void:
 		"tsuki":
 			var n := blade_count()
 			var r := blade_radius()
-			var spin := t * 2.6
+			var spin := _spin
+			var bs := blade_size() / 22.0
 			draw_arc(p.position, r, 0, TAU, 48, Cfg.with_a(col, 0.12), 1.0, true)
 			for i in n:
 				var a := spin + TAU * float(i) / float(n)
 				var bp := p.position + Vector2(cos(a), sin(a)) * r
 				var ang := a + PI * 0.5
-				draw_circle(bp, 18.0, Cfg.with_a(col, 0.14))
-				draw_arc(bp, 15.0, ang - 1.6, ang + 1.6, 14, Cfg.with_a(col, 0.95), 6.0, true)
-				draw_arc(bp, 15.0, ang - 1.3, ang + 1.3, 12, Color(1, 1, 1, 0.85), 2.0, true)
+				draw_circle(bp, 18.0 * bs, Cfg.with_a(col, 0.14))
+				draw_arc(bp, 15.0 * bs, ang - 1.6, ang + 1.6, 14, Cfg.with_a(col, 0.95), 6.0 * bs, true)
+				draw_arc(bp, 15.0 * bs, ang - 1.3, ang + 1.3, 12, Color(1, 1, 1, 0.85), 2.0, true)
 				# 軌跡
 				for j in 4:
 					var aa := a - float(j + 1) * 0.12

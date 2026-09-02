@@ -71,6 +71,10 @@ static func hit(e: Node2D, dmg: float, at: Vector2, opts: Dictionary = {}) -> fl
 		mult *= 1.0 + _val("duo_ama_inari") * 0.01
 	if tag == "lightning" and en.st["frozen"] > 0.0 and _has("duo_take_iza"):
 		mult *= 1.0 + _val("duo_take_iza") * 0.01
+	if tag == "lightning" and en.is_boss and _has("take_u6"):
+		mult *= 1.0 + _val("take_u6") * 0.01
+	if int(en.st["hangover"]["stacks"]) > 0 and _has("suku_u8"):
+		mult *= 1.0 + _val("suku_u8") * 0.01
 
 	# --- 会心 ---
 	if en.st["marked"] and tag != "doom":
@@ -81,9 +85,12 @@ static func hit(e: Node2D, dmg: float, at: Vector2, opts: Dictionary = {}) -> fl
 
 	var final := dmg * mult
 	var quiet := bool(opts.get("quiet", false))
+	en.last_tag = tag
 	en.take_damage(final, crit, at, quiet)
 	if p != null:
 		p.add_call_gauge(final * 0.0006)
+		if tag == "lightning" and _has("take_u8"):
+			p.add_call_gauge(_val("take_u8") * 0.01)
 		if kami != "":
 			p.add_kami_xp(kami, final)
 		if not quiet:
@@ -139,7 +146,7 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, _di
 		"ama":
 			if en.st["exposed"] <= 0.0:
 				Fx.rays(en.position, kc, 6, en.radius * 0.6, 26.0, 0.25)
-			en.add_exposed(EXPOSED_T)
+			en.add_exposed(EXPOSED_T + (_val("ama_u6") if _has("ama_u6") else 0.0))
 		"susa":
 			if tag in ["wave", "cast", "call"]:
 				if _has("susa_u4"):
@@ -174,7 +181,7 @@ static func _apply_status(en: Enemy, kami: String, tag: String, at: Vector2, _di
 		"iza":
 			if tag in ["shard", "cast"]:
 				Fx.sparks(at, Vector2.UP, Color(0.85, 0.95, 1.0), 3, 220.0)
-				en.add_chill(1)
+				en.add_chill(1 + (int(round(_val("iza_u7"))) if _has("iza_u7") else 0))
 		"saru":
 			if tag == "wind" and _has("duo_inari_saru") and randf() < _val("duo_inari_saru") * 0.01:
 				var other := nearest_enemy(en.position, 300.0)
@@ -317,12 +324,19 @@ static func doom_trigger(en: Enemy, dmg: float) -> void:
 	Sfx.play("doom", -8.0, randf_range(0.9, 1.1), 0.05)
 	Game.inst.hitstop(0.05, 0.05)
 
-	var crit := _has("duo_tsuki_inari")
+	var crit := _has("duo_tsuki_inari") or (_has("tsuki_u9") and randf() < _val("tsuki_u9") * 0.01)
 	if _has("tsuki_leg") and not en.is_boss and en.hp / en.max_hp <= _val("tsuki_leg") * 0.01:
 		Fx.number(pos + Vector2(0, -en.radius - 10), "裁定", Color(1, 0.9, 1), 18.0, true)
 		en.take_damage(en.hp + 1.0, true, pos)
 	else:
 		hit(en, dmg, pos, {"tag": "doom", "kami": "tsuki", "crit": crit})
+	# 新月の影：爆ぜて倒れたら、近くの敵に宿命が移る
+	if (not is_instance_valid(en) or en.hp <= 0.0) and _has("tsuki_u7") and randf() < _val("tsuki_u7") * 0.01:
+		var nxt := nearest_enemy(pos, 170.0, en)
+		if nxt != null:
+			nxt.add_doom(dmg * 0.7, 1.1)
+			Fx.bolt(pos, nxt.position, col, 0.12)
+			Fx.ring(nxt.position, col, nxt.radius, nxt.radius * 2.0, 0.25, 2.0)
 	if is_instance_valid(en) and en.hp > 0.0 and _has("duo_iza_tsuki"):
 		en.freeze(_val("duo_iza_tsuki"))
 	if _has("duo_tsuki_suku"):
@@ -381,6 +395,22 @@ static func shatter(en: Enemy) -> void:
 		var z := Zone.new()
 		z.setup(en.position, "frost", 60.0, _val("iza_u4"), (p.base_damage() * 0.3 if p != null else 3.0), Color(0.58, 0.82, 1.0))
 		Game.inst.spawn_deferred(z)
+	# 黄泉の門：砕けた所から氷柱が飛び散る
+	if _has("iza_u9") and p != null:
+		var n := int(round(_val("iza_u9")))
+		var sd := p.base_damage() * 0.7 * p.kami_power("iza")
+		for i in n:
+			var b := Bullet.new()
+			b.shape_kind = 10
+			b.radius = 5.0
+			b.kami = "iza"
+			b.tag = "shard"
+			b.color = Color(0.85, 0.95, 1.0)
+			b.life = 0.7
+			b.crit_chance = p.crit_chance()
+			var a := TAU * float(i) / float(n) + randf_range(-0.1, 0.1)
+			b.setup(en.position + Vector2(cos(a), sin(a)) * 12.0, Vector2(cos(a), sin(a)) * 520.0, sd, true)
+			Game.inst.spawn_deferred(b)
 	if _has("iza_leg"):
 		var ld := _val("iza_leg")
 		for o in Game.inst.get_tree().get_nodes_in_group("enemy"):
@@ -401,6 +431,40 @@ static func on_kill(en: Enemy) -> void:
 		return
 	if _has("uzume_leg") and en.st["weak"] > 0.0 and randf() < _val("uzume_leg") * 0.01:
 		p.heal(6.0, true)
+	# 日輪の恵み：照覧された敵を倒すと回復
+	if _has("ama_u8") and en.st["exposed"] > 0.0:
+		p.heal(_val("ama_u8"), false)
+		Fx.sparks(en.position, Vector2.UP, Color(1.0, 0.84, 0.42), 3, 160.0)
+	# 狐火の連鎖：狐火で倒すと次の敵へ跳ぶ
+	if _has("inari_u7") and en.last_tag == "foxfire" and randf() < _val("inari_u7") * 0.01:
+		var other := nearest_enemy(en.position, 320.0, en)
+		if other != null:
+			p.spawn_foxfire(en.position, other, p.base_damage() * 0.75 * p.kami_power("inari"), "foxfire")
+	# 百薬の長：酩酊した敵を倒すと霧が残る
+	if _has("suku_u9") and int(en.st["hangover"]["stacks"]) > 0 and randf() < _val("suku_u9") * 0.01:
+		var z := Zone.new()
+		z.setup(en.position, "fog", 52.0, 2.2, 0.0, Color(0.62, 1.0, 0.55))
+		Game.inst.spawn_deferred(z)
+
+
+## 自機弾が敵弾を消したとき（潮騒）
+static func on_erase(b: Bullet) -> void:
+	var p := _p()
+	if p == null:
+		return
+	if b.kami == "susa" and _has("susa_u7"):
+		p.add_call_gauge(_val("susa_u7") * 0.01)
+		Fx.sparks(b.position, Vector2.UP, Color(0.35, 0.82, 0.95), 2, 160.0)
+
+
+## 扇が手元に戻ったとき（舞い手の護り）
+static func on_fan_return(_b: Bullet) -> void:
+	var p := _p()
+	if p == null:
+		return
+	if _has("uzume_u9") and p.hp < float(p.stats["max_hp"]):
+		p.heal(_val("uzume_u9"), false)
+		Fx.petals(p.position, Color(1.0, 0.58, 0.78), 3, 60.0)
 
 
 # ---------------------------------------------------------------------------

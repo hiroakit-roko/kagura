@@ -34,6 +34,8 @@ var source := "敵の弾"      # 敵弾の出どころ（死因の表示用）
 var split_on_hit := 0      # 命中時にこの数の小弾に砕ける
 var doom := 0.0            # 命中した敵に刻む宿命のダメージ（月読）
 var charm_chance := 0.0    # 命中した敵を魅了する確率（天宇受売）
+var turn_dist := 330.0     # boomerang: 折り返す距離
+var return_mult := 1.0     # boomerang: 戻り道のダメージ倍率
 var travel := 0.0
 var _origin := Vector2.ZERO
 var _returning := false
@@ -105,7 +107,7 @@ func _physics_process(delta: float) -> void:
 	elif mode == "boomerang":
 		# 舞扇：一定距離で折り返し、自機の手元へ戻る
 		var pl := Game.inst.player
-		if not _returning and travel > 330.0:
+		if not _returning and travel > turn_dist:
 			_returning = true
 			_hit.clear()
 			Sfx.play("clap", -18.0, 1.6, 0.1)
@@ -113,6 +115,7 @@ func _physics_process(delta: float) -> void:
 			var want := (pl.position - position).normalized() * vel.length()
 			vel = vel.lerp(want, clampf(6.0 * delta, 0.0, 1.0))
 			if position.distance_to(pl.position) < 26.0:
+				Combat.on_fan_return(self)
 				queue_free()
 				return
 		rotation = _t * 14.0
@@ -177,6 +180,7 @@ func _on_area(a: Area2D) -> void:
 			Sfx.play("deflect", -14.0, randf_range(0.95, 1.15), 0.03)
 		elif eraser:
 			eb.vanish()
+			Combat.on_erase(self)
 		return
 
 	if not a.has_method("take_damage"):
@@ -189,7 +193,7 @@ func _on_area(a: Area2D) -> void:
 			crit = true
 		var opts := {"tag": tag, "slot": slot, "kami": kami, "crit": crit,
 				"dir": vel.normalized(), "kb": kb, "doom": doom, "charm_chance": charm_chance}
-		Combat.hit(a, dmg, global_position, opts)
+		Combat.hit(a, dmg * (return_mult if _returning else 1.0), global_position, opts)
 		if zone_kind != "":
 			_leave_zone(global_position)
 			zone_kind = ""

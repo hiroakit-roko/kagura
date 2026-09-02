@@ -7,15 +7,19 @@ extends RefCounted
 ##       ・位 2（最初のレベルアップ）で 3 柱から主神を選ぶ
 ##       ・位 4 と位 7 で、残る神から 3 柱が現れ副神を迎える（神器は半分の威力）
 ##   - それ以外のレベルアップは、迎えている神のうち 1 柱が現れて 3 枚を提示する
-##       ・その神の神器の強化（重ねて取れる）
-##       ・条件を満たせば 伝説（主神のみ）／双神／禍神の取引
+##       ・神ごとの能力は 9 種（凡 4・稀 3・秀 2）。1 柱につき 3 つまで選べる
+##       ・提示は「空いている枠のぶん新しい能力」＋「残りは選んだ能力の強化」
+##         例：1 つ選んでいれば 新規 2 枚＋強化 1 枚、2 つなら 新規 1 枚＋強化 2 枚
+##       ・条件を満たせば 伝説（主神のみ）／双神／禍神の取引 が 1 枚混ざる
 ##   - 神酒（Pom of Power 相当）は神を 1 柱選んで神格を 1 上げる
 
 const MAX_KAMI := 3
+## 1 柱の神から選べる能力の数
+const MAX_PER_KAMI := 3
+## 新しい能力を引くときの格ごとの重み（位が上がると稀・秀が出やすくなる）
+const TIER_W := {Cfg.Rar.COMMON: 1.0, Cfg.Rar.RARE: 0.7, Cfg.Rar.EPIC: 0.4}
 ## i 柱目の神を迎える位（主神・副神①・副神②）
 const RECRUIT_LEVELS := [2, 4, 7]
-## レアリティの基礎確率（凡 / 稀 / 秀 / 英）
-const RAR_WEIGHTS := [56.0, 30.0, 12.0, 2.0]
 
 
 static func kami_ids() -> Array:
@@ -66,14 +70,47 @@ static func pick_kami(p: Player) -> String:
 	return candidates.back()
 
 
-## その神が今提示できる強化（上限に達していないもの）
+## その神の能力のうち選んでいるもの
+static func owned_of(p: Player, kami_id: String) -> Array:
+	return Kami.upgrades_of(kami_id).filter(func(b): return p.boons.has(b["id"]))
+
+
+## まだ選んでいない能力（枠が残っているときだけ）
+static func new_pool(p: Player, kami_id: String) -> Array:
+	if owned_of(p, kami_id).size() >= MAX_PER_KAMI:
+		return []
+	return Kami.upgrades_of(kami_id).filter(func(b): return not p.boons.has(b["id"]))
+
+
+## 選んだ能力のうち、まだ重ねられるもの
+static func lv_pool(p: Player, kami_id: String) -> Array:
+	return owned_of(p, kami_id).filter(func(b): return int(p.boons[b["id"]]["lv"]) < int(b.get("maxlv", 3)))
+
+
+## その神が今提示できるもの（新規＋強化）
 static func pool_for(p: Player, kami_id: String) -> Array:
-	var out: Array = []
-	for b in Kami.upgrades_of(kami_id):
-		var lv := int(p.boons[b["id"]]["lv"]) if p.boons.has(b["id"]) else 0
-		if lv < int(b.get("maxlv", 3)):
-			out.append(b)
-	return out
+	return new_pool(p, kami_id) + lv_pool(p, kami_id)
+
+
+## 格の重みで 1 つ引く（引いたものは cands から除く）
+static func _draw_new(p: Player, cands: Array, kami_id: String) -> Dictionary:
+	var total := 0.0
+	var ws: Array = []
+	for b in cands:
+		var tier := int(b.get("tier", Cfg.Rar.COMMON))
+		var w: float = TIER_W.get(tier, 1.0)
+		if tier == Cfg.Rar.RARE:
+			w += 0.02 * float(p.level) + (0.1 if kami_id == p.main_god() else 0.0)
+		elif tier == Cfg.Rar.EPIC:
+			w += 0.03 * float(p.level) + (0.1 if kami_id == p.main_god() else 0.0)
+		ws.append(w)
+		total += w
+	var r := randf() * total
+	for i in cands.size():
+		r -= float(ws[i])
+		if r <= 0.0:
+			return cands.pop_at(i)
+	return cands.pop_back()
 
 
 static func legendary_for(p: Player, kami_id: String) -> Dictionary:
@@ -112,64 +149,59 @@ static func _upgrade_count(p: Player, kami_id: String) -> int:
 	return n
 
 
-static func roll_rarity(p: Player, kami_id: String, min_rar := Cfg.Rar.COMMON) -> int:
-	var w := RAR_WEIGHTS.duplicate()
-	var luck := float(p.level) * 0.6
-	w[1] += luck
-	w[2] += luck * 0.6
-	w[3] += luck * 0.15
-	if kami_id == p.main_god():
-		w[1] += 10.0
-		w[2] += 5.0
-	var total := 0.0
-	for x in w:
-		total += float(x)
-	var r := randf() * total
-	var rar := 0
-	for i in w.size():
-		r -= float(w[i])
-		if r <= 0.0:
-			rar = i
-			break
-	return maxi(rar, min_rar)
-
-
 ## 神 kami_id からの提示。各要素は
 ##   {"type": "upgrade"|"legendary"|"duo"|"curse", "boon": Dictionary, "rar": int, "kami": String}
+##   upgrade の rar はその能力の格（tier）。すでに選んでいる能力なら「強化」として出る。
 ##   （新たな神は専用画面で迎えるので、ここには混ざらない）
+##   min_rar が 凡 より上なら、新しい能力はその格以上のものを優先する（討伐の褒賞）
 static func offer(p: Player, kami_id: String, count := 3, min_rar := Cfg.Rar.COMMON) -> Array:
 	var out: Array = []
+	# 特別な 1 枚（伝説 > 双神 > 禍神の取引）。多くても 1 枚
 	var leg := legendary_for(p, kami_id)
+	var duos := duos_for(p, kami_id)
 	if not leg.is_empty() and randf() < 0.5:
 		out.append({"type": "legendary", "boon": leg, "rar": Cfg.Rar.LEGENDARY, "kami": kami_id})
-	var duos := duos_for(p, kami_id)
-	if not duos.is_empty() and randf() < 0.6:
+	elif not duos.is_empty() and randf() < 0.6:
 		var d: Dictionary = duos[randi() % duos.size()]
 		out.append({"type": "duo", "boon": d, "rar": Cfg.Rar.DUO, "kami": String(d["kami"])})
-
-	# 禍神の取引（第 4 波以降、稀に）
-	if Game.inst.wave >= 4 and randf() < 0.14:
+	elif Game.inst.wave >= 4 and randf() < 0.14:
 		var avail := Kami.CURSES.filter(func(c): return not p.boons.has(c["id"]))
 		if not avail.is_empty():
 			var c: Dictionary = avail[randi() % avail.size()]
 			out.append({"type": "curse", "boon": c, "rar": Cfg.Rar.HEROIC, "kami": kami_id})
 
-	var pool := pool_for(p, kami_id)
-	pool.shuffle()
-	for b in pool:
-		if out.size() >= count:
-			break
-		out.append({"type": "upgrade", "boon": b, "rar": roll_rarity(p, kami_id, min_rar), "kami": kami_id})
-	# まだ足りなければ、他の迎えている神の強化で埋める
+	_fill_from(p, kami_id, out, count, min_rar)
+	# まだ足りなければ、他の迎えている神で埋める
 	if out.size() < count:
 		for id in p.gods:
-			if id == kami_id:
-				continue
-			for b in pool_for(p, id):
-				if out.size() >= count:
-					break
-				out.append({"type": "upgrade", "boon": b, "rar": roll_rarity(p, id, min_rar), "kami": id})
+			if id != kami_id and out.size() < count:
+				_fill_from(p, String(id), out, count, min_rar)
 	return out.slice(0, count)
+
+
+## 神 kami_id の「新規」と「強化」で out を埋める
+static func _fill_from(p: Player, kami_id: String, out: Array, count: int, min_rar: int) -> void:
+	var remaining := count - out.size()
+	if remaining <= 0:
+		return
+	var news := new_pool(p, kami_id)
+	if min_rar > Cfg.Rar.COMMON:
+		var hi := news.filter(func(b): return int(b.get("tier", 0)) >= min_rar)
+		if not hi.is_empty():
+			news = hi
+	var lvs := lv_pool(p, kami_id)
+	lvs.shuffle()
+	var free := MAX_PER_KAMI - owned_of(p, kami_id).size()
+	# 空き枠のぶん新規、残りは強化。1 つでも選んでいれば強化を最低 1 枚は混ぜる
+	var n_lv := clampi(remaining - free, 1 if (not lvs.is_empty() and remaining >= 2) else 0, lvs.size())
+	var n_new := mini(mini(free, remaining - n_lv), news.size())
+	n_lv = mini(lvs.size(), remaining - n_new)
+	for i in n_new:
+		var b := _draw_new(p, news, kami_id)
+		out.append({"type": "upgrade", "boon": b, "rar": int(b.get("tier", Cfg.Rar.COMMON)), "kami": kami_id})
+	for i in n_lv:
+		var b: Dictionary = lvs[i]
+		out.append({"type": "upgrade", "boon": b, "rar": int(p.boons[b["id"]]["rar"]), "kami": kami_id})
 
 
 ## 恩恵を受け取る
@@ -184,11 +216,10 @@ static func take(p: Player, o: Dictionary) -> void:
 			var b: Dictionary = o["boon"]
 			var id := String(b["id"])
 			if p.boons.has(id):
-				# 重ねる：レアリティは高い方を残す
+				# 重ねる（強化）
 				p.boons[id]["lv"] = int(p.boons[id]["lv"]) + 1
-				p.boons[id]["rar"] = maxi(int(p.boons[id]["rar"]), int(o["rar"]))
 			else:
-				p.boons[id] = {"rar": int(o["rar"]), "lv": 1}
+				p.boons[id] = {"rar": int(b.get("tier", o["rar"])), "lv": 1}
 			p.on_boons_changed()
 
 

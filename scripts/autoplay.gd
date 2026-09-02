@@ -110,6 +110,10 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--flowtest"):
 		await _flow_test()
 		return
+	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("--abilitytest="):
+			await _ability_test(String(a).trim_prefix("--abilitytest=").split(","))
+			return
 
 	Game.inst.start_game()
 	# 自動プレイなので長く生き延びるようタフにしておく
@@ -267,8 +271,12 @@ func _flow_test() -> void:
 			print("[flow] lv%d KAMI role=%s ids=%s" % [g.player.level, g.ui.kami_view.role, str(g.ui.kami_view.ids)])
 			g._on_kami_chosen(String(g.ui.kami_view.ids[0]))
 		elif g.state == Game.St.BOON:
-			print("[flow] lv%d BOON from %s: %s" % [g.player.level, g._offer_kami, str(g._offers.map(func(o): return o["type"]))])
-			g._on_boon_chosen(0)
+			var desc := g._offers.map(func(o):
+				var b: Dictionary = o["boon"]
+				var lv := int(g.player.boons[b["id"]]["lv"]) if (b.has("id") and g.player.boons.has(b["id"])) else 0
+				return "%s:%s[%s]%s" % [o["type"], b.get("name", "?"), Cfg.RAR_NAME[int(o["rar"])], (" Lv%d→%d" % [lv, lv + 1]) if lv > 0 else " 新"])
+			print("[flow] lv%d BOON from %s: %s" % [g.player.level, g._offer_kami, str(desc)])
+			g._on_boon_chosen(randi() % g._offers.size())
 		else:
 			print("[flow] lv%d state=%d" % [g.player.level, g.state])
 		await _wait(0.3)
@@ -411,4 +419,49 @@ func _death_test() -> void:
 	await _wait(0.8)
 	await shot("92_paused.png")
 	print("[autoplay] state after pause = %d (PAUSE=%d)" % [Game.inst.state, Game.St.PAUSE])
+	get_tree().quit()
+
+
+## 指定した神を全部迎え、その能力 9 種をすべて（上限を無視して）付けて 40 秒戦わせる。
+## 新しい能力の実装が例外を出さないかを見るためのもの。
+func _ability_test(gods: Array) -> void:
+	var g := Game.inst
+	g.start_game()
+	g._on_familiar_chosen("neko")
+	var p := g.player
+	for kid in gods:
+		var id := String(kid).strip_edges()
+		if id == "":
+			continue
+		p.add_god(id)
+		p.kami_lv[id] = 4
+		for b in Kami.upgrades_of(id):
+			p.boons[String(b["id"])] = {"rar": int(b.get("tier", 0)), "lv": 2}
+		var leg := Kami.legendary_of(id)
+		if not leg.is_empty():
+			p.boons[String(leg["id"])] = {"rar": Cfg.Rar.LEGENDARY, "lv": 1}
+	p.on_boons_changed()
+	p.stats["max_hp"] = 9999.0
+	p.hp = 9999.0
+	print("[ability] gods=%s boons=%d" % [str(p.gods), p.boons.size()])
+	g.wave = 5
+	var t0 := _t
+	var dashes := 0
+	while _t - t0 < 40.0:
+		await _wait(0.5)
+		if not is_instance_valid(p) or not p.alive:
+			break
+		p.stats["max_hp"] = 9999.0
+		p.hp = 9999.0
+		if g.state == Game.St.PLAY and p.dash_cool <= 0.0 and dashes < 6:
+			p._start_dash(Vector2.RIGHT if dashes % 2 == 0 else Vector2.LEFT)
+			dashes += 1
+		if g.state == Game.St.KAMI:
+			g._on_kami_chosen(String(g.ui.kami_view.ids[0]))
+		elif g.state == Game.St.BOON and not g._offers.is_empty():
+			g._on_boon_chosen(0)
+		elif g.state == Game.St.MIKI:
+			g._on_miki_chosen(String(g.ui.miki_view.ids[0]))
+	await shot("70_ability_%s.png" % "_".join(PackedStringArray(gods)))
+	print("[ability] done wave=%d score=%d" % [g.wave, g.score])
 	get_tree().quit()

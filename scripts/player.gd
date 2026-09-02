@@ -69,6 +69,9 @@ var call_tick := 0.0
 var call_power := 1.0
 var haste_t := 0.0           # 道開き：移動と連射が速くなる時間
 var dash_mult := 1.0         # 疾走の距離倍率（神の強化で伸ばす余地）
+var dash_buff_t := 0.0       # 疾走してからの猶予（猿田彦：追い風）
+var graze_buff_t := 0.0      # かすってからの猶予（猿田彦：道開き）
+var _fog_t := 0.0            # 霧の中の回復の刻み（少名毘古那：薬酒）
 var _dash_ready_ping := true
 var _contact_cd := 0.0
 var _ghost_t := 0.0
@@ -373,6 +376,23 @@ func _start_dash(dir: Vector2) -> void:
 	Sfx.play("dash", -4.0, randf_range(0.95, 1.1))
 	Sfx.play("suzu", -18.0, 1.5)
 	Game.inst.hitstop(0.03, 0.3)
+	dash_buff_t = 3.0
+	# 疾風の刃：疾走すると周囲へ風の刃を放つ
+	if has("saru_u8"):
+		var n := int(round(val("saru_u8")))
+		var d := base_damage() * 0.8 * kami_power("saru")
+		for i in n:
+			var b := Bullet.new()
+			b.shape_kind = 11
+			b.radius = 4.5
+			b.kami = "saru"
+			b.tag = "wind"
+			b.color = kami_color("saru")
+			b.crit_chance = crit_chance()
+			b.pierce = 1
+			var a := TAU * float(i) / float(n) + dir.angle()
+			b.setup(position + Vector2(cos(a), sin(a)) * 14.0, Vector2(cos(a), sin(a)) * 820.0, d, true)
+			Game.inst.spawn_deferred(b)
 
 
 func _enemies_within(r: float) -> Array:
@@ -467,7 +487,8 @@ func spawn_foxfire(from: Vector2, target: Node2D, dmg: float, tag := "foxfire") 
 	var b := Bullet.new()
 	b.shape_kind = 3
 	b.radius = 6.0
-	b.homing = 7.0
+	var quick := 1.0 + val("inari_u9") * 0.01   # 九尾の追い火
+	b.homing = 7.0 * quick
 	b.color = kami_color("inari")
 	b.kami = "inari"
 	b.tag = tag
@@ -475,7 +496,7 @@ func spawn_foxfire(from: Vector2, target: Node2D, dmg: float, tag := "foxfire") 
 	if has("duo_ama_inari"):
 		b.pierce = 1
 	var dir := (target.global_position - from).normalized() if target != null else Vector2.UP.rotated(randf_range(-0.6, 0.6))
-	b.setup(from, dir * 520.0, dmg, true)
+	b.setup(from, dir * 520.0 * quick, dmg, true)
 	Game.inst.spawn_deferred(b)
 	Sfx.play("fox", -20.0, randf_range(0.9, 1.2), 0.06)
 
@@ -701,7 +722,24 @@ func _call_tick(delta: float) -> void:
 
 # ---------- 維持処理 ----------
 
+## 自機が酒気の霧の中にいるか（薬酒）
+func in_fog() -> bool:
+	for z in get_tree().get_nodes_in_group("zone"):
+		if is_instance_valid(z) and z.kind == "fog" and z.position.distance_to(position) <= z.r:
+			return true
+	return false
+
+
 func _upkeep(delta: float) -> void:
+	dash_buff_t = maxf(0.0, dash_buff_t - delta)
+	graze_buff_t = maxf(0.0, graze_buff_t - delta)
+	if has("suku_u7"):
+		_fog_t += delta
+		if _fog_t >= 1.0:
+			_fog_t -= 1.0
+			if hp < stats["max_hp"] and in_fog():
+				heal(val("suku_u7"), false)
+				Fx.sparks(position, Vector2.UP, Color(0.62, 1.0, 0.55), 3, 120.0)
 	if has("suku_u5"):
 		regen_t += delta
 		if regen_t >= 1.0:
@@ -737,6 +775,7 @@ func _graze() -> void:
 		if d < 30.0 and d > radius + b.radius:
 			_grazed[b.get_instance_id()] = true
 			grazes += 1
+			graze_buff_t = 3.0
 			add_call_gauge(0.004 + val("saru_leg") * 0.01)
 			Fx.sparks(b.position, Vector2.UP, Color(1, 1, 1), 2, 200.0)
 			Fx.number(position + Vector2(0, -40), "かすり", Color(1, 1, 1, 0.6), 9.0)
@@ -772,6 +811,8 @@ func take_damage(d: float, _crit := false, _at := Vector2.ZERO, source := "") ->
 	if source != "":
 		last_hit_by = source
 	d *= cost_mult("taken") * (1.25 if has("curse_fire") else 1.0)
+	if has("suku_u7") and in_fog():
+		d *= 0.8   # 薬酒：霧の中では被ダメージ -20%
 	if shield > 0:
 		shield -= 1
 		shield_t = val("ama_u5") if has("ama_u5") else 99.0

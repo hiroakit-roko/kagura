@@ -559,6 +559,11 @@ func _drop(pos: Vector2, xp_total: float) -> void:
 		var p := Pickup.new()
 		p.setup(pos + Vector2(randf_range(-6, 6), randf_range(-6, 6)), Pickup.Kind.XP, xp_total / chance * 0.75)
 		spawn_deferred(p)
+	# 油揚げの供物（稲荷）：余分な勾玉
+	if player != null and is_instance_valid(player) and player.has("inari_u8") and randf() < player.val("inari_u8") * 0.01:
+		var extra := Pickup.new()
+		extra.setup(pos + Vector2(randf_range(-14, 14), randf_range(-8, 8)), Pickup.Kind.XP, xp_total * 0.6)
+		spawn_deferred(extra)
 	if randf() < 0.045:
 		var h := Pickup.new()
 		h.setup(pos, Pickup.Kind.HEAL, 12.0)
@@ -644,8 +649,12 @@ func _on_boon_chosen(idx: int) -> void:
 	Boons.take(player, o)
 	var b: Dictionary = o["boon"]
 	var col: Color = Cfg.RAR_COLOR[int(o["rar"])]
-	ui.banner(String(b["name"]), Kami.describe(b, int(player.boons[b["id"]]["rar"]), int(player.boons[b["id"]]["lv"])), col)
-	Sfx.play("suzu", -6.0)
+	if String(o["type"]) == "curse":
+		ui.banner(String(b["name"]), String(b.get("desc", "")), Color(1, 0.4, 0.5))
+		Sfx.play("doom", -8.0, 0.8)
+	else:
+		ui.banner(String(b["name"]), Kami.describe(b, int(player.boons[b["id"]]["rar"]), int(player.boons[b["id"]]["lv"])), col)
+		Sfx.play("suzu", -6.0)
 	if _offer_reason == "level":
 		player.pending_levels = maxi(0, player.pending_levels - 1)
 	_close_choice()

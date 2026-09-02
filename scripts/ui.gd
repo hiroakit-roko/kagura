@@ -830,9 +830,13 @@ class ConfirmView:
 
 		# 契約の代償
 		y = 626.0
-		Ui.panel(self, Rect2(x0 - 8, y - 6, w + 16, 96), Color(1, 0.45, 0.5), a, 0.85)
-		Ui.txt(self, ui.font_display, Vector2(x0 + 6, y + 16), "契約の代償", 14, Cfg.with_a(Color(1, 0.6, 0.65), a))
-		Ui.txt(self, ui.font, Vector2(x0 + 96, y + 15), "神との契りには、ささやかな代償が伴う", 10, Color(1, 0.8, 0.85, 0.8 * a))
+		Ui.panel(self, Rect2(x0 - 8, y - 6, w + 16, 96), Color(0.85, 0.2, 0.3), a, 0.9)
+		# 血の滴り（縁の飾り）
+		for i in 5:
+			var bx := x0 + 20.0 + float(i) * (w - 40.0) / 4.0 + sin(_t * 0.7 + float(i)) * 3.0
+			draw_circle(Vector2(bx, y - 6.0), 2.0 + 0.6 * float(i % 2), Color(0.7, 0.08, 0.15, 0.8 * a))
+		Ui.txt(self, ui.font_display, Vector2(x0 + 6, y + 16), "契約の代償", 14, Cfg.with_a(Color(1, 0.45, 0.5), a))
+		Ui.txt(self, ui.font, Vector2(x0 + 96, y + 15), "神との契りは血判に等しい。捧げたものは、二度と戻らぬ", 10, Color(1, 0.72, 0.76, 0.9 * a))
 		Ui.txt(self, ui.font_bold, Vector2(x0 + 6, y + 40), "一、", 12, Color(1, 0.7, 0.75, a))
 		Ui.para(self, ui.font, Vector2(x0 + 30, y + 40), String(k["cost"]), w - 40, 12, 1, Color(1, 0.92, 0.94, a))
 		Ui.txt(self, ui.font_bold, Vector2(x0 + 6, y + 66), "二、", 12, Color(1, 0.7, 0.75, a))
@@ -970,7 +974,8 @@ class KamiChoiceView:
 		var lines := [
 			"① 神を迎えると神器（自動発射の武器）が付く。主神は 100%、副神は 50% の威力。",
 			"② 位 2 で主神、位 4 と位 7 で副神を迎える。迎えるだけで報酬になり、他の選択は続かない。",
-			"③ それ以外の位上がりでは神が現れ、神器の形を変える強化を 3 枚提示する。1 枚選ぶ。",
+			"③ それ以外の位上がりでは神が現れ、能力を 3 枚提示する。神ごとに 9 種（凡 4・稀 3・秀 2）から 3 つまで。",
+			"　 空き枠のぶんが新しい能力、残りは選んだ能力の強化（重ねると数値が伸びる）。",
 		]
 		var y := r.position.y + 42.0
 		for l: String in lines:
@@ -1162,6 +1167,14 @@ class BoonsView:
 				Ui.txt(self, ui.font, Vector2(r.position.x + 54, r.position.y + 16), "主神" if i == 0 else "副神", 9, Color(1, 0.9, 0.7, 0.8 * a))
 				Ui.txt(self, ui.font_display, Vector2(r.position.x + 54, r.position.y + 32), String(k["name"]), 12, Cfg.with_a(k["color"], a))
 				Ui.txt(self, ui.font, Vector2(r.position.x + 54, r.position.y + 48), String(k["weapon"]) + "  ×%.2f" % p.kami_power(id), 10, Color(1, 1, 1, 0.75 * a))
+				# 能力の枠：選んだ数ぶん埋まる
+				var owned := Boons.owned_of(p, id).size()
+				for j in Boons.MAX_PER_KAMI:
+					var filled := j < owned
+					var dot := Vector2(r.end.x - 14.0 - float(Boons.MAX_PER_KAMI - 1 - j) * 12.0, r.position.y + 14.0)
+					draw_circle(dot, 3.5, Cfg.with_a(k["color"], (0.95 if filled else 0.25) * a))
+					if not filled:
+						draw_arc(dot, 3.5, 0, TAU, 12, Cfg.with_a(k["color"], 0.6 * a), 1.0, true)
 			else:
 				Ui.panel(self, r, Color(0.5, 0.5, 0.6), a * 0.6, 0.5)
 				Ui.txt(self, ui.font, Vector2(r.position.x, r.position.y + 34), "空き（位 %d で副神を迎える）" % int(Boons.RECRUIT_LEVELS[i]), 10, Color(1, 1, 1, 0.45 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
@@ -1220,8 +1233,13 @@ class BoonsView:
 			var prev := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv))
 			var nxt := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv + 1))
 			draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(Cfg.C_GOLD, 0.12 * a))
-			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "重ねる  ×%d → ×%d" % [cur_lv, cur_lv + 1], 11, Cfg.with_a(Cfg.C_GOLD, a))
+			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "強化  Lv.%d → Lv.%d（最大 %d）" % [cur_lv, cur_lv + 1, int(b.get("maxlv", 3))], 11, Cfg.with_a(Cfg.C_GOLD, a))
 			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), prev + "  →  " + nxt, 11, Color(1, 1, 1, a * 0.9))
+		elif type == "upgrade" and p != null:
+			var owned := Boons.owned_of(p, String(b["kami"])).size()
+			draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(kc, 0.10 * a))
+			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "新しい能力  %d / %d 枠目" % [owned + 1, Boons.MAX_PER_KAMI], 11, Cfg.with_a(kc.lightened(0.3), a))
+			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), "重ねて Lv.%d まで強化できる" % int(b.get("maxlv", 3)), 10, Color(1, 1, 1, a * 0.8))
 		elif special:
 			Ui.txt(self, ui.font, Vector2(rr.position.x, rr.end.y - 26), "重ねることはできない", 10, Cfg.with_a(col, a * 0.8), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 		Ui.txt(self, ui.font_bold, Vector2(rr.position.x + 10, rr.end.y - 12), "[%d]" % (i + 1), 14, Cfg.with_a(col, a))

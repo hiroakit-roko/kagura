@@ -43,6 +43,7 @@ var st := {
 	"chill": {"stacks": 0, "t": 0.0},
 }
 var _last_pos := Vector2.ZERO
+var last_tag := ""          # 最後に受けた攻撃の種類（撃破時の派生に使う）
 var _rupture_acc := 0.0
 var _hang_t := 0.0
 
