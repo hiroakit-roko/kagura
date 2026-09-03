@@ -57,7 +57,7 @@ const LIST := [
 		"id": "tsuki", "name": "月読命", "kana": "ツクヨミ", "title": "夜を統べる神",
 		"color": Color(0.78, 0.72, 1.0), "color2": Color(0.45, 0.40, 0.85), "emblem": "moon",
 		"role": "近接周回・時限爆発・範囲",
-		"weapon": "月輪", "weapon_desc": "自機の周りを回る三日月の刃。触れた敵に宿命を刻み、少し遅れて範囲爆発",
+		"weapon": "月輪", "weapon_desc": "自機の周りを回る三日月の刃。触れた敵に宿命を刻み、少し遅れて範囲爆発。触れた敵弾も時々消す",
 		"cast": "新月", "cast_desc": "3 体まで貫き、大きな宿命を刻んで広く爆ぜさせる",
 		"call": "常世の月", "call_desc": "刻が止まり、画面中の敵すべてに宿命を刻む", "call_line": "常世の月よ、刻を止めよ。",
 		"status": "宿命", "status_desc": "刻まれた敵は 1.1 秒後に爆ぜ、周囲も巻き込む（紫の縮む輪）",
@@ -184,7 +184,7 @@ const BOONS := [
 	{"id": "tsuki_u9", "kami": "tsuki", "tier": Cfg.Rar.RARE, "name": "月華", "desc": "宿命の爆発が {v} の確率で会心になる", "base": 25.0, "fmt": "pct", "maxlv": 3},
 	{"id": "tsuki_u7", "kami": "tsuki", "tier": Cfg.Rar.RARE, "name": "新月の影", "desc": "宿命が爆ぜて敵が倒れると、{v} の確率で近くの敵に宿命が移る", "base": 40.0, "fmt": "pct", "maxlv": 3},
 	{"id": "tsuki_u1", "kami": "tsuki", "tier": Cfg.Rar.EPIC, "name": "月輪の刃", "desc": "回る刃 +{v}", "base": 1.0, "fmt": "num", "maxlv": 3},
-	{"id": "tsuki_u8", "kami": "tsuki", "tier": Cfg.Rar.EPIC, "name": "月の盾", "desc": "刃が触れた敵弾を {v} の確率で消す", "base": 50.0, "fmt": "pct", "maxlv": 3},
+	{"id": "tsuki_u8", "kami": "tsuki", "tier": Cfg.Rar.EPIC, "name": "月の帳", "desc": "自機の近くに来た敵弾の速さ -{v}", "base": 30.0, "fmt": "pct", "maxlv": 3},
 	{"id": "tsuki_leg", "kami": "tsuki", "name": "月読の裁定", "rar": Cfg.Rar.LEGENDARY,
 		"desc": "宿命が爆ぜるとき、残り HP {v} 以下の敵（ボス以外）は即座に倒れる", "base": 25.0, "fmt": "pct", "maxlv": 2},
 

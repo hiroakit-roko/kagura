@@ -1,6 +1,8 @@
 class_name Player
 extends Area2D
 
+const VEIL_R := 150.0   # 月の帳の届く距離
+
 ## 自機（魔法少女）。walk.gif から抜き出した後ろ姿のスプライトで歩く。
 ##   - 基本の弾（巫矢）は常に自動で撃つ
 ##   - 迎えた神ごとに Weapon（神器）が付く。主神も副神も同じ威力（差は詠唱・神招きだけ）
@@ -985,6 +987,9 @@ func _die() -> void:
 func _draw() -> void:
 	var main := main_god()
 	var col := kami_color(main) if main != "" else Cfg.C_PLAYER
+	if has("tsuki_u8"):
+		# 月の帳：敵弾が鈍る範囲を薄い輪で示す
+		draw_arc(Vector2.ZERO, VEIL_R, 0, TAU, 64, Color(0.78, 0.72, 1.0, 0.10 + 0.03 * sin(t * 2.0)), 1.5, true)
 
 	var mr := 26.0 + 2.0 * sin(t * 3.0)
 	var ma := 0.35 if main != "" else 0.18

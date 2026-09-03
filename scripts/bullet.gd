@@ -99,6 +99,10 @@ func _physics_process(delta: float) -> void:
 		var sf := Game.enemy_bullet_slow
 		if sf > 0.0:
 			v *= maxf(0.35, 1.0 - sf)
+		# 月の帳：自機の近くに入った敵弾は遅くなる
+		var pl := Game.inst.player if Game.inst != null else null
+		if pl != null and is_instance_valid(pl) and pl.has("tsuki_u8") and position.distance_squared_to(pl.position) <= Player.VEIL_R * Player.VEIL_R:
+			v *= 1.0 - minf(pl.val("tsuki_u8") * 0.01, 0.6)
 	position += v * delta
 	travel += v.length() * delta
 	rotation = v.angle() + PI * 0.5

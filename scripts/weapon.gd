@@ -270,7 +270,11 @@ func blade_radius() -> float:
 
 
 func blade_size() -> float:
-	return 22.0 * (1.15 if p.has("tsuki_u8") else 1.0)
+	return 24.0
+
+
+## 月輪が触れた敵弾を消す確率（既定の防御性能）
+const BLADE_ERASE := 0.35
 
 
 func _blades(delta: float) -> void:
@@ -281,8 +285,8 @@ func _blades(delta: float) -> void:
 	_spin += delta * 2.6 * (1.0 + p.val("tsuki_u6") * 0.01)
 	var spin := _spin
 	var br := blade_size()
-	# 月の盾：刃が触れた敵弾を消す
-	if p.has("tsuki_u8"):
+	# 刃が触れた敵弾を確率で消す（月読の既定の守り）
+	if true:
 		for eb in Game.ebullets():
 			if not is_instance_valid(eb):
 				continue
@@ -290,7 +294,7 @@ func _blades(delta: float) -> void:
 				var a := spin + TAU * float(i) / float(n)
 				var bp := p.position + Vector2(cos(a), sin(a)) * r
 				if bp.distance_to(eb.position) <= br + eb.radius:
-					if randf() < p.val("tsuki_u8") * 0.01:   # 月の盾：確率で消す
+					if randf() < BLADE_ERASE:
 						Fx.sparks(eb.position, Vector2.UP, col, 2, 160.0)
 						eb.vanish()
 					break
