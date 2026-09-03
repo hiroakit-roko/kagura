@@ -651,7 +651,7 @@ func take_damage(d: float, crit: bool, at: Vector2, quiet := false) -> void:
 	flash = 1.0 if not quiet else maxf(flash, 0.5)
 	if crit:
 		# 会心：大きな橙金の数字に「会心」を添え、光条と閃きで一目で分かるように
-		Fx.number(at + Vector2(0, -radius - 6.0), "会心 " + str(int(round(d))), Cfg.C_CRIT, 26.0, true)
+		Fx.number(at + Vector2(0, -radius - 6.0), str(int(round(d))) + "!", Cfg.C_CRIT, 26.0, true)
 		Fx.rays(at, Cfg.C_CRIT, 8, 6.0, 34.0, 0.22)
 		Fx.puff(at, 6.0, radius * 2.4, Cfg.with_a(Cfg.C_CRIT, 0.9), 0.25)
 		Fx.sparks(at, Vector2.UP, Cfg.C_CRIT, 8, 420.0)
