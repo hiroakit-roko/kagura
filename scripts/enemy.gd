@@ -277,6 +277,14 @@ func _tick_status(delta: float) -> void:
 			c["stacks"] = 0
 
 
+## 冷気は弾の発射頻度も落とす（雑魚は最大 -50%、ボスは -25%）
+func fire_mult() -> float:
+	var c: Dictionary = st["chill"]
+	if int(c["stacks"]) > 0:
+		return 1.0 - minf(0.1 * float(c["stacks"]), 0.5 if not is_boss else 0.25)
+	return 1.0
+
+
 func speed_mult() -> float:
 	var m := 1.0
 	var c: Dictionary = st["chill"]
@@ -417,14 +425,14 @@ func _behavior(delta: float) -> void:
 		"grunt":
 			position.y += speed * delta
 			position.x += sin(t * 1.4 + _phase) * 26.0 * delta
-			fire_t -= delta
+			fire_t -= delta * fire_mult()
 			if fire_t <= 0.0 and position.y > 40.0 and position.y < Cfg.H * 0.75:
 				fire_t = _cool(2.4, 3.8)
 				_shoot_aimed(1 if wave < 4 else 2, 10.0, _spd(285.0))
 		"weaver":
 			position.y += speed * delta
 			position.x += cos(t * 2.1 + _phase) * 165.0 * delta * _dir
-			fire_t -= delta
+			fire_t -= delta * fire_mult()
 			if fire_t <= 0.0 and position.y > 40.0 and position.y < Cfg.H * 0.8:
 				fire_t = _cool(2.6, 4.0)
 				_shoot_spread(2 if wave < 4 else 3, 22.0, _spd(240.0))
@@ -451,14 +459,14 @@ func _behavior(delta: float) -> void:
 				position.y += speed * delta
 			else:
 				position.x += sin(t * 0.8 + _phase) * 60.0 * delta
-			fire_t -= delta
+			fire_t -= delta * fire_mult()
 			if fire_t <= 0.0 and position.y >= 100.0:
 				fire_t = _cool(2.6, 3.2)
 				_shoot_radial(8 + mini(5, int(wave / 4)), _spd(215.0), t * 0.6)
 		"splitter":
 			position.y += speed * delta
 			position.x += sin(t * 1.1 + _phase) * 40.0 * delta
-			fire_t -= delta
+			fire_t -= delta * fire_mult()
 			if fire_t <= 0.0 and position.y > 40.0 and position.y < Cfg.H * 0.8:
 				fire_t = _cool(2.8, 4.2)
 				_shoot_aimed(2, 14.0, _spd(235.0))
@@ -479,7 +487,7 @@ func _behavior(delta: float) -> void:
 			else:
 				position.x += sin(t * 0.7 + _phase) * 50.0 * delta
 				position.y += 8.0 * delta
-			fire_t -= delta
+			fire_t -= delta * fire_mult()
 			if fire_t <= 0.0 and position.y >= target_y - 20.0:
 				fire_t = _cool(2.6, 3.4)
 				_shoot_aimed(3, 16.0, _spd(150.0), 9.0)
@@ -489,7 +497,7 @@ func _behavior(delta: float) -> void:
 				_dir = 1.0 if position.x < Cfg.W * 0.5 else -1.0
 			position.x += speed * _dir * delta
 			position.y += (70.0 + sin(t * 3.0 + _phase) * 90.0) * delta
-			fire_t -= delta
+			fire_t -= delta * fire_mult()
 			if fire_t <= 0.0 and position.x > 30.0 and position.x < Cfg.W - 30.0:
 				fire_t = _cool(1.2, 2.0)
 				_emit(PI * 0.5, 1, 0.0, _spd(220.0))
@@ -497,7 +505,7 @@ func _behavior(delta: float) -> void:
 				queue_free()
 		"oni":
 			position.y += speed * delta
-			fire_t -= delta
+			fire_t -= delta * fire_mult()
 			if fire_t <= 0.0 and position.y > 40.0:
 				fire_t = _cool(3.2, 4.0)
 				_shoot_radial(10 + mini(6, int(wave / 5)), _spd(170.0), randf() * TAU)
@@ -515,7 +523,7 @@ func _behavior(delta: float) -> void:
 					position.y = randf_range(110.0, 220.0)
 					Fx.ring(position, color, 4.0, radius * 3.0, 0.3, 2.0)
 					_spawn_in = 0.3
-				fire_t -= delta
+				fire_t -= delta * fire_mult()
 				if fire_t <= 0.0 and _spawn_in <= 0.0:
 					fire_t = _cool(2.4, 3.2)
 					var p3 := _player()

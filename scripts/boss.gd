@@ -162,7 +162,7 @@ func _behavior(delta: float) -> void:
 			_do_burst_shot(ph)
 		return
 
-	atk_cd -= delta
+	atk_cd -= delta * fire_mult()
 	if atk_cd <= 0.0:
 		_choose_attack(ph)
 
