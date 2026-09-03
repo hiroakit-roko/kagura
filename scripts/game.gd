@@ -221,7 +221,7 @@ func _boon_snapshot() -> Dictionary:
 ## 世界のランキングへ送り、順位を結果画面に出す
 func _submit_global() -> void:
 	ui.overlay.global_rank = 0
-	if net == null or not net.configured():
+	if net == null or not net.configured() or not net.can_submit():
 		return
 	ui.overlay.global_rank = -1   # 送信中
 	var entry := Records.last_entry.duplicate()

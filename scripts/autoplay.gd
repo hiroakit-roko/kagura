@@ -296,6 +296,8 @@ func _flow_test() -> void:
 				var lv := int(g.player.boons[b["id"]]["lv"]) if (b.has("id") and g.player.boons.has(b["id"])) else 0
 				return "%s:%s[%s]%s" % [o["type"], b.get("name", "?"), Cfg.RAR_NAME[int(o["rar"])], (" Lv%d→%d" % [lv, lv + 1]) if lv > 0 else " 新"])
 			print("[flow] lv%d BOON from %s: %s" % [g.player.level, g._offer_kami, str(desc)])
+			await _wait(0.4)
+			await shot("03_boon_lv%d.png" % g.player.level)
 			g._on_boon_chosen(randi() % g._offers.size())
 		else:
 			print("[flow] lv%d state=%d" % [g.player.level, g.state])

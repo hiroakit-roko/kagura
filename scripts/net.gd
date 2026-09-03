@@ -106,11 +106,15 @@ func _request(path: String, method: int, body: String, extra_headers: Array, cb:
 		r.queue_free()
 
 
-## 記録を送る（同じ run_id があれば置き換える）。cb(ok)
-## 手元の開発ビルド（version が dev）や自動テストからは送らない
-func submit(entry: Dictionary, cb: Callable) -> void:
+## 送ってよいビルドか（手元の開発ビルドと自動テストからは送らない）
+func can_submit() -> bool:
 	BuildInfo.load_info()
-	if BuildInfo.version == "dev" or OS.get_cmdline_user_args().has("--capture"):
+	return BuildInfo.version != "dev" and not OS.get_cmdline_user_args().has("--capture")
+
+
+## 記録を送る（同じ run_id があれば置き換える）。cb(ok)
+func submit(entry: Dictionary, cb: Callable) -> void:
+	if not can_submit():
 		cb.call(false)
 		return
 	var row := {

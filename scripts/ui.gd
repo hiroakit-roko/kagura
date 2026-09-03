@@ -54,14 +54,22 @@ static func load_fonts() -> Array:
 const BRK := TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_GRAPHEME_BOUND
 
 
+## 小さい文字は少し大きく描く（本文は 1.12 倍、最小 11。大見出しはそのまま）
+static func fsize(size: float) -> int:
+	if size >= 26.0:
+		return int(size)
+	return maxi(11, int(round(size * 1.12)))
+
+
 static func txt(ci: CanvasItem, f: Font, pos: Vector2, s: String, size: float, col: Color,
 		align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0, shadow := true) -> void:
 	if f == null:
 		return
+	var sz := fsize(size)
 	if shadow:
-		ci.draw_string(f, pos + Vector2(1.5, 1.5), s, align, width, int(size),
+		ci.draw_string(f, pos + Vector2(1.5, 1.5), s, align, width, sz,
 				Color(0, 0, 0, col.a * 0.65))
-	ci.draw_string(f, pos, s, align, width, int(size), col)
+	ci.draw_string(f, pos, s, align, width, sz, col)
 
 
 ## 縦書き（1 文字ずつ下へ）
@@ -77,8 +85,9 @@ static func vtxt(ci: CanvasItem, f: Font, pos: Vector2, s: String, size: float, 
 
 static func para(ci: CanvasItem, f: Font, pos: Vector2, s: String, width: float, size: int, lines: int, col: Color,
 		align := HORIZONTAL_ALIGNMENT_LEFT) -> void:
-	ci.draw_multiline_string(f, pos + Vector2(1.2, 1.2), s, align, width, size, lines, Color(0, 0, 0, col.a * 0.5), BRK)
-	ci.draw_multiline_string(f, pos, s, align, width, size, lines, col, BRK)
+	var sz := fsize(float(size))
+	ci.draw_multiline_string(f, pos + Vector2(1.2, 1.2), s, align, width, sz, lines, Color(0, 0, 0, col.a * 0.5), BRK)
+	ci.draw_multiline_string(f, pos, s, align, width, sz, lines, col, BRK)
 
 
 ## 麻の葉風の背景模様
@@ -476,11 +485,15 @@ class ChoiceView:
 	func _process(delta: float) -> void:
 		_t += delta
 		anim = minf(1.0, anim + delta * 3.0)
-		var h := card_at(get_local_mouse_position())
-		if h != hover:
-			hover = h
-			if h >= 0:
-				Sfx.play("hover", -18.0, 1.0, 0.05)
+		# スマホにはカーソルが無いので、選択の強調はしない
+		if Game.inst != null and Game.inst.is_touch():
+			hover = -1
+		else:
+			var h := card_at(get_local_mouse_position())
+			if h != hover:
+				hover = h
+				if h >= 0:
+					Sfx.play("hover", -18.0, 1.0, 0.05)
 		queue_redraw()
 
 	func count() -> int:
@@ -1319,9 +1332,26 @@ class BoonsView:
 		draw_rect(Rect2(rr.position + Vector2(0, 3), Vector2(rr.size.x, 30.0)), Cfg.with_a(col, (0.30 if sel else 0.20) * a))
 		Ui.txt(self, ui.font_display, rr.position + Vector2(12, 26), Cfg.RAR_NAME[rar], 18, Cfg.with_a(col, a))
 		Ui.txt(self, ui.font, rr.position + Vector2(36, 24), Cfg.RAR_LONG[rar], 10, Cfg.with_a(col, a * 0.9))
-		var label: String = {"upgrade": "神器の強化", "legendary": "伝説", "duo": "双神"}[type]
-		draw_rect(Rect2(rr.end.x - 78, rr.position.y + 8, 68, 20), Cfg.with_a(kc, 0.35 * a))
-		Ui.txt(self, ui.font_bold, Vector2(rr.end.x - 78, rr.position.y + 23), label, 11, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 68)
+		# 新規か強化かを大きな札で示す（右上、斜めの帯）
+		var pp := Game.inst.player
+		var owned_now := pp != null and pp.boons.has(String(o["boon"].get("id", "")))
+		var tag := "新"
+		var tag_col := Color(0.55, 0.95, 1.0)
+		if type == "legendary":
+			tag = "伝説"
+			tag_col = Cfg.RAR_COLOR[Cfg.Rar.LEGENDARY]
+		elif type == "duo":
+			tag = "双神"
+			tag_col = Cfg.RAR_COLOR[Cfg.Rar.DUO]
+		elif owned_now:
+			tag = "強化"
+			tag_col = Cfg.C_GOLD
+		var tw := 58.0 if tag.length() <= 1 else 78.0
+		var tr := Rect2(rr.end.x - tw - 8.0, rr.position.y + 38.0, tw, 30.0)
+		draw_rect(tr.grow(2.0), Color(0, 0, 0, 0.5 * a))
+		draw_rect(tr, Cfg.with_a(tag_col, 0.92 * a))
+		draw_colored_polygon(PackedVector2Array([tr.position, tr.position + Vector2(-10, 15), tr.position + Vector2(0, 30)]), Cfg.with_a(tag_col, 0.92 * a))
+		Ui.txt(self, ui.font_display, Vector2(tr.position.x, tr.position.y + 23), tag, 20 if tag.length() <= 1 else 17, Color(0.08, 0.05, 0.1, a), HORIZONTAL_ALIGNMENT_CENTER, tr.size.x, false)
 
 		Emblem.draw(self, String(k["emblem"]), rr.position + Vector2(rr.size.x * 0.5, 74), 26.0, kc, k["color2"], _t, a * 0.95)
 		if type == "duo":
@@ -1340,9 +1370,9 @@ class BoonsView:
 		if cur_lv > 0:
 			var prev := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv))
 			var nxt := Kami.fmt_value(b, Kami.value(b, show_rar, cur_lv + 1))
-			draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(Cfg.C_GOLD, 0.12 * a))
-			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 38), "強化  Lv.%d → %d" % [cur_lv, cur_lv + 1], 12, Cfg.with_a(Cfg.C_GOLD, a))
-			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 26), prev + "  →  " + nxt, 12, Color(1, 1, 1, a * 0.9))
+			draw_rect(Rect2(x0 - 4, rr.end.y - 58, w + 8, 38), Cfg.with_a(Cfg.C_GOLD, 0.12 * a))
+			Ui.txt(self, ui.font_bold, Vector2(x0, rr.end.y - 42), "強化  Lv.%d → %d" % [cur_lv, cur_lv + 1], 12, Cfg.with_a(Cfg.C_GOLD, a))
+			Ui.txt(self, ui.font, Vector2(x0, rr.end.y - 25), prev + "  →  " + nxt, 12, Color(1, 1, 1, a * 0.9))
 		elif type == "upgrade" and p != null:
 			var owned := Boons.owned_of(p, String(b["kami"])).size()
 			draw_rect(Rect2(x0 - 4, rr.end.y - 52, w + 8, 30), Cfg.with_a(kc, 0.10 * a))
