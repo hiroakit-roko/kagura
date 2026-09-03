@@ -25,7 +25,7 @@ var stats := {
 	"xp_mult": 1.15,
 	"magnet": 170.0,
 	"dash_cd": 2.2,
-	"cast_max": 2,
+	"cast_max": 3,
 }
 
 # ---- 神と恩恵 ----
@@ -55,7 +55,7 @@ var radius := 7.0
 var _shape: CircleShape2D
 var _dash_hit := {}          # この疾走で触れた敵（大導き）
 var fire_cd := 0.0
-var cast_charges := 2
+var cast_charges := 0        # 詠唱の札の枚数。0 から始まり、拾って増える（最大 cast_max）
 var iframe := 0.0
 var shield := 0
 var shield_t := 0.0
@@ -103,7 +103,7 @@ func _ready() -> void:
 	add_child(cs)
 	area_entered.connect(_on_area)
 	hp = stats["max_hp"]
-	cast_charges = int(stats["cast_max"])
+	cast_charges = 0
 
 	tex = load(SHEET)
 	spr = Sprite2D.new()
@@ -279,13 +279,15 @@ func on_boons_changed() -> void:
 	radius = 7.0 * hit_scale()
 	if _shape != null:
 		_shape.radius = radius
+	if spr != null:
+		spr.scale = Vector2(SPR_SCALE, SPR_SCALE) * hit_scale()
 	new_max = maxf(new_max, 30.0)
 	var diff := new_max - float(stats["max_hp"])
 	stats["max_hp"] = new_max
 	if diff > 0.0:
 		hp = minf(new_max, hp + diff)
 	hp = minf(hp, new_max)
-	stats["cast_max"] = 2 + (1 if has_relic("r_orb") else 0)
+	stats["cast_max"] = 3 + (2 if has_relic("r_orb") else 0)
 	if has_relic("r_fam_twin") and familiar_id != "" and (familiar2 == null or not is_instance_valid(familiar2)):
 		familiar2 = Familiar.new()
 		familiar2.setup(familiar_id, self)
@@ -373,7 +375,7 @@ func _move(delta: float) -> void:
 		if _ghost_t <= 0.0:
 			_ghost_t = 0.025
 			var gc := kami_color(main_god()) if main_god() != "" else Cfg.C_PLAYER
-			Fx.ghost(tex, HFRAMES, int(_anim) % HFRAMES, position + spr.position, SPR_SCALE, rotation, gc, 0.35)
+			Fx.ghost(tex, HFRAMES, int(_anim) % HFRAMES, position + spr.position, SPR_SCALE * hit_scale(), rotation, gc, 0.35)
 			Fx.sparks(position, -dash_dir, Color(1, 1, 1), 2, 220.0)
 		if dash_t <= 0.0:
 			iframe = maxf(iframe, 0.18)
@@ -498,7 +500,7 @@ func _weapons(delta: float) -> void:
 		_try_call()
 
 
-## 詠唱の札を拾った：回数が 1 戻る
+## 詠唱の札を拾った：1 枚増える（最大 cast_max）
 func pick_orb() -> void:
 	var before := cast_charges
 	cast_charges = mini(cast_charges + 1, int(stats["cast_max"]))
@@ -572,7 +574,6 @@ func _try_cast() -> void:
 		"ama":
 			# 八咫鏡：大きな鏡が前に浮き、敵弾を倍の威力で跳ね返す。触れた敵も焼く
 			var b := _cast_bullet(kami, 5, 58.0)
-			b.orb = true
 			b.reflect = true
 			b.pierce = 999
 			b.life = 3.6
@@ -581,7 +582,6 @@ func _try_cast() -> void:
 		"susa":
 			# 渦潮：大きな渦が敵を巻き込み、奥へ押し流す
 			var b := _cast_bullet(kami, 6, 36.0)
-			b.orb = true
 			b.mode = "vortex"
 			b.pierce = 999
 			b.kb = 760.0
@@ -598,7 +598,6 @@ func _try_cast() -> void:
 				used[t.get_instance_id()] = true
 				Combat.lightning(t, dmg * 0.6, Vector2(t.position.x + randf_range(-40, 40), -30.0), 0)
 			var b := _cast_bullet(kami, 2, 14.0)
-			b.orb = true
 			b.mode = "cloud"
 			b.zone_dmg = dmg * 0.7
 			b.zone_life = 4.5
@@ -607,7 +606,6 @@ func _try_cast() -> void:
 		"tsuki":
 			# 新月：3 体まで貫き、大きな宿命を刻んで広く爆ぜさせる
 			var b := _cast_bullet(kami, 2, 16.0)
-			b.orb = true
 			b.pierce = 3
 			b.doom = dmg * 2.4
 			b.setup(from, Vector2(0, -520.0), dmg * 0.6, true)
@@ -616,7 +614,6 @@ func _try_cast() -> void:
 			# 魅惑の舞：貫いた敵を必ず魅了（6 秒）。花弁が舞う
 			Fx.petals(from, col, 24, 260.0)
 			var b := _cast_bullet(kami, 2, 15.0)
-			b.orb = true
 			b.charm_chance = 1.0
 			b.pierce = 5
 			b.setup(from, Vector2(0, -520.0), dmg, true)
@@ -625,14 +622,11 @@ func _try_cast() -> void:
 			# 狐火乱舞：9 本の狐火が敵を追い、狐の印を刻む
 			var target := Combat.nearest_enemy(position, 900.0)
 			for i in 9:
-				var fb := spawn_foxfire(from + Vector2((float(i) - 4.0) * 12.0, 0), target, dmg * 0.45, "cast")
-				if i == 0:
-					fb.orb = true
+				spawn_foxfire(from + Vector2((float(i) - 4.0) * 12.0, 0), target, dmg * 0.45, "cast")
 		"suku":
 			# 大霧：広く長く残る酒気の霧。自身も一息つく（HP 回復）
 			heal(6.0, true)
 			var b := _cast_bullet(kami, 9, 13.0)
-			b.orb = true
 			b.zone_kind = "fog"
 			b.zone_r = 135.0 * (1.0 + val("suku_u1") * 0.01)
 			b.zone_life = 6.0 * (1.0 + val("suku_u2") * 0.01)
@@ -642,7 +636,6 @@ func _try_cast() -> void:
 		"iza":
 			# 黄泉の凍土：広い凍土を置き、その場にいた敵を凍らせる
 			var b := _cast_bullet(kami, 2, 14.0)
-			b.orb = true
 			b.zone_kind = "frost"
 			b.zone_r = 130.0
 			b.zone_life = 5.0
@@ -657,7 +650,6 @@ func _try_cast() -> void:
 			# 道開き：前方の敵弾を吹き飛ばし、大きな風の刃を 3 枚放つ。しばらく移動と連射が速い
 			haste_t = 6.0
 			Fx.slash(from, -PI * 0.5, 220.0, col, 3.0, 0.35, 18.0)
-			Game.inst.drop_orb(from + Vector2(randf_range(-40, 40), -240.0))   # 風の先に札が飛ぶ
 			for eb in Game.ebullets():
 				if is_instance_valid(eb) and eb.position.y < position.y and absf(eb.position.x - position.x) < 220.0:
 					eb.vanish()

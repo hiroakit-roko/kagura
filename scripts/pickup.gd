@@ -55,7 +55,7 @@ func _physics_process(delta: float) -> void:
 		var d := position.distance_to(pl.position)
 		var range_r: float = pl.magnet_range()
 		if kind == Kind.ORB:
-			range_r *= 1.6 * pl.cost_mult("orb")   # 珠は広めに吸い寄せる（建御雷の代償で狭まる）
+			range_r *= 1.6   # 札は広めに吸い寄せる
 		# 自機より下に抜けたアイテムは取り逃さないよう必ず吸い寄せる
 		if _pulled or d < range_r or position.y > pl.position.y + 40.0:
 			_pulled = true

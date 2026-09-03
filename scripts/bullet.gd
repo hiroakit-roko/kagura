@@ -138,9 +138,7 @@ func _expire() -> void:
 
 
 func _exit_tree() -> void:
-	# 詠唱の珠を落とす（ゲームのやり直しで片付けられるときは除く）
-	if orb and Game.inst != null and not Game.inst.resetting:
-		Game.inst.drop_orb(global_position)
+	pass   # （以前はここで詠唱の珠を落としていた。札は敵からのドロップに変えたので何もしない）
 
 
 func _find_target() -> Node2D:

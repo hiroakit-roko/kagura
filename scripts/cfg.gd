@@ -76,6 +76,8 @@ const SLOT_HINT := [
 # ステージ構成：8 波ごとに 1 ステージ。各ステージの最後の波がボス、第 3 ステージの最後がラスボス
 ## 画面全体の発光後処理を使うか。false なら手描きの光輪だけ（軽い）
 const GLOW_POST := false
+## 詠唱の札が敵から落ちる確率（1 体ごと）
+const TALISMAN_DROP := 0.02
 ## スマホの指への追従の基準（1.0 で指と同じ移動量）
 const TOUCH_SENS := 0.7
 const STAGE_LEN := 8

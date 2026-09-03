@@ -324,10 +324,10 @@ func _item_hint(kind: int) -> void:
 	match kind:
 		Pickup.Kind.XP: ui.banner("勾玉", "拾うと位が上がる", Cfg.C_XP, kind)
 		Pickup.Kind.HEAL: ui.banner("団子", "拾うと HP 回復", Cfg.C_HP, kind)
-		Pickup.Kind.ORB: ui.banner("詠唱の札", "拾うと詠唱が戻る", player.kami_color(player.main_god()) if (player != null and player.main_god() != "") else Color(0.8, 0.85, 1.0), kind)
+		Pickup.Kind.ORB: ui.banner("詠唱の札", "拾うと詠唱を 1 回撃てる（3 枚まで）", player.kami_color(player.main_god()) if (player != null and player.main_god() != "") else Color(0.8, 0.85, 1.0), kind)
 
 
-## 詠唱の札を落とす（詠唱の弾が消えた場所）。拾うと詠唱の回数が 1 戻る
+## 詠唱の札を落とす（まれなドロップ）。拾うと詠唱が 1 回撃てる
 func drop_orb(pos: Vector2) -> void:
 	if state == St.TITLE or player == null or not is_instance_valid(player):
 		return
@@ -413,9 +413,9 @@ func _tutorial(delta: float) -> void:
 				if _tut_t > 4.0:
 					_tut_step = 3
 					if is_touch():
-						ui.banner("右下の札", "詠唱：札を投げる、拾うと戻る　　神招き：ゲージ 1/4 で", Color(0.9, 0.9, 1.0))
+						ui.banner("右下の札", "詠唱：札を拾うと撃てる　　神招き：ゲージ 1/4 で", Color(0.9, 0.9, 1.0))
 					else:
-						ui.banner("Z 詠唱　X 神招き", "詠唱の札は拾うと戻る　　神招きはゲージ 1/4 で", Color(0.9, 0.9, 1.0))
+						ui.banner("Z 詠唱　X 神招き", "詠唱は札を拾うと撃てる　　神招きはゲージ 1/4 で", Color(0.9, 0.9, 1.0))
 			else:
 				_tut_t = 0.0
 
@@ -520,13 +520,8 @@ func _clear_wave() -> void:
 	if player != null and is_instance_valid(player):
 		player.heal(6.0, true)
 		player.add_xp(8.0 + float(wave) * 2.5)   # 取りこぼしても必ず成長できるよう保証
-		player.cast_charges = int(player.stats["cast_max"])   # 波を越えると詠唱の札は手元に戻る
 		if player.has_relic("r_heal_wave"):
 			player.heal(float(player.stats["max_hp"]) * 0.08, true)
-		for o in get_tree().get_nodes_in_group("pickup"):
-			if is_instance_valid(o) and o.kind == Pickup.Kind.ORB:
-				Fx.burst(o.position, player.kami_color(player.main_god()) if player.main_god() != "" else Color(1, 1, 1), 5, 120.0, 2.5, 0.3, true)
-				o.queue_free()
 		add_score(50 * wave)
 	if _boss_reward:
 		_boss_reward = false
@@ -675,6 +670,7 @@ func on_boss_killed(b: Boss) -> void:
 		var p := Pickup.new()
 		p.setup(b.position + Vector2(randf_range(-50, 50), 0), Pickup.Kind.HEAL, 18.0)
 		spawn_deferred(p)
+	drop_orb(b.position)   # 大妖は必ず札を 1 枚落とす
 
 
 
@@ -686,6 +682,11 @@ func _drop(pos: Vector2, xp_total: float) -> void:
 		p.setup(pos + Vector2(randf_range(-6, 6), randf_range(-6, 6)), Pickup.Kind.XP, xp_total / chance * 0.75)
 		spawn_deferred(p)
 		_item_hint(Pickup.Kind.XP)
+	# 詠唱の札：まれに落ちる（建御雷の代償で落ちにくく、神宝で落ちやすく）
+	if player != null and is_instance_valid(player) and player.main_god() != "":
+		var oc := Cfg.TALISMAN_DROP * player.cost_mult("orb") * (2.0 if player.has_relic("r_talisman_luck") else 1.0)
+		if randf() < oc:
+			drop_orb(pos)
 	# 油揚げの供物（稲荷）：余分な勾玉
 	if player != null and is_instance_valid(player) and player.has("inari_u8") and randf() < player.val("inari_u8") * 0.01:
 		var extra := Pickup.new()

@@ -547,7 +547,7 @@ func _behavior(delta: float) -> void:
 ## ウェーブが進むほど発射間隔を少しずつ詰める
 func _cool(lo: float, hi: float) -> float:
 	# 弾は少し控えめに（×1.18）。後半ほど間隔は詰まるが下限は 0.55
-	return randf_range(lo, hi) * 1.18 * clampf(0.85 - float(wave) * 0.015, 0.55, 1.0)
+	return randf_range(lo, hi) * 1.18 * clampf(0.88 - float(wave) * 0.012, 0.62, 1.0)
 
 
 ## 弾速もウェーブでじわじわ上がる

@@ -745,7 +745,7 @@ class HudView:
 				draw_line(c + Vector2(0, -3), c + Vector2(0, 5), Cfg.C_INK, 1.5)
 				draw_circle(c + Vector2(0, 7), 1.8, Color(0.85, 0.2, 0.25, 0.95))
 			else:
-				# 飛んでいった札：枠だけ。拾うと戻る
+				# まだ無い札：枠だけ
 				draw_rect(Rect2(c.x - 6, c.y - 10, 12, 20), Cfg.with_a(mc, 0.35 + 0.15 * sin(_t * 4.0)), false, 1.2)
 		Ui.txt(self, ui.font, Vector2(px, py + 24), "詠唱 Z" if p.cast_charges > 0 or main == "" else "札を拾え", 10, Color(1, 1, 1, 0.6) if p.cast_charges > 0 or main == "" else Cfg.with_a(mc, 0.6 + 0.4 * sin(_t * 5.0)))
 		var dx := px + 84.0
