@@ -55,6 +55,8 @@ static func _n(count: int) -> int:
 
 
 static func glow(ci: CanvasItem, pos: Vector2, r: float, color: Color) -> void:
+	if Cfg.NOGLOW:
+		return
 	_ensure_glow()
 	ci.draw_texture_rect(GLOW, Rect2(pos - Vector2(r, r), Vector2(r * 2.0, r * 2.0)), false, color)
 

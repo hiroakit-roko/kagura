@@ -159,7 +159,8 @@ func _perf_draw() -> void:
 	draw_line(Vector2(Cfg.W * 0.5 - 150.0, -80), Vector2(Cfg.W * 0.5 - 150.0, Cfg.H + 80), pc, 2.0)
 	draw_line(Vector2(Cfg.W * 0.5 + 150.0, -80), Vector2(Cfg.W * 0.5 + 150.0, Cfg.H + 80), pc, 2.0)
 
-	_draw_scenery(mix)
+	if not Cfg.NOSCENERY:
+		_draw_scenery(mix)
 
 	# 雲（複数の楕円を重ねる）
 	for c2: Dictionary in _clouds:

@@ -9,6 +9,9 @@ const H_BASE := 960.0
 static var H := 960.0
 ## 軽量描画（スマホ）。発光の省略・アンチエイリアス無し・粒を減らす
 static var LITE := false
+## 実機での切り分け用（URL の ?noglow ?noscenery ?fps=24 ?dpr=1.5 で切替）
+static var NOGLOW := false
+static var NOSCENERY := false
 ## 計測用：--skip=stars,hud のように描画を系ごとに止める
 static var SKIP: PackedStringArray = []
 static var AA := true

@@ -93,10 +93,28 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if String(a).begins_with("--skip="):
 			Cfg.SKIP = String(a).trim_prefix("--skip=").split(",")
-	# 軽量描画は見た目が落ちるので通常は使わない（計測用に --lite で強制できる）
-	if OS.get_cmdline_user_args().has("--lite"):
-		Cfg.LITE = true
-		Cfg.AA = false
+	# 描画要素の切り分けフラグ：起動引数（--noglow 等）か、Web なら URL（?noglow&noscenery&fps=24）
+	var flags: PackedStringArray = []
+	for a in OS.get_cmdline_user_args():
+		flags.append(String(a).trim_prefix("--"))
+	if OS.has_feature("web"):
+		var q = JavaScriptBridge.eval("location.search.replace(/^\\?/, '')")
+		if q != null:
+			for part in String(q).split("&"):
+				if part != "":
+					flags.append(part)
+	for f in flags:
+		if f == "lite":
+			Cfg.LITE = true
+			Cfg.AA = false
+		elif f == "noglow":
+			Cfg.NOGLOW = true
+		elif f == "noscenery":
+			Cfg.NOSCENERY = true
+		elif f == "noaa":
+			Cfg.AA = false
+		elif f.begins_with("fps="):
+			Engine.max_fps = maxi(10, int(f.trim_prefix("fps=")))
 
 	# 2D グロー（ネオン感の要）。Compatibility レンダラ（Web）でも動くよう、
 	# 使えるプロパティだけを設定し、閾値は 1.0 未満にしておく。
