@@ -201,7 +201,7 @@ func _wave() -> void:
 		b.crit_chance = p.crit_chance()
 		if p.has("susa_leg"):
 			b.eraser = true
-			b.erase_chance = 0.7
+			b.erase_chance = 0.6
 		elif p.has("susa_u7"):
 			b.eraser = true
 			b.erase_chance = p.val("susa_u7") * 0.01   # 潮騒：確率で消す
@@ -368,7 +368,7 @@ func _foxfire() -> void:
 func _gourd() -> void:
 	if cd > 0.0:
 		return
-	cd = _rate(2.2 * (1.0 - p.val("suku_u6") * 0.01))
+	cd = _rate(2.0 * (1.0 - p.val("suku_u6") * 0.01))
 	var lv: int = p.kami_lv.get(kami, 1)
 	var target := Combat.nearest_enemy(p.position, 900.0)
 	var to := Vector2(p.position.x, p.position.y - 300.0)
@@ -381,12 +381,12 @@ func _gourd() -> void:
 	b.tag = "gourd"
 	b.color = col
 	b.zone_kind = "fog"
-	b.zone_r = 62.0 * (1.0 + p.val("suku_u1") * 0.01 + p.val("duo_ama_suku") * 0.01) * (1.0 + 0.05 * float(lv / 3))
-	b.zone_life = 3.0 * (1.0 + p.val("suku_u2") * 0.01)
+	b.zone_r = 68.0 * (1.0 + p.val("suku_u1") * 0.01 + p.val("duo_ama_suku") * 0.01) * (1.0 + 0.05 * float(lv / 3))
+	b.zone_life = 3.5 * (1.0 + p.val("suku_u2") * 0.01)
 	b.zone_dmg = 0.0
 	b.life = clampf(p.position.distance_to(to) / 520.0, 0.25, 1.4)
 	var dir := (to - p.position).normalized()
-	b.setup(p.position + Vector2(0, -20), dir * 520.0, base_dmg() * 0.8 * power(), true)
+	b.setup(p.position + Vector2(0, -20), dir * 520.0, base_dmg() * 0.9 * power(), true)
 	Game.inst.world.add_child(b)
 	Sfx.play("miki", -20.0, 1.6, 0.2)
 
