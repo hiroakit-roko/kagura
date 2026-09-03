@@ -87,7 +87,9 @@ func _ready() -> void:
 	# 使えるプロパティだけを設定し、閾値は 1.0 未満にしておく。
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CANVAS
-	env.glow_enabled = true
+	# 発光の後処理は端末の解像度いっぱいで走り、スマホでは負荷の大きな部分になる。
+	# 光の質感は Fx.GLOW（手描きの光輪の加算合成）で作っているので、後処理は切っておく（Cfg.GLOW_POST で切り替え）
+	env.glow_enabled = Cfg.GLOW_POST
 	env.glow_intensity = 1.0
 	env.glow_bloom = 0.15
 	env.glow_hdr_threshold = 0.82
@@ -542,7 +544,7 @@ func _build_wave(w: int) -> Array:
 	var ki := 0
 
 	# 敵の総量。後半の増え方は緩やかに（数より個々の強さで難度を出す）
-	var budget := 8.0 + float(w) * 2.2 + float(w * w) * 0.06
+	var budget := (8.0 + float(w) * 2.2 + float(w * w) * 0.06) * 0.9
 	var out: Array = []
 	var tt := 0.7
 	var pace := clampf(1.0 - float(w) * 0.02, 0.55, 1.0)   # 後半は間隔が詰まる

@@ -22,7 +22,7 @@ var stats := {
 	"speed": 330.0,
 	"crit": 0.05,
 	"crit_mult": 2.0,
-	"xp_mult": 1.0,
+	"xp_mult": 1.15,
 	"magnet": 170.0,
 	"dash_cd": 2.2,
 	"cast_max": 2,
@@ -366,7 +366,8 @@ func _move(delta: float) -> void:
 		if tc != null and touch_move != Vector2.ZERO:
 			# スマホ：指の移動量に追従する。移動速度の補正ぶんだけ追従率が変わるので、
 			# 速い自機は同じ指の動きでより遠くへ、遅い自機は粘るように動く（速度の恩恵・代償が意味を持つ）
-			var sens := move_speed() / maxf(float(stats["speed"]), 1.0)
+			# 指と 1:1 だと速すぎて速度の差が出ないので、基準を 0.72 倍に落とし、速度の補正で伸ばす
+			var sens := Cfg.TOUCH_SENS * move_speed() / maxf(float(stats["speed"]), 1.0)
 			var maxlen := move_speed() * 3.6 * delta
 			position += (touch_move * sens).limit_length(maxlen)
 		else:

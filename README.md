@@ -234,7 +234,7 @@ godot --path . -- --capture --deathtest  # ゲームオーバー→リスター�
 
 ## 負荷対策（スマホの発熱）
 
-- HDR 2D は切ってある（発光は閾値 0.82 なので HDR なしでも出る。帯域が半分になる）。
+- HDR 2D と画面全体の発光後処理は切ってある（`Cfg.GLOW_POST`）。光の質感は Fx.GLOW の加算合成で作る。
 - 敵・敵弾の一覧は `Game.enemies()` / `Game.ebullets()` で物理フレームごとに 1 回だけ集める。
 - HUD の再描画は 30fps に間引く。背景の星は 1 回の draw_multiline でまとめて描く。
 

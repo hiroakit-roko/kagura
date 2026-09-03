@@ -74,6 +74,10 @@ const SLOT_HINT := [
 
 
 # ステージ構成：8 波ごとに 1 ステージ。各ステージの最後の波がボス、第 3 ステージの最後がラスボス
+## 画面全体の発光後処理を使うか。false なら手描きの光輪だけ（軽い）
+const GLOW_POST := false
+## スマホの指への追従の基準（1.0 で指と同じ移動量）
+const TOUCH_SENS := 0.72
 const STAGE_LEN := 8
 const STAGE_COUNT := 3
 const STAGE_NAME := ["参道", "拝殿", "奥宮"]
