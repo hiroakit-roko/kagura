@@ -703,7 +703,7 @@ func on_boss_killed(b: Boss) -> void:
 	boss = null
 	if b.is_final and not endless:
 		add_score(5000)
-		Music.stop()
+		# ラスボスの曲は踏破画面でもそのまま流し続ける（祟りの参道に進むと stage 曲に切り替わる）
 		hitstop(1.2, 0.1)
 		_on_cleared()
 		return
