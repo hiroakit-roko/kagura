@@ -128,6 +128,17 @@ static func pick_hint(verb: String, n := 3) -> String:
 static var _art_cache: Dictionary = {}
 
 
+## 透過 PNG の絵（顔絵など）
+static func art_png(name: String) -> Texture2D:
+	var key := "png:" + name
+	if _art_cache.has(key):
+		return _art_cache[key]
+	var path := "res://image/%s.png" % name
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	_art_cache[key] = tex
+	return tex
+
+
 static func art(name: String) -> Texture2D:
 	if _art_cache.has(name):
 		return _art_cache[name]
@@ -356,12 +367,19 @@ func boss_intro(name: String, title: String, final: bool, key := "") -> void:
 	hud.intro_t = 3.6
 
 
-## 主人公のカットイン（神招きなど）。key は image/cutin/<key>.jpg
+## 主人公のカットイン（帯）。key は image/cutin/<key>.jpg
 func cutin(key: String, col := Color(1, 1, 1), sec := HudView.CUTIN_T) -> void:
 	hud.cutin_key = key
 	hud.cutin_col = col
 	hud.cutin_len = sec
 	hud.cutin_t = sec
+
+
+## 神招きの見せ場：顔絵とセリフを大きく（世界は止まっている）
+func call_cutin(kami_id: String, greater: bool) -> void:
+	hud.call_kami = kami_id
+	hud.call_greater = greater
+	hud.call_t = HudView.CALL_T
 
 
 ## 小さな告知（詠唱名など）：画面下寄りに短く
@@ -567,6 +585,10 @@ class HudView:
 	var banner_col := Color(1, 1, 1)
 	var banner_icon := -1   # Pickup.Kind（アイテムの案内）。-1 なら絵なし
 	var cutin_t := 0.0      # 主人公のカットイン（神招きなど）の残り秒
+	var call_t := 0.0       # 神招きの見せ場の残り秒
+	var call_kami := ""
+	var call_greater := false
+	const CALL_T := 1.9
 	var cutin_len := 1.6
 	var cutin_key := ""     # image/cutin/<key>.jpg
 	var cutin_col := Color(1, 1, 1)
@@ -591,6 +613,7 @@ class HudView:
 		small_t = maxf(0.0, small_t - delta)
 		intro_t = maxf(0.0, intro_t - delta)
 		cutin_t = maxf(0.0, cutin_t - delta)
+		call_t = maxf(0.0, call_t - delta)
 		# HUD は文字が多く、毎フレーム描き直すと文字の整形が重い。30fps に間引く
 		_rd += delta
 		if _rd >= 1.0 / 30.0:
@@ -613,8 +636,10 @@ class HudView:
 			_draw_boss(g)
 		if cutin_t > 0.0:
 			_draw_cutin()
+		if call_t > 0.0:
+			_draw_call_cutin()
 
-		if banner_t > 0.0:
+		if banner_t > 0.0 and call_t <= 0.0:
 			_draw_banner()
 		if intro_t > 0.0:
 			_draw_intro()
@@ -873,6 +898,45 @@ class HudView:
 			var x := 40.0 + float(i) * 130.0 + slide * 0.5
 			draw_line(Vector2(x, band.position.y), Vector2(x + 60.0 * ang, band.end.y), Color(1, 1, 1, 0.12 * a), 6.0)
 
+	## 神招きの見せ場：右に大きな顔絵、左に技の名とセリフ。斜めの光の帯
+	func _draw_call_cutin() -> void:
+		var k := 1.0 - call_t / CALL_T
+		var a := clampf(minf(k * 10.0, (1.0 - k) * 6.0), 0.0, 1.0)
+		var kk := Kami.kami(call_kami)
+		if kk.is_empty():
+			return
+		var col: Color = kk["color"]
+		# 暗幕と斜めの帯
+		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.02, 0.01, 0.05, 0.78 * a))
+		var cy := Cfg.H * 0.42
+		var band := PackedVector2Array([Vector2(-40, cy - 150), Vector2(Cfg.W + 40, cy - 230), Vector2(Cfg.W + 40, cy + 230), Vector2(-40, cy + 150)])
+		draw_colored_polygon(band, Cfg.with_a(col, 0.22 * a))
+		for i in 7:
+			var x0 := -60.0 + float(i) * 120.0 + (1.0 - a) * 80.0
+			draw_line(Vector2(x0, cy + 240), Vector2(x0 + 140, cy - 240), Color(1, 1, 1, 0.10 * a), 10.0)
+		# 顔絵（透過 PNG）：右から滑り込む
+		var por := Ui.art_png("portrait/shout")
+		if por != null:
+			# 顔絵は右側 6 割に収め、左の文字と重ねない
+			var slide := (1.0 - minf(1.0, k * 5.0)) * 160.0
+			var aspect := float(por.get_width()) / float(por.get_height())
+			var w := minf(Cfg.W * 0.62 / 0.88, Cfg.H * 0.5 * aspect)
+			var h := w / aspect
+			var pr := Rect2(Cfg.W - w * 0.88 + slide, cy - h * 0.5, w, h)
+			draw_texture_rect(por, pr, false, Color(1, 1, 1, a))
+		# 技の名とセリフ（左側）
+		var name_y := cy - 40.0
+		draw_rect(Rect2(0, name_y - 56, Cfg.W * 0.44, 76), Color(0.03, 0.02, 0.06, 0.7 * a))
+		Ui.txt(self, ui.font, Vector2(22, name_y - 34), String(kk["name"]) + ("　大神招き" if call_greater else "　神招き"), 13, Cfg.with_a(col, a))
+		Ui.txt(self, ui.font_display, Vector2(20, name_y + 4), String(kk["call"]), 36, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_LEFT, Cfg.W * 0.44)
+		draw_rect(Rect2(20, name_y + 14, Cfg.W * 0.4, 3), Cfg.with_a(col, a))
+		var line := String(kk.get("call_line", ""))
+		if line != "":
+			var lr := Rect2(16, name_y + 34, Cfg.W * 0.5, 62)
+			draw_rect(lr, Color(0.03, 0.02, 0.06, 0.9 * a))
+			draw_rect(lr, Cfg.with_a(col, 0.8 * a), false, 1.5)
+			Ui.para(self, ui.font_display, Vector2(lr.position.x + 12, lr.position.y + 28), "「" + line + "」", lr.size.x - 24, 17, 2, Color(1, 0.97, 0.9, a))
+
 	## ボスの名乗り
 	func _draw_intro() -> void:
 		var k := intro_t / 3.2
@@ -889,13 +953,12 @@ class HudView:
 				draw_rect(Rect2(0, pr.end.y - 120.0 + kk * 120.0, Cfg.W, 120.0 / 8.0 + 1.0), Color(0.03, 0.02, 0.06, 0.9 * kk * a))
 			draw_rect(Rect2(0, pr.position.y, Cfg.W, 2), Cfg.with_a(col, a))
 			draw_rect(Rect2(0, pr.end.y - 2, Cfg.W, 2), Cfg.with_a(col, a))
-		var hero := Ui.art("cutin/boss")
+		var hero := Ui.art_png("portrait/calm")
 		if hero != null:
-			# 主人公：帯の下、左側に小さく（大妖と向き合う）
-			var hr := Rect2(16, 410, 250, 110)
-			draw_rect(hr.grow(3.0), Color(0, 0, 0, 0.55 * a))
-			Ui.draw_cover(self, hero, hr, a, 0.35)
-			draw_rect(hr, Cfg.with_a(Color(0.85, 0.7, 1.0), 0.8 * a), false, 1.5)
+			# 主人公：左下に顔絵（大妖と向き合う）
+			var hh := 230.0
+			var hw := hh * float(hero.get_width()) / float(hero.get_height())
+			draw_texture_rect(hero, Rect2(-10.0 - (1.0 - a) * 60.0, 400.0, hw, hh), false, Color(1, 1, 1, a))
 		var x := Cfg.W - 90.0
 		draw_rect(Rect2(x - 46, 110, 92, 330), Color(0, 0, 0, 0.55 * a))
 		draw_rect(Rect2(x - 46, 110, 92, 330), Cfg.with_a(col, 0.7 * a), false, 1.5)
@@ -1626,6 +1689,11 @@ class OverlayView:
 				var kk := float(gi) / 6.0
 				draw_rect(Rect2(0, wr.end.y - 60.0 + kk * 60.0, Cfg.W, 60.0 / 6.0 + 1.0), Color(0.03, 0.02, 0.06, 0.9 * kk))
 			draw_rect(Rect2(0, wr.position.y, Cfg.W, 2), Cfg.with_a(Cfg.C_GOLD, 0.9))
+			var sm := Ui.art_png("portrait/smile")
+			if sm != null:
+				var sh := 250.0
+				var sw := sh * float(sm.get_width()) / float(sm.get_height())
+				draw_texture_rect(sm, Rect2(Cfg.W - sw + 30.0, 10.0, sw, sh), false, Color(1, 1, 1, 0.95))
 		else:
 			var c := Vector2(Cfg.W * 0.5, 150.0)
 			for i in 16:
@@ -1738,14 +1806,11 @@ class OverlayView:
 				var kk := float(gi) / 10.0
 				draw_rect(Rect2(0, 240.0 + kk * (Cfg.H - 240.0), Cfg.W, (Cfg.H - 240.0) / 10.0 + 1.0), Color(0.02, 0.01, 0.05, 0.88 * minf(1.0, kk * 2.0)))
 		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Color(1, 0.3, 0.4, 0.04), 52.0, _t)
-		var hurt := Ui.art("cutin/hurt")
-		if hurt != null:
-			var hr := Rect2(0, 40, Cfg.W, 150)
-			Ui.draw_cover(self, hurt, hr, 0.9, 0.35)
-			for gi in 6:
-				var kk := float(gi) / 6.0
-				draw_rect(Rect2(0, hr.end.y - 50.0 + kk * 50.0, Cfg.W, 50.0 / 6.0 + 1.0), Color(0.02, 0.01, 0.05, 0.95 * kk))
-			draw_rect(Rect2(0, hr.position.y, Cfg.W, 2), Color(1, 0.3, 0.4, 0.8))
+		var pain := Ui.art_png("portrait/pain")
+		if pain != null:
+			var ph := 300.0
+			var pw := ph * float(pain.get_width()) / float(pain.get_height())
+			draw_texture_rect(pain, Rect2(Cfg.W - pw + 40.0, 20.0, pw, ph), false, Color(1, 1, 1, 0.9))
 		Ui.txt(self, ui.font_display, Vector2(0, 200), "討たれた", 58, Color(1, 0.3, 0.4),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		Ui.txt(self, ui.font, Vector2(0, 234), "神楽は途切れ、参道は闇に沈んだ", 13, Color(0.9, 0.8, 0.85, 0.8),
@@ -2243,7 +2308,7 @@ class StoryView:
 
 	var ui: Ui
 	var t := 0.0
-	const LINES := ["参道は穢れに沈み、灯は消えた。", "神楽の巫女はひとり、八百万の神々に呼びかける。", "――踏破の朝日を、もう一度。"]
+	const LINES := ["参道は穢れに沈み、灯は消えた。", "神楽の巫女はひとり、八百万の神々に呼びかける。", "わたしが、やらなきゃ。"]
 
 	func _process(delta: float) -> void:
 		if visible:

@@ -613,6 +613,7 @@ func _story_test() -> void:
 	p.call_gauge = 1.0
 	p._try_call()
 	await _wait(0.45)
+	print("[story] call_t=%.2f paused=%s state=%d freeze=%.2f banner_t=%.2f" % [g.ui.hud.call_t, str(get_tree().paused), g.state, g._freeze_t, g.ui.hud.banner_t])
 	await shot("61_call_cutin.png")
 	await _wait(3.0)
 	p.cast_charges = 3

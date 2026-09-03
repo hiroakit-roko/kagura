@@ -51,6 +51,7 @@ var _relic_offers: Array = []                        # 討伐の褒賞（神宝�
 var _seen_items := {}                                # 初めて落ちたアイテムの案内を出したか
 var resetting := false                               # やり直しで world を片付けている間（珠を落とさない）
 var landscape_block := false                         # タッチ端末が横向き（縦にするまで止める）
+var _freeze_t := 0.0                                 # 見せ場の停止（神招きのカットイン）
 static var _en_cache: Array = []
 static var _en_stamp := -1
 static var _eb_cache: Array = []
@@ -387,6 +388,7 @@ func _process(delta: float) -> void:
 		return
 
 	_tutorial(delta)
+	_tick_freeze(delta)
 
 	# レベルアップした瞬間に時間を止めて神との邂逅へ（敵も弾も止まる）
 	#   位 2 → 主神、位 4・7 → 副神（迎えるだけで神器が付き、他の選択は続かない）
@@ -399,6 +401,28 @@ func _process(delta: float) -> void:
 		return
 
 	_tick_wave(delta)
+
+
+## 見せ場で世界を止める（UI だけ動く）。sec 秒後に自動で再開
+func freeze_for(sec: float) -> void:
+	if state != St.PLAY:
+		return
+	Engine.time_scale = 1.0
+	_hitstop = 0.0
+	_freeze_t = sec
+	get_tree().paused = true
+
+
+func _tick_freeze(delta: float) -> void:
+	if _freeze_t <= 0.0:
+		return
+	# 停止中は時間倍率を 1 に固定（神招き自身のヒットストップで UI まで遅くならないように）
+	if Engine.time_scale < 0.999:
+		Engine.time_scale = 1.0
+		_hitstop = 0.0
+	_freeze_t -= delta
+	if _freeze_t <= 0.0 and state == St.PLAY:
+		get_tree().paused = false
 
 
 ## いまタッチ操作か（スマホ・タブレット）。説明文の出し分けに使う

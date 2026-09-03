@@ -570,7 +570,6 @@ func _try_cast() -> void:
 	Sfx.play("cast", -6.0, randf_range(0.95, 1.05))
 	Sfx.play("suzu", -14.0, 1.3)
 	Game.inst.ui.banner_small(String(k["cast"]), col)
-	Game.inst.ui.cutin("cast", col, 1.0)
 	match kami:
 		"ama":
 			# 八咫鏡：大きな鏡が前に浮き、敵弾を倍の威力で跳ね返す。触れた敵も焼く
@@ -699,8 +698,9 @@ func _try_call() -> void:
 	Fx.ring(position, col, 20.0, 400.0, 0.6, 6.0)
 	Fx.shake_add(10.0)
 	Game.inst.hitstop(0.25, 0.08)
-	Game.inst.ui.banner(String(k["call"]), String(k["name"]) + ("　大神招き" if greater else ""), col)
-	Game.inst.ui.cutin("call", col)
+	# 神招きの見せ場：画面を止めて、顔絵とセリフを大きく
+	Game.inst.ui.call_cutin(kami, greater)
+	Game.inst.freeze_for(1.5)
 	match kami:
 		"ama":
 			call_kind = "sun"

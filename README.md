@@ -106,6 +106,8 @@ image/
   scene/clear.jpg      踏破の一枚絵、scene/gameover.jpg ゲームオーバーの一枚絵
   relic/<id>.jpg       神宝の絵（討伐の褒賞のカード。手描き風・コミカル、512×512）
   item/{xp,heal,orb}.jpg  勾玉・団子・詠唱の札の絵（初めて落ちたときの案内）
+  portrait/<expr>.png  主人公の顔絵（透過 PNG）：shout 神招き / calm 大妖の名乗り / smile 踏破 / pain 討たれた
+                       白背景で生成し tools/cutout.py 相当の処理で透過（tools/cutout_white_bg.py）
   cutin/<key>.jpg      主人公のカットイン（16:9、title.png を画像プロンプトにして生成）
                        opening 開幕の物語 / call 神招き / cast 詠唱 / boss 大妖の名乗り / kami 神との邂逅
                        clear 踏破 / hurt 討たれた / dash 祟りの参道
