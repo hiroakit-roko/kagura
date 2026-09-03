@@ -273,8 +273,8 @@ func blade_size() -> float:
 	return 24.0
 
 
-## 月輪が触れた敵弾を消す確率（既定の防御性能）
-const BLADE_ERASE := 0.35
+## 月輪が触れた敵弾は必ず消える（月読の既定の守り。扇と難度が変わらないため 100%）
+const BLADE_ERASE := 1.0
 
 
 func _blades(delta: float) -> void:

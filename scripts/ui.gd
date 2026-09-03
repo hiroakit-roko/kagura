@@ -945,6 +945,11 @@ class HudView:
 		var line := String(kk.get("call_line", ""))
 		if line != "":
 			Ui.para(self, ui.font_display, Vector2(24, name_y + 48), "「" + line + "」", Cfg.W - 48, 18, 2, Color(1, 0.97, 0.9, a))
+		# どういう力か（主神ごとの一文）
+		var desc := String(kk.get("call_desc", ""))
+		if desc != "":
+			draw_rect(Rect2(0, pr.end.y + 6, Cfg.W, 34), Color(0.03, 0.02, 0.06, 0.85 * a))
+			Ui.txt(self, ui.font, Vector2(20, pr.end.y + 29), desc, 15, Cfg.with_a(col.lerp(Color.WHITE, 0.35), a), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W - 40)
 
 	## ボスの名乗り
 	func _draw_intro() -> void:

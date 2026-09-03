@@ -279,10 +279,13 @@ func _tick_status(delta: float) -> void:
 
 ## 冷気は弾の発射頻度も落とす（雑魚は最大 -50%、ボスは -25%）
 func fire_mult() -> float:
+	var m := 1.0
 	var c: Dictionary = st["chill"]
 	if int(c["stacks"]) > 0:
-		return 1.0 - minf(0.1 * float(c["stacks"]), 0.5 if not is_boss else 0.25)
-	return 1.0
+		m *= 1.0 - minf(0.1 * float(c["stacks"]), 0.5 if not is_boss else 0.25)
+	if int(st["hangover"]["stacks"]) > 0:
+		m *= 1.0 - (0.2 if not is_boss else 0.1)   # 酩酊：手元が狂って撃つのも遅くなる
+	return m
 
 
 func speed_mult() -> float:

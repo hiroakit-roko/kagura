@@ -440,8 +440,7 @@ func _tutorial(delta: float) -> void:
 	match _tut_step:
 		0:
 			if _tut_t > 4.0:
-				_tut_step = 1
-				ui.banner("穢れを祓え", "敵を倒す → 勾玉を拾う → 位が上がる", Cfg.C_XP)
+				_tut_step = 1   # 「穢れを祓え」の説明は勾玉の説明と重なるので出さない
 		1:
 			if player.xp > 0.0 or _tut_t > 14.0:
 				_tut_step = 2

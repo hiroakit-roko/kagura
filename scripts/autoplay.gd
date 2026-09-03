@@ -15,10 +15,32 @@ var _call_t := 0.0
 var _no_ai := false
 
 
+var _wd_thread: Thread
+var _wd_frames := 0
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOT_DIR))
+	if OS.get_cmdline_user_args().has("--watchdog"):
+		# メインスレッドが 4 秒以上止まったら stderr に知らせる（原因調査用）
+		_wd_thread = Thread.new()
+		_wd_thread.start(_watchdog)
 	_run()
+
+
+func _watchdog() -> void:
+	var last := -1
+	var same := 0
+	while true:
+		OS.delay_msec(1000)
+		var f := Engine.get_process_frames()
+		if f == last:
+			same += 1
+			if same == 4:
+				printerr("[watchdog] main thread blocked for 4s at frame %d" % f)
+		else:
+			same = 0
+		last = f
 
 
 func _key(code: int, pressed: bool) -> void:
@@ -369,14 +391,14 @@ func _clear_test() -> void:
 		_no_ai = false
 		var tl := 0.0
 		while tl < 150.0:
-			await _wait(10.0)
-			tl += 10.0
+			await _wait(5.0)
+			tl += 5.0
 			p.stats["max_hp"] = 9999.0
 			p.hp = 9999.0
 			if g.state == Game.St.BOON or g.state == Game.St.KAMI or g.state == Game.St.MIKI:
 				g._close_choice()
 				p.pending_levels = 0
-			print("[endless] t=%.0f state=%d paused=%s wave=%d fps=%d nodes=%d objs=%d mem=%.1fMB enemies=%d ebullets=%d fx=%d" % [tl, g.state, str(get_tree().paused), g.wave, Engine.get_frames_per_second(), Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_COUNT), Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, Game.enemies().size(), Game.ebullets().size(), Fx.inst._parts.size()])
+			print("[endless] t=%.0f state=%d paused=%s wave=%d fps=%d nodes=%d orphans=%d objs=%d res=%d mem=%.1fMB enemies=%d ebullets=%d fx=%d" % [tl, g.state, str(get_tree().paused), g.wave, Engine.get_frames_per_second(), Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_COUNT), Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT), Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, Game.enemies().size(), Game.ebullets().size(), Fx.inst._parts.size()])
 	get_tree().quit()
 
 

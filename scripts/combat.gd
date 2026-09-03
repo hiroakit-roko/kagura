@@ -217,14 +217,14 @@ static func hangover_max() -> int:
 
 
 static func hangover_slow() -> float:
-	return 0.16
+	return 0.20
 
 
 static func hangover_dps() -> float:
 	var p := _p()
 	var base := 3.0
 	if p != null and p.gods.has("suku"):
-		base = p.base_damage() * 0.42 * p.kami_power("suku")
+		base = p.base_damage() * 0.5 * p.kami_power("suku")
 	return base * (1.0 + _val("suku_u3") * 0.01)
 
 

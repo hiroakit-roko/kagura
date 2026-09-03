@@ -115,5 +115,6 @@ static func gods_text(e: Dictionary) -> String:
 
 static func reach_text(e: Dictionary) -> String:
 	if bool(e.get("cleared", false)):
-		return "踏破" + ("（祟り 第 %d 波）" % int(e["wave"]) if bool(e.get("endless", false)) else "")
-	return "第 %d 波" % int(e["wave"])
+		# 行に収まるよう短く（例：踏破 / 祟り25波）
+		return ("祟り%d波" % int(e["wave"])) if bool(e.get("endless", false)) else "踏破"
+	return "第%d波" % int(e["wave"])
