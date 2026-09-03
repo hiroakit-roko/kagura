@@ -92,17 +92,21 @@ func _behavior(delta: float) -> void:
 			dash_t -= delta
 			if dash_t <= 0.0:
 				dash_state = 2
-				dash_t = 0.7
+				dash_t = 1.6
 				var pl := _player()
-				dash_dir = ((pl.position - position).normalized() if pl != null else Vector2.DOWN)
+				# 自機の少し先を狙って、画面の下端まで突き抜ける
+				dash_dir = ((pl.position + Vector2(0, 40.0) - position).normalized() if pl != null else Vector2.DOWN)
+				if dash_dir.y < 0.35:
+					dash_dir = Vector2(dash_dir.x, 0.35).normalized()
 				Sfx.play("hit_storm", -4.0, 0.6)
 				Fx.shake_add(6.0)
 			return
 		elif dash_state == 2:
 			dash_t -= delta
-			position += dash_dir * 560.0 * delta
-			Fx.cone(position, -dash_dir, color, 2, 120.0, 0.6, 5.0, 0.3)
-			if dash_t <= 0.0 or position.y > Cfg.H - 120.0:
+			position += dash_dir * 900.0 * delta
+			Fx.cone(position, -dash_dir, color, 3, 160.0, 0.6, 6.0, 0.3)
+			Fx.puff(position, radius * 0.6, radius * 1.6, Cfg.with_a(color, 0.6), 0.2)
+			if dash_t <= 0.0 or position.y > Cfg.H - 30.0:
 				dash_state = 3
 			return
 		elif dash_state == 3:
