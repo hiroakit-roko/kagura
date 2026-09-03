@@ -93,7 +93,8 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if String(a).begins_with("--skip="):
 			Cfg.SKIP = String(a).trim_prefix("--skip=").split(",")
-	if DisplayServer.is_touchscreen_available() or OS.get_cmdline_user_args().has("--lite"):
+	# 軽量描画は見た目が落ちるので通常は使わない（計測用に --lite で強制できる）
+	if OS.get_cmdline_user_args().has("--lite"):
 		Cfg.LITE = true
 		Cfg.AA = false
 
