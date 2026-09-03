@@ -141,6 +141,8 @@ func _ready() -> void:
 	add_child(net)
 	ui = Ui.new()
 	add_child(ui)
+	if Diag.wanted():
+		add_child(Diag.new())
 	fx.font = ui.font
 	fx.font_big = ui.font_display
 
