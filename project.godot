@@ -14,7 +14,10 @@ run/max_fps=60
 
 [audio]
 
-general/default_playback_type.web=1
+; Web は Sample 再生だと iOS Safari で 10〜30 分後にページが落ちる既知の不具合（godot#116750）があるため Stream に
+general/default_playback_type.web=0
+; Stream 再生の音割れ対策で出力遅延を少し大きく
+driver/output_latency.web=100
 
 [display]
 
@@ -30,6 +33,10 @@ pointing/emulate_mouse_from_touch=true
 pointing/android/enable_long_press_as_right_click=false
 
 [rendering]
+
+; Web 向けにメモリとシェーダコンパイル時間を抑える（1 フレームの要素は数千で足りる）
+limits/opengl/max_renderable_elements=16384
+gl_compatibility/item_buffer_size=8192
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"

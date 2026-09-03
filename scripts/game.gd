@@ -90,6 +90,12 @@ func _ready() -> void:
 	# スマホは発熱対策で 30fps に制限（PC は project.godot の 60fps）。物理は 60 回/秒のまま
 	if DisplayServer.is_touchscreen_available():
 		Engine.max_fps = 30
+	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("--skip="):
+			Cfg.SKIP = String(a).trim_prefix("--skip=").split(",")
+	if DisplayServer.is_touchscreen_available() or OS.get_cmdline_user_args().has("--lite"):
+		Cfg.LITE = true
+		Cfg.AA = false
 
 	# 2D グロー（ネオン感の要）。Compatibility レンダラ（Web）でも動くよう、
 	# 使えるプロパティだけを設定し、閾値は 1.0 未満にしておく。
@@ -375,6 +381,12 @@ func _on_familiar_chosen(id: String) -> void:
 # ---------- メインループ ----------
 
 func _process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_process(delta)
+	Perf.add("game", _t0)
+
+
+func _perf_process(delta: float) -> void:
 	# 画面シェイク
 	var s := fx.shake
 	cam.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * s

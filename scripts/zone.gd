@@ -35,6 +35,12 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_physics_process(delta)
+	Perf.add("zone", _t0)
+
+
+func _perf_physics_process(delta: float) -> void:
 	_t += delta
 	life -= delta
 	if life <= 0.0:
@@ -86,36 +92,42 @@ func _apply() -> void:
 
 
 func _draw() -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("zone_draw", _t0)
+
+
+func _perf_draw() -> void:
 	var a := clampf(life * 2.0, 0.0, 1.0) * clampf(_t * 4.0, 0.0, 1.0)
 	match kind:
 		"moon":
 			# 回転する三日月の刃 3 枚
 			for i in 3:
 				var ang := _rot + TAU * float(i) / 3.0
-				draw_arc(Vector2.ZERO, r * 0.8, ang, ang + 1.4, 16, Cfg.with_a(color, 0.85 * a), 6.0, true)
-				draw_arc(Vector2.ZERO, r * 0.8, ang + 0.2, ang + 1.2, 12, Color(1, 1, 1, 0.7 * a), 2.0, true)
+				draw_arc(Vector2.ZERO, r * 0.8, ang, ang + 1.4, 16, Cfg.with_a(color, 0.85 * a), 6.0, Cfg.AA)
+				draw_arc(Vector2.ZERO, r * 0.8, ang + 0.2, ang + 1.2, 12, Color(1, 1, 1, 0.7 * a), 2.0, Cfg.AA)
 			draw_circle(Vector2.ZERO, r, Cfg.with_a(color, 0.08 * a))
-			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.35 * a), 1.5, true)
+			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.35 * a), 1.5, Cfg.AA)
 		"fog":
 			for i in 5:
 				var off := Vector2(cos(_t * 0.7 + float(i) * 1.3), sin(_t * 0.9 + float(i) * 2.1)) * r * 0.35
 				draw_circle(off, r * (0.55 + 0.1 * sin(_t * 2.0 + float(i))), Cfg.with_a(color, 0.10 * a))
-			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.3 * a), 1.5, true)
+			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.3 * a), 1.5, Cfg.AA)
 		"frost":
 			draw_circle(Vector2.ZERO, r, Cfg.with_a(color, 0.12 * a))
 			for i in 6:
 				var ang := _rot + TAU * float(i) / 6.0
 				var p1 := Vector2(cos(ang), sin(ang)) * r * 0.9
-				draw_line(Vector2.ZERO, p1, Cfg.with_a(Color(1, 1, 1), 0.35 * a), 1.5, true)
+				draw_line(Vector2.ZERO, p1, Cfg.with_a(Color(1, 1, 1), 0.35 * a), 1.5, Cfg.AA)
 				var side := p1 * 0.6
 				var n := p1.normalized().orthogonal() * r * 0.15
-				draw_line(side, side + n, Cfg.with_a(Color(1, 1, 1), 0.3 * a), 1.0, true)
-				draw_line(side, side - n, Cfg.with_a(Color(1, 1, 1), 0.3 * a), 1.0, true)
-			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.5 * a), 2.0, true)
+				draw_line(side, side + n, Cfg.with_a(Color(1, 1, 1), 0.3 * a), 1.0, Cfg.AA)
+				draw_line(side, side - n, Cfg.with_a(Color(1, 1, 1), 0.3 * a), 1.0, Cfg.AA)
+			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.5 * a), 2.0, Cfg.AA)
 		"cloud":
 			for i in 4:
 				var off := Vector2((float(i) - 1.5) * 22.0, sin(float(i) * 2.0 + _t * 3.0) * 4.0)
 				draw_circle(off, 22.0 + 6.0 * absf(sin(float(i) * 1.7)), Color(0.35, 0.3, 0.5, 0.9 * a))
 			var flick: float = 0.4 + 0.6 * float(fmod(_t * 7.0, 1.0) < 0.2)
 			draw_circle(Vector2(0, 4), 12.0, Cfg.with_a(color, 0.5 * a * flick))
-			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.15 * a), 1.0, true)
+			draw_arc(Vector2.ZERO, r, 0, TAU, 40, Cfg.with_a(color, 0.15 * a), 1.0, Cfg.AA)

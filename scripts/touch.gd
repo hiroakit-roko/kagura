@@ -67,6 +67,12 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_process(delta)
+	Perf.add("touch", _t0)
+
+
+func _perf_process(delta: float) -> void:
 	_t += delta
 	_flick_cd = maxf(0.0, _flick_cd - delta)
 	layout()

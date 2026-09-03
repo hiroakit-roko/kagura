@@ -51,6 +51,12 @@ func base_dmg() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_physics_process(delta)
+	Perf.add("weapon", _t0)
+
+
+func _perf_physics_process(delta: float) -> void:
 	if p == null or not is_instance_valid(p) or not p.alive:
 		return
 	t += delta
@@ -458,6 +464,14 @@ func _wind() -> void:
 # ---------------------------------------------------------------------------
 
 func _draw() -> void:
+	if Cfg.SKIP.has("weapon"):
+		return
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("weapon_draw", _t0)
+
+
+func _perf_draw() -> void:
 	if p == null or not is_instance_valid(p) or not p.alive:
 		return
 	match kami:
@@ -469,13 +483,13 @@ func _draw() -> void:
 				# 陽炎の閃き：光線が一瞬太く白く光る
 				for d0 in beam_dirs():
 					var d: Vector2 = d0
-					draw_line(origin, origin + d * 1400.0, Color(1, 1, 1, flare_fx * 1.6), w * 2.6 * (0.5 + flare_fx), true)
+					draw_line(origin, origin + d * 1400.0, Color(1, 1, 1, flare_fx * 1.6), w * 2.6 * (0.5 + flare_fx), Cfg.AA)
 			for d0 in beam_dirs():
 				var d: Vector2 = d0
 				var far: Vector2 = origin + d * 1400.0
-				draw_line(origin, far, Cfg.with_a(col, 0.18 * flick), w * 2.2, true)
-				draw_line(origin, far, Cfg.with_a(col, 0.55 * flick), w, true)
-				draw_line(origin, far, Color(1, 1, 0.95, 0.9 * flick), w * 0.35, true)
+				draw_line(origin, far, Cfg.with_a(col, 0.18 * flick), w * 2.2, Cfg.AA)
+				draw_line(origin, far, Cfg.with_a(col, 0.55 * flick), w, Cfg.AA)
+				draw_line(origin, far, Color(1, 1, 0.95, 0.9 * flick), w * 0.35, Cfg.AA)
 				# 光の粒
 				for i in 6:
 					var k := fmod(t * 1.6 + float(i) / 6.0, 1.0)
@@ -488,14 +502,14 @@ func _draw() -> void:
 			var r := blade_radius()
 			var spin := _spin
 			var bs := blade_size() / 22.0
-			draw_arc(p.position, r, 0, TAU, 48, Cfg.with_a(col, 0.12), 1.0, true)
+			draw_arc(p.position, r, 0, TAU, 48, Cfg.with_a(col, 0.12), 1.0, Cfg.AA)
 			for i in n:
 				var a := spin + TAU * float(i) / float(n)
 				var bp := p.position + Vector2(cos(a), sin(a)) * r
 				var ang := a + PI * 0.5
 				draw_circle(bp, 18.0 * bs, Cfg.with_a(col, 0.14))
-				draw_arc(bp, 15.0 * bs, ang - 1.6, ang + 1.6, 14, Cfg.with_a(col, 0.95), 6.0 * bs, true)
-				draw_arc(bp, 15.0 * bs, ang - 1.3, ang + 1.3, 12, Color(1, 1, 1, 0.85), 2.0, true)
+				draw_arc(bp, 15.0 * bs, ang - 1.6, ang + 1.6, 14, Cfg.with_a(col, 0.95), 6.0 * bs, Cfg.AA)
+				draw_arc(bp, 15.0 * bs, ang - 1.3, ang + 1.3, 12, Color(1, 1, 1, 0.85), 2.0, Cfg.AA)
 				# 軌跡
 				for j in 4:
 					var aa := a - float(j + 1) * 0.12

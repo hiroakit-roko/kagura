@@ -207,6 +207,12 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_physics_process(delta)
+	Perf.add("enemy", _t0)
+
+
+func _perf_physics_process(delta: float) -> void:
 	t += delta
 	if flash > 0.0:
 		flash = maxf(0.0, flash - delta * 6.0)
@@ -699,6 +705,14 @@ func die() -> void:
 # ---------- 描画 ----------
 
 func _draw() -> void:
+	if Cfg.SKIP.has("enemy"):
+		return
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("enemy_draw", _t0)
+
+
+func _perf_draw() -> void:
 	var c := color
 	if flash > 0.0:
 		c = c.lerp(Color(1, 1, 1), flash * 0.85)
@@ -718,18 +732,18 @@ func _draw() -> void:
 	# 攻撃の予兆：撃つ直前に光り、輪が縮む
 	if fire_t > 0.0 and fire_t < 0.35 and kind in ["grunt", "weaver", "turret", "splitter", "lantern", "oni", "caster", "kite"]:
 		var k := fire_t / 0.35
-		draw_arc(Vector2.ZERO, radius * (0.9 + k * 1.4), 0, TAU, 24, Color(1, 0.6, 0.7, 0.85 * (1.0 - k)), 2.0, true)
+		draw_arc(Vector2.ZERO, radius * (0.9 + k * 1.4), 0, TAU, 24, Color(1, 0.6, 0.7, 0.85 * (1.0 - k)), 2.0, Cfg.AA)
 		draw_circle(Vector2.ZERO, radius * 0.5, Color(1, 0.85, 0.9, 0.35 * (1.0 - k)))
 	# 突撃の予兆：狙いの線
 	if kind == "charger" and _state == 1:
 		var pl := _player()
 		if pl != null:
 			var d := (pl.position - position).normalized()
-			draw_line(Vector2.ZERO, d * 900.0, Color(1, 0.4, 0.5, 0.25 + 0.2 * sin(t * 30.0)), 2.0, true)
+			draw_line(Vector2.ZERO, d * 900.0, Color(1, 0.4, 0.5, 0.25 + 0.2 * sin(t * 30.0)), 2.0, Cfg.AA)
 	if kind == "bomber" and _state == 0 and position.y > 40.0:
 		var pl2 := _player()
 		if pl2 != null:
-			draw_line(Vector2.ZERO, (pl2.position - position).normalized() * 120.0, Color(1, 0.6, 0.3, 0.3), 1.5, true)
+			draw_line(Vector2.ZERO, (pl2.position - position).normalized() * 120.0, Color(1, 0.6, 0.3, 0.3), 1.5, Cfg.AA)
 
 	# ダメージを受けた個体だけ小さなHPバー
 	if hp < max_hp and kind != "mini":
@@ -760,7 +774,7 @@ func _draw_body(c: Color) -> void:
 				Vector2(0, r * 1.05), Vector2(r * 1.15, 0), Vector2(0, -r * 1.05),
 				Vector2(-r * 1.15, 0)])
 			draw_colored_polygon(pts2, c)
-			draw_polyline(pts2 + PackedVector2Array([pts2[0]]), Color(1, 1, 1, 0.7), 1.6, true)
+			draw_polyline(pts2 + PackedVector2Array([pts2[0]]), Color(1, 1, 1, 0.7), 1.6, Cfg.AA)
 			draw_circle(Vector2.ZERO, r * 0.3, Color(1, 1, 1, 0.9))
 			draw_circle(Vector2.ZERO, r * 0.14, Cfg.C_INK)
 		"charger":
@@ -777,7 +791,7 @@ func _draw_body(c: Color) -> void:
 		"turret":
 			# 百目：回転する目玉の輪
 			draw_circle(Vector2.ZERO, r, c)
-			draw_arc(Vector2.ZERO, r * 1.28, 0.0, TAU, 26, Color(1, 1, 1, 0.55), 2.0, true)
+			draw_arc(Vector2.ZERO, r * 1.28, 0.0, TAU, 26, Color(1, 1, 1, 0.55), 2.0, Cfg.AA)
 			for i in 6:
 				var a := t * 0.6 + TAU * float(i) / 6.0
 				var p := Vector2(cos(a), sin(a)) * r * 1.28
@@ -789,7 +803,7 @@ func _draw_body(c: Color) -> void:
 			draw_circle(Vector2.ZERO, r, c)
 			var seg := Color(0.05, 0.1, 0.1, 0.9)
 			draw_line(Vector2(0, -r), Vector2(0, r), seg, 3.0)
-			draw_arc(Vector2.ZERO, r * 0.62, 0.0, TAU, 22, Color(1, 1, 1, 0.6), 2.0, true)
+			draw_arc(Vector2.ZERO, r * 0.62, 0.0, TAU, 22, Color(1, 1, 1, 0.6), 2.0, Cfg.AA)
 		"mini":
 			draw_circle(Vector2.ZERO, r, c)
 			draw_circle(Vector2.ZERO, r * 0.45, Color(1, 1, 1, 0.85))
@@ -813,12 +827,12 @@ func _draw_body(c: Color) -> void:
 			# 一つ目と口
 			draw_circle(Vector2(0, -r * 0.2), r * 0.32, Color(1, 1, 0.9))
 			draw_circle(Vector2(0, -r * 0.2), r * 0.14, Cfg.C_INK)
-			draw_arc(Vector2(0, r * 0.35), r * 0.3, 0.2, PI - 0.2, 10, Cfg.C_INK, 2.0, true)
+			draw_arc(Vector2(0, r * 0.35), r * 0.3, 0.2, PI - 0.2, 10, Cfg.C_INK, 2.0, Cfg.AA)
 		"kite":
 			# 凧：赤い菱形に骨と尾
 			var pts4 := PackedVector2Array([Vector2(0, -r * 1.3), Vector2(r, 0), Vector2(0, r * 1.3), Vector2(-r, 0)])
 			draw_colored_polygon(pts4, c)
-			draw_polyline(pts4 + PackedVector2Array([pts4[0]]), Color(1, 1, 1, 0.8), 1.5, true)
+			draw_polyline(pts4 + PackedVector2Array([pts4[0]]), Color(1, 1, 1, 0.8), 1.5, Cfg.AA)
 			draw_line(Vector2(0, -r * 1.3), Vector2(0, r * 1.3), Color(1, 1, 1, 0.6), 1.0)
 			draw_line(Vector2(-r, 0), Vector2(r, 0), Color(1, 1, 1, 0.6), 1.0)
 			draw_circle(Vector2(0, 0), r * 0.3, Color(1, 1, 1, 0.9))
@@ -829,12 +843,12 @@ func _draw_body(c: Color) -> void:
 		"oni":
 			# 小鬼：大きな体に角と牙
 			draw_circle(Vector2.ZERO, r, c)
-			draw_arc(Vector2.ZERO, r, 0, TAU, 28, Color(0, 0, 0, 0.35), 2.0, true)
+			draw_arc(Vector2.ZERO, r, 0, TAU, 28, Color(0, 0, 0, 0.35), 2.0, Cfg.AA)
 			for sgn in [-1.0, 1.0]:
 				draw_colored_polygon(PackedVector2Array([Vector2(sgn * r * 0.35, -r * 0.7), Vector2(sgn * r * 0.5, -r * 1.35), Vector2(sgn * r * 0.7, -r * 0.6)]), Color(1, 0.95, 0.85))
 				draw_circle(Vector2(sgn * r * 0.35, -r * 0.15), r * 0.18, Color(1, 0.95, 0.6))
 				draw_circle(Vector2(sgn * r * 0.35, -r * 0.15), r * 0.08, Cfg.C_INK)
-			draw_arc(Vector2(0, r * 0.3), r * 0.4, 0.3, PI - 0.3, 12, Cfg.C_INK, 3.0, true)
+			draw_arc(Vector2(0, r * 0.3), r * 0.4, 0.3, PI - 0.3, 12, Cfg.C_INK, 3.0, Cfg.AA)
 			for i in 4:
 				var x := (float(i) - 1.5) * r * 0.22
 				draw_colored_polygon(PackedVector2Array([Vector2(x - 2, r * 0.45), Vector2(x + 2, r * 0.45), Vector2(x, r * 0.7)]), Color(1, 0.95, 0.85))
@@ -911,10 +925,10 @@ func _draw_status_aura() -> void:
 	# 照覧：金色の輪郭と光条
 	if st["exposed"] > 0.0:
 		var c := Color(1.0, 0.84, 0.42)
-		draw_arc(Vector2.ZERO, r + 4.0, 0, TAU, 28, Cfg.with_a(c, 0.85), 2.5, true)
+		draw_arc(Vector2.ZERO, r + 4.0, 0, TAU, 28, Cfg.with_a(c, 0.85), 2.5, Cfg.AA)
 		for i in 6:
 			var a := t * 1.5 + TAU * float(i) / 6.0
-			draw_line(Vector2(cos(a), sin(a)) * (r + 6.0), Vector2(cos(a), sin(a)) * (r + 12.0 + 3.0 * sin(t * 6.0 + float(i))), Cfg.with_a(c, 0.7), 1.5, true)
+			draw_line(Vector2(cos(a), sin(a)) * (r + 6.0), Vector2(cos(a), sin(a)) * (r + 12.0 + 3.0 * sin(t * 6.0 + float(i))), Cfg.with_a(c, 0.7), 1.5, Cfg.AA)
 	# 弱体：桃色の花弁が舞い落ちる
 	if st["weak"] > 0.0:
 		var c := Color(1.0, 0.58, 0.78)
@@ -927,7 +941,7 @@ func _draw_status_aura() -> void:
 	# 魅了：桃色の心と輪
 	if st["charm"] > 0.0:
 		var c := Color(1.0, 0.45, 0.7)
-		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 24, Cfg.with_a(c, 0.5 + 0.3 * sin(t * 6.0)), 2.0, true)
+		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 24, Cfg.with_a(c, 0.5 + 0.3 * sin(t * 6.0)), 2.0, Cfg.AA)
 		var hp2 := Vector2(0, -r - 14.0 + sin(t * 4.0) * 2.0)
 		draw_circle(hp2 + Vector2(-3, -2), 3.0, c)
 		draw_circle(hp2 + Vector2(3, -2), 3.0, c)
@@ -940,7 +954,7 @@ func _draw_status_aura() -> void:
 		for i in mini(hs + 2, 8):
 			var k := fmod(t * 0.9 + float(i) * 0.37, 1.0)
 			var pos := Vector2(sin(float(i) * 2.1 + t) * r * 0.8, r * 0.6 - k * r * 2.4)
-			draw_arc(pos, 2.0 + 2.0 * (1.0 - k), 0, TAU, 10, Cfg.with_a(c, 0.9 * (1.0 - k)), 1.2, true)
+			draw_arc(pos, 2.0 + 2.0 * (1.0 - k), 0, TAU, 10, Cfg.with_a(c, 0.9 * (1.0 - k)), 1.2, Cfg.AA)
 	# 冷気：青白い結晶が体に付く。凍結で全体が氷に
 	var cs: int = int(st["chill"]["stacks"])
 	if cs > 0 or st["frozen"] > 0.0:
@@ -953,7 +967,7 @@ func _draw_status_aura() -> void:
 			draw_colored_polygon(PackedVector2Array([pos + dd * 7.0, pos + dd.orthogonal() * 2.5, pos - dd * 2.0, pos - dd.orthogonal() * 2.5]), Cfg.with_a(c, 0.9))
 		if st["frozen"] > 0.0:
 			draw_circle(Vector2.ZERO, r * 1.25, Cfg.with_a(c, 0.35))
-			draw_arc(Vector2.ZERO, r * 1.25, 0, TAU, 24, Color(1, 1, 1, 0.8), 2.0, true)
+			draw_arc(Vector2.ZERO, r * 1.25, 0, TAU, 24, Color(1, 1, 1, 0.8), 2.0, Cfg.AA)
 	# 怯み：頭の上で回る白い星
 	if st["stagger"] > 0.0:
 		for i in 3:
@@ -967,8 +981,8 @@ func _draw_status_aura() -> void:
 			var a := t * 9.0 + float(i) * 2.1
 			var p0 := Vector2(cos(a), sin(a)) * (r + 4.0)
 			var p1 := p0 + Vector2(randf_range(-6, 6), randf_range(-6, 6))
-			draw_line(p0, p1, Cfg.with_a(c, 0.9), 1.5, true)
-		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 20, Cfg.with_a(c, 0.35), 1.0, true)
+			draw_line(p0, p1, Cfg.with_a(c, 0.9), 1.5, Cfg.AA)
+		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 20, Cfg.with_a(c, 0.35), 1.0, Cfg.AA)
 	# 裂傷：青い裂け目
 	if st["rupture"] > 0.0:
 		var c := Color(0.35, 0.82, 0.95)
@@ -976,8 +990,8 @@ func _draw_status_aura() -> void:
 			var a := float(i) * 2.0 + 0.5
 			var p0 := Vector2(cos(a), sin(a)) * r * 0.2
 			var p1 := Vector2(cos(a), sin(a)) * r * 0.95
-			draw_line(p0, p1, Cfg.with_a(c, 0.9), 2.0, true)
-			draw_line(p0, p1, Color(1, 1, 1, 0.6), 0.8, true)
+			draw_line(p0, p1, Cfg.with_a(c, 0.9), 2.0, Cfg.AA)
+			draw_line(p0, p1, Color(1, 1, 1, 0.6), 0.8, Cfg.AA)
 	# 狐憑き：橙の狐面の印
 	if st["marked"]:
 		var c := Color(1.0, 0.62, 0.3)
@@ -985,4 +999,4 @@ func _draw_status_aura() -> void:
 		draw_colored_polygon(PackedVector2Array([mp + Vector2(0, 6), mp + Vector2(6, 0), mp + Vector2(5, -7), mp + Vector2(0, -3), mp + Vector2(-5, -7), mp + Vector2(-6, 0)]), Cfg.with_a(Cfg.C_PAPER, 0.95))
 		draw_line(mp + Vector2(-3, -1), mp + Vector2(-1, 1), Color(0.85, 0.2, 0.3), 1.5)
 		draw_line(mp + Vector2(3, -1), mp + Vector2(1, 1), Color(0.85, 0.2, 0.3), 1.5)
-		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 20, Cfg.with_a(c, 0.5), 1.5, true)
+		draw_arc(Vector2.ZERO, r + 3.0, 0, TAU, 20, Cfg.with_a(c, 0.5), 1.5, Cfg.AA)

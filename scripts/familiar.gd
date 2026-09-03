@@ -54,6 +54,12 @@ func _rate(sec: float) -> float:
 
 
 func _physics_process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_physics_process(delta)
+	Perf.add("familiar", _t0)
+
+
+func _perf_physics_process(delta: float) -> void:
 	if p == null or not is_instance_valid(p) or not p.alive:
 		visible = false
 		return
@@ -111,6 +117,12 @@ func _bullet() -> Bullet:
 
 
 func _draw() -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("familiar_draw", _t0)
+
+
+func _perf_draw() -> void:
 	var bob := sin(t * 6.0) * 1.5
 	match kind:
 		"karasu":
@@ -134,7 +146,7 @@ func _draw() -> void:
 				for i in 6:
 					var k := float(i) / 5.0
 					pts.append(Vector2(sgn * (4.0 + k * 10.0) + sin(t * 5.0 + k * 3.0 + sgn) * 2.0, bob + 4.0 + k * 8.0))
-				draw_polyline(pts, col.darkened(0.15), 2.5, true)
+				draw_polyline(pts, col.darkened(0.15), 2.5, Cfg.AA)
 			draw_circle(Vector2(-2, bob - 8), 1.2, Cfg.C_INK)
 			draw_circle(Vector2(2, bob - 8), 1.2, Cfg.C_INK)
 			draw_line(Vector2(-2, bob - 5), Vector2(2, bob - 5), Cfg.C_INK, 1.0)

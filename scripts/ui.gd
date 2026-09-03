@@ -608,6 +608,11 @@ class HudView:
 	var _rd := 0.0
 
 	func _process(delta: float) -> void:
+		var _t0 := Time.get_ticks_usec()
+		_perf_process(delta)
+		Perf.add("hud", _t0)
+
+	func _perf_process(delta: float) -> void:
 		_t += delta
 		banner_t = maxf(0.0, banner_t - delta)
 		small_t = maxf(0.0, small_t - delta)
@@ -621,6 +626,13 @@ class HudView:
 			queue_redraw()
 
 	func _draw() -> void:
+		if Cfg.SKIP.has("hud"):
+			return
+		var _t0 := Time.get_ticks_usec()
+		_perf_draw()
+		Perf.add("hud_draw", _t0)
+
+	func _perf_draw() -> void:
 		var g := Game.inst
 		if g == null:
 			return

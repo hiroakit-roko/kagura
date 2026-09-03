@@ -41,6 +41,12 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_physics_process(delta)
+	Perf.add("pickup", _t0)
+
+
+func _perf_physics_process(delta: float) -> void:
 	_t += delta
 	life -= delta
 	if life <= 0.0:
@@ -97,6 +103,14 @@ func color_of() -> Color:
 
 
 func _draw() -> void:
+	if Cfg.SKIP.has("pickup"):
+		return
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("pickup_draw", _t0)
+
+
+func _perf_draw() -> void:
 	var c := color_of()
 	var pulse := 1.0 + 0.12 * sin(_t * 7.0)
 	Fx.glow(self, Vector2.ZERO, (20.0 if kind != Kind.MIKI else 30.0) * pulse, Cfg.with_a(c, 0.6))
@@ -116,7 +130,7 @@ static func draw_shape(ci: CanvasItem, kind: int, c: Color, t: float, pulse := 1
 			pts.append(Vector2(r * 1.7, r * 1.1))
 			pts.append(Vector2(r * 1.15, r * 0.2))
 			ci.draw_colored_polygon(pts, c)
-			ci.draw_polyline(pts + PackedVector2Array([pts[0]]), Color(1, 1, 1, 0.9), 1.5, true)
+			ci.draw_polyline(pts + PackedVector2Array([pts[0]]), Color(1, 1, 1, 0.9), 1.5, Cfg.AA)
 			ci.draw_circle(Vector2(-r * 0.2, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.95))
 		Kind.ORB:
 			# 詠唱の札：主神の色に光る縦長の御札。朱印と墨の一筆
@@ -143,6 +157,6 @@ static func draw_shape(ci: CanvasItem, kind: int, c: Color, t: float, pulse := 1
 			ci.draw_circle(Vector2(0, 6), 9.0, Cfg.C_PAPER)
 			ci.draw_circle(Vector2(0, -6), 6.5, Cfg.C_PAPER)
 			ci.draw_rect(Rect2(-2.5, -15, 5, 5), Cfg.with_a(c, 0.95))
-			ci.draw_arc(Vector2(0, 6), 9.0, 0, TAU, 20, Cfg.with_a(c, 0.9), 1.5, true)
-			ci.draw_arc(Vector2(0, -6), 6.5, 0, TAU, 16, Cfg.with_a(c, 0.9), 1.5, true)
+			ci.draw_arc(Vector2(0, 6), 9.0, 0, TAU, 20, Cfg.with_a(c, 0.9), 1.5, Cfg.AA)
+			ci.draw_arc(Vector2(0, -6), 6.5, 0, TAU, 16, Cfg.with_a(c, 0.9), 1.5, Cfg.AA)
 			ci.draw_rect(Rect2(-4, 2, 8, 8), Color(0.85, 0.2, 0.25, 0.85))

@@ -56,6 +56,12 @@ func _new_petal(anywhere: bool) -> Dictionary:
 
 
 func _process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_process(delta)
+	Perf.add("stars", _t0)
+
+
+func _perf_process(delta: float) -> void:
 	_t += delta
 	_tint_cur = _tint_cur.lerp(tint, clampf(delta * 1.5, 0.0, 1.0))
 	var base := [22.0, 55.0, 120.0]
@@ -83,6 +89,14 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	if Cfg.SKIP.has("stars"):
+		return
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("stars_draw", _t0)
+
+
+func _perf_draw() -> void:
 	# 画面シェイクで端が見えないよう少し広めに塗る
 	var stint: Color = Cfg.STAGE_TINT[clampi(stage - 1, 0, Cfg.STAGE_TINT.size() - 1)]
 	var mix := _tint_cur.lerp(stint, 0.5)

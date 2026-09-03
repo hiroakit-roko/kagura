@@ -7,6 +7,11 @@ const W := 640.0
 ## 基準の高さ。縦長の端末（スマホ）では横幅を基準に伸ばすので、実行時に Game が更新する。
 const H_BASE := 960.0
 static var H := 960.0
+## 軽量描画（スマホ）。発光の省略・アンチエイリアス無し・粒を減らす
+static var LITE := false
+## 計測用：--skip=stars,hud のように描画を系ごとに止める
+static var SKIP: PackedStringArray = []
+static var AA := true
 const MARGIN := 20.0
 
 # 衝突レイヤ（ビットマスク値）

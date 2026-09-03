@@ -119,6 +119,12 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_physics_process(delta)
+	Perf.add("player", _t0)
+
+
+func _perf_physics_process(delta: float) -> void:
 	if not alive:
 		return
 	t += delta
@@ -985,17 +991,25 @@ func _die() -> void:
 # ---------- 描画（スプライトの下に描く魔法陣など） ----------
 
 func _draw() -> void:
+	if Cfg.SKIP.has("player"):
+		return
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("player_draw", _t0)
+
+
+func _perf_draw() -> void:
 	var main := main_god()
 	var col := kami_color(main) if main != "" else Cfg.C_PLAYER
 	if has("tsuki_u8"):
 		# 月の帳：敵弾が鈍る範囲を薄い輪で示す
-		draw_arc(Vector2.ZERO, VEIL_R, 0, TAU, 64, Color(0.78, 0.72, 1.0, 0.10 + 0.03 * sin(t * 2.0)), 1.5, true)
+		draw_arc(Vector2.ZERO, VEIL_R, 0, TAU, 64, Color(0.78, 0.72, 1.0, 0.10 + 0.03 * sin(t * 2.0)), 1.5, Cfg.AA)
 
 	var mr := 26.0 + 2.0 * sin(t * 3.0)
 	var ma := 0.35 if main != "" else 0.18
 	draw_set_transform(Vector2(0, 34), 0.0, Vector2(1.0, 0.42))
-	draw_arc(Vector2.ZERO, mr, 0, TAU, 40, Cfg.with_a(col, ma), 2.0, true)
-	draw_arc(Vector2.ZERO, mr * 0.72, 0, TAU, 32, Cfg.with_a(col, ma * 0.7), 1.0, true)
+	draw_arc(Vector2.ZERO, mr, 0, TAU, 40, Cfg.with_a(col, ma), 2.0, Cfg.AA)
+	draw_arc(Vector2.ZERO, mr * 0.72, 0, TAU, 32, Cfg.with_a(col, ma * 0.7), 1.0, Cfg.AA)
 	for i in 6:
 		var a := t * 1.2 + TAU * float(i) / 6.0
 		draw_line(Vector2(cos(a), sin(a)) * mr * 0.72, Vector2(cos(a + TAU / 3.0), sin(a + TAU / 3.0)) * mr * 0.72,
@@ -1004,7 +1018,7 @@ func _draw() -> void:
 
 	if iframe > 0.0:
 		var k := 0.5 + 0.5 * sin(t * 24.0)
-		draw_arc(Vector2(0, -4), 30.0 + 3.0 * k, 0, TAU, 40, Color(1, 1, 1, 0.35 + 0.3 * k), 2.0, true)
+		draw_arc(Vector2(0, -4), 30.0 + 3.0 * k, 0, TAU, 40, Color(1, 1, 1, 0.35 + 0.3 * k), 2.0, Cfg.AA)
 		for i in 4:
 			var a := t * 6.0 + TAU * float(i) / 4.0
 			draw_circle(Vector2(cos(a), sin(a)) * (30.0 + 3.0 * k) + Vector2(0, -4), 2.5, Color(1, 1, 1, 0.8))
@@ -1012,7 +1026,7 @@ func _draw() -> void:
 	if shield > 0:
 		draw_arc(Vector2(0, -6), 34.0, 0.0, TAU, 40,
 				Cfg.with_a(Cfg.C_GOLD, 0.35 + 0.12 * sin(t * 3.0)), 2.0, true)
-		draw_arc(Vector2(0, -6), 30.0, t * 2.0, t * 2.0 + 1.2, 12, Color(1, 1, 1, 0.5), 2.0, true)
+		draw_arc(Vector2(0, -6), 30.0, t * 2.0, t * 2.0 + 1.2, 12, Color(1, 1, 1, 0.5), 2.0, Cfg.AA)
 
 	if haste_t > 0.0:
 		for i in 3:
@@ -1028,12 +1042,12 @@ func _draw() -> void:
 
 	if focus:
 		draw_circle(Vector2.ZERO, radius, Color(1, 0.4, 0.5, 0.75))
-		draw_arc(Vector2.ZERO, radius + 4.0, 0.0, TAU, 24, Color(1, 1, 1, 0.5), 1.0, true)
+		draw_arc(Vector2.ZERO, radius + 4.0, 0.0, TAU, 24, Color(1, 1, 1, 0.5), 1.0, Cfg.AA)
 
 	# 疾走のクールダウン：足元の輪が満ちると使える
 	if dash_cool > 0.0:
 		var k2 := 1.0 - dash_cool / maxf(0.01, dash_cd_time())
-		draw_arc(Vector2(0, 34), 16.0, 0, TAU, 24, Color(0, 0, 0, 0.45), 4.0, true)
-		draw_arc(Vector2(0, 34), 16.0, -PI * 0.5, -PI * 0.5 + TAU * k2, 24, Color(1, 1, 1, 0.75), 3.0, true)
+		draw_arc(Vector2(0, 34), 16.0, 0, TAU, 24, Color(0, 0, 0, 0.45), 4.0, Cfg.AA)
+		draw_arc(Vector2(0, 34), 16.0, -PI * 0.5, -PI * 0.5 + TAU * k2, 24, Color(1, 1, 1, 0.75), 3.0, Cfg.AA)
 		var f: Font = Game.inst.ui.font_bold
 		draw_string(f, Vector2(-20, 58), "%.1f" % dash_cool, HORIZONTAL_ALIGNMENT_CENTER, 40, 10, Color(1, 1, 1, 0.8))

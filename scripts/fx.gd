@@ -49,6 +49,11 @@ static func _ensure_glow() -> void:
 
 
 ## やわらかい光を 1 枚置く（どの CanvasItem からでも使える）
+## 粒の数（軽量描画では 6 割）
+static func _n(count: int) -> int:
+	return count if not Cfg.LITE else maxi(1, int(float(count) * 0.6))
+
+
 static func glow(ci: CanvasItem, pos: Vector2, r: float, color: Color) -> void:
 	_ensure_glow()
 	ci.draw_texture_rect(GLOW, Rect2(pos - Vector2(r, r), Vector2(r * 2.0, r * 2.0)), false, color)
@@ -62,6 +67,12 @@ static func puff(pos: Vector2, r0: float, r1: float, color: Color, life := 0.35)
 
 
 func _process(delta: float) -> void:
+	var _t0 := Time.get_ticks_usec()
+	_perf_process(delta)
+	Perf.add("fx", _t0)
+
+
+func _perf_process(delta: float) -> void:
 	shake = maxf(0.0, shake - delta * 34.0)
 	flash_t = maxf(0.0, flash_t - delta)
 
@@ -97,6 +108,14 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	if Cfg.SKIP.has("fx"):
+		return
+	var _t0 := Time.get_ticks_usec()
+	_perf_draw()
+	Perf.add("fx_draw", _t0)
+
+
+func _perf_draw() -> void:
 	for pf: Dictionary in _puffs:
 		var kp: float = 1.0 - pf.life / pf.maxlife
 		var rr: float = lerpf(pf.r0, pf.r1, 1.0 - (1.0 - kp) * (1.0 - kp))
@@ -109,7 +128,7 @@ func _draw() -> void:
 		var col: Color = z.color
 		var a: float = minf(1.0, z.life * 3.0) * 0.22
 		draw_circle(z.pos, z.r, Cfg.with_a(col, a))
-		draw_arc(z.pos, z.r, 0.0, TAU, 48, Cfg.with_a(col, a * 3.0), 2.0, true)
+		draw_arc(z.pos, z.r, 0.0, TAU, 48, Cfg.with_a(col, a * 3.0), 2.0, Cfg.AA)
 		# ゆっくり回る内側の紋
 		var rot: float = k * 3.0
 		for i in 6:
@@ -131,7 +150,7 @@ func _draw() -> void:
 		var k2: float = 1.0 - r.life / r.maxlife
 		var col2: Color = r.color
 		col2.a = (1.0 - k2) * 0.85
-		draw_arc(r.pos, lerpf(r.r0, r.r1, k2), 0.0, TAU, 48, col2, lerpf(r.width, 1.0, k2), true)
+		draw_arc(r.pos, lerpf(r.r0, r.r1, k2), 0.0, TAU, 48, col2, lerpf(r.width, 1.0, k2), Cfg.AA)
 
 	for s: Dictionary in _slashes:
 		var k3: float = 1.0 - s.life / s.maxlife
@@ -151,9 +170,9 @@ func _draw() -> void:
 		var col4: Color = b.color
 		var pts: PackedVector2Array = b.pts
 		for i in range(pts.size() - 1):
-			draw_line(pts[i], pts[i + 1], Cfg.with_a(col4, a4 * 0.45), 6.0 * a4 + 1.0, true)
+			draw_line(pts[i], pts[i + 1], Cfg.with_a(col4, a4 * 0.45), 6.0 * a4 + 1.0, Cfg.AA)
 		for i in range(pts.size() - 1):
-			draw_line(pts[i], pts[i + 1], Color(1, 1, 1, a4), 2.0 * a4 + 0.5, true)
+			draw_line(pts[i], pts[i + 1], Color(1, 1, 1, a4), 2.0 * a4 + 0.5, Cfg.AA)
 
 	for ry: Dictionary in _rays:
 		var a5: float = ry.life / ry.maxlife
@@ -163,7 +182,7 @@ func _draw() -> void:
 			var len: float = ry.len * (0.6 + 0.4 * sin(float(i) * 1.7 + a5 * 6.0))
 			var p0: Vector2 = ry.pos + Vector2(cos(ang), sin(ang)) * ry.r0
 			var p1: Vector2 = ry.pos + Vector2(cos(ang), sin(ang)) * (ry.r0 + len)
-			draw_line(p0, p1, Cfg.with_a(col5, a5 * 0.7), 3.0, true)
+			draw_line(p0, p1, Cfg.with_a(col5, a5 * 0.7), 3.0, Cfg.AA)
 
 	for p: Dictionary in _parts:
 		var k5: float = p.life / p.maxlife
@@ -183,7 +202,7 @@ func _draw() -> void:
 				draw_colored_polygon(PackedVector2Array([
 					p.pos + d * s2 * 1.4, p.pos + n * s2 * 0.6, p.pos - d * s2 * 1.4, p.pos - n * s2 * 0.6]), col6)
 			_: # 火花：線
-				draw_line(p.pos, p.pos - p.vel * 0.03, col6, maxf(1.0, s2 * 0.5), true)
+				draw_line(p.pos, p.pos - p.vel * 0.03, col6, maxf(1.0, s2 * 0.5), Cfg.AA)
 
 	if flash_t > 0.0:
 		var fa: float = flash_col.a * minf(1.0, flash_t * 6.0)
@@ -208,7 +227,7 @@ static func burst(pos: Vector2, color: Color, count := 12, spd := 240.0, size :=
 		life := 0.5, round_shape := false) -> void:
 	if inst == null:
 		return
-	for i in count:
+	for i in _n(count):
 		var a := randf() * TAU
 		var v := Vector2(cos(a), sin(a)) * spd * randf_range(0.25, 1.0)
 		inst._parts.append({
@@ -222,7 +241,7 @@ static func cone(pos: Vector2, dir: Vector2, color: Color, count := 6, spd := 20
 		spread := 0.6, size := 3.0, life := 0.3) -> void:
 	if inst == null:
 		return
-	for i in count:
+	for i in _n(count):
 		var a := dir.angle() + randf_range(-spread, spread)
 		var v := Vector2(cos(a), sin(a)) * spd * randf_range(0.4, 1.0)
 		inst._parts.append({
@@ -236,7 +255,7 @@ static func cone(pos: Vector2, dir: Vector2, color: Color, count := 6, spd := 20
 static func sparks(pos: Vector2, dir: Vector2, color: Color, count := 6, spd := 420.0) -> void:
 	if inst == null:
 		return
-	for i in count:
+	for i in _n(count):
 		var a := dir.angle() + randf_range(-1.1, 1.1)
 		var v := Vector2(cos(a), sin(a)) * spd * randf_range(0.5, 1.0)
 		inst._parts.append({
@@ -250,7 +269,7 @@ static func sparks(pos: Vector2, dir: Vector2, color: Color, count := 6, spd := 
 static func petals(pos: Vector2, color: Color, count := 8, spd := 120.0) -> void:
 	if inst == null:
 		return
-	for i in count:
+	for i in _n(count):
 		var a := randf() * TAU
 		var v := Vector2(cos(a), sin(a)) * spd * randf_range(0.3, 1.0)
 		inst._parts.append({

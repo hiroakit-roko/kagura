@@ -332,8 +332,8 @@ func _draw() -> void:
 		for hpos0 in head_positions():
 			var lp: Vector2 = (hpos0 as Vector2) - position
 			var mid := lp * 0.5 + Vector2(0, -20.0 + sin(t * 2.0 + lp.x * 0.02) * 6.0)
-			draw_line(Vector2.ZERO, mid, c.darkened(0.3), 10.0, true)
-			draw_line(mid, lp, c.darkened(0.3), 8.0, true)
+			draw_line(Vector2.ZERO, mid, c.darkened(0.3), 10.0, Cfg.AA)
+			draw_line(mid, lp, c.darkened(0.3), 8.0, Cfg.AA)
 			draw_circle(lp, 14.0, c)
 			draw_circle(lp + Vector2(-4, -3), 3.0, Color(1, 0.95, 0.6))
 			draw_circle(lp + Vector2(4, -3), 3.0, Color(1, 0.95, 0.6))
@@ -342,7 +342,7 @@ func _draw() -> void:
 	if tier == 2 and not is_final:
 		if invuln:
 			c = c.darkened(0.45)
-			draw_arc(Vector2.ZERO, radius * 1.15, 0, TAU, 40, Color(1, 1, 1, 0.35 + 0.15 * sin(t * 10.0)), 3.0, true)
+			draw_arc(Vector2.ZERO, radius * 1.15, 0, TAU, 40, Color(1, 1, 1, 0.35 + 0.15 * sin(t * 10.0)), 3.0, Cfg.AA)
 		else:
 			draw_circle(Vector2(0, -radius * 0.1), radius * 0.5, Color(1, 1, 0.95))
 			draw_circle(Vector2(0, -radius * 0.1), radius * 0.26, Color(0.9, 0.2, 0.3))
@@ -351,14 +351,14 @@ func _draw() -> void:
 	if tier == 1 and not is_final and dash_state == 1:
 		var pl := _player()
 		if pl != null:
-			draw_line(Vector2.ZERO, (pl.position - position).normalized() * 1200.0, Color(1, 0.4, 0.5, 0.25 + 0.2 * sin(t * 30.0)), 3.0, true)
+			draw_line(Vector2.ZERO, (pl.position - position).normalized() * 1200.0, Color(1, 0.4, 0.5, 0.25 + 0.2 * sin(t * 30.0)), 3.0, Cfg.AA)
 	# 本体：鬼の面
 	var hex := PackedVector2Array()
 	for i in 6:
 		var a := TAU * float(i) / 6.0 + PI / 6.0
 		hex.append(Vector2(cos(a), sin(a)) * radius)
 	draw_colored_polygon(hex, c.darkened(0.35))
-	draw_polyline(hex + PackedVector2Array([hex[0]]), c, 3.0, true)
+	draw_polyline(hex + PackedVector2Array([hex[0]]), c, 3.0, Cfg.AA)
 	# 角
 	for sgn in [-1.0, 1.0]:
 		draw_colored_polygon(PackedVector2Array([
@@ -371,7 +371,7 @@ func _draw() -> void:
 		draw_circle(ep, radius * 0.2 * pulse, Color(1, 0.95, 0.7, 0.95))
 		draw_circle(ep, radius * 0.09, Cfg.C_INK)
 	# 口（フェーズで牙が増える）
-	draw_arc(Vector2(0, radius * 0.3), radius * 0.4, 0.3, PI - 0.3, 12, Cfg.C_INK, 3.0, true)
+	draw_arc(Vector2(0, radius * 0.3), radius * 0.4, 0.3, PI - 0.3, 12, Cfg.C_INK, 3.0, Cfg.AA)
 	for i in ph * 2:
 		var x := (float(i) - float(ph * 2 - 1) * 0.5) * radius * 0.16
 		draw_colored_polygon(PackedVector2Array([
