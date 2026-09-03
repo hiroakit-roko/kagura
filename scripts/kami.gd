@@ -247,11 +247,11 @@ const BOONS := [
 	{"id": "saru_u6", "kami": "saru", "tier": Cfg.Rar.COMMON, "name": "風の道", "desc": "刃が敵を {v} 体貫く", "base": 1.0, "fmt": "num", "maxlv": 2},
 	{"id": "saru_u4", "kami": "saru", "tier": Cfg.Rar.RARE, "name": "疾風の御業", "desc": "疾走の間隔 -{v}", "base": 20.0, "fmt": "pct", "maxlv": 3},
 	{"id": "saru_u7", "kami": "saru", "tier": Cfg.Rar.RARE, "name": "追い風", "desc": "疾走してから 3 秒は刃のダメージ +{v}", "base": 40.0, "fmt": "pct", "maxlv": 3},
-	{"id": "saru_u9", "kami": "saru", "tier": Cfg.Rar.RARE, "name": "道開き", "desc": "かすってから 3 秒は刃の連射 +{v}", "base": 30.0, "fmt": "pct", "maxlv": 3},
+	{"id": "saru_u9", "kami": "saru", "tier": Cfg.Rar.RARE, "name": "小さな身", "desc": "自機の当たり判定 -{v}", "base": 20.0, "fmt": "pct", "maxlv": 3},
 	{"id": "saru_u5", "kami": "saru", "tier": Cfg.Rar.EPIC, "name": "神風二列", "desc": "刃の同時発射 +{v} 列", "base": 1.0, "fmt": "num", "maxlv": 1},
 	{"id": "saru_u8", "kami": "saru", "tier": Cfg.Rar.EPIC, "name": "疾風の刃", "desc": "疾走すると周囲へ風の刃を {v} 本放つ", "base": 6.0, "fmt": "num", "maxlv": 2},
 	{"id": "saru_leg", "kami": "saru", "name": "大導き", "rar": Cfg.Rar.LEGENDARY,
-		"desc": "敵弾のすれすれを抜ける（かすり）たび、神招きのゲージが {v} 溜まる", "base": 4.0, "fmt": "pct", "maxlv": 2},
+		"desc": "疾走の間隔 -{v}。疾走で触れた敵は怯み、威力 250% のダメージを受ける", "base": 35.0, "fmt": "pct", "maxlv": 2},
 
 	# ===== 双神（2 柱をともに迎え、それぞれの恩恵を 1 つ以上持つと出る） =====
 	{"id": "duo_ama_take", "kami": "ama", "kami2": "take", "name": "天鳴", "rar": Cfg.Rar.DUO,
@@ -294,8 +294,8 @@ const CURSES := [
 		"desc": "禍つ火を身に宿す。神器は猛るが、身は脆くなる"},
 	{"id": "curse_haste", "name": "早熟の契り", "gain": "神徳（神格の伸び）+50%", "loss": "最大 HP -20",
 		"desc": "命の一部を捧げて、神々との縁を早める"},
-	{"id": "curse_greed", "name": "強欲の契り", "gain": "功徳 ×1.5", "loss": "敵の HP +20%",
-		"desc": "より多くの功徳を求めるほど、穢れは濃くなる"},
+	{"id": "curse_wind", "name": "疾風の契り", "gain": "移動速度 +20%、疾走の間隔 -30%", "loss": "最大 HP -25",
+		"desc": "身を軽くするため、命の重みを削ぎ落とす"},
 	{"id": "curse_edge", "name": "刃の契り", "gain": "会心率 +15%", "loss": "敵弾の速さ +15%",
 		"desc": "研がれた刃は、敵の刃も研ぐ"},
 ]

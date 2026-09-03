@@ -245,10 +245,7 @@ func _on_name_submitted(n: String) -> void:
 
 ## 功徳の加算（禍神で倍率）
 func add_score(n: int) -> void:
-	var m := 1.5 if (player != null and is_instance_valid(player) and player.has("curse_greed")) else 1.0
-	if player != null and is_instance_valid(player) and player.has_relic("r_score"):
-		m *= 1.2
-	score += int(round(float(n) * m))
+	score += n
 
 
 ## 踏破後に更に登る（エンドレス：祟りの参道）
@@ -530,7 +527,7 @@ func _clear_wave() -> void:
 			if is_instance_valid(o) and o.kind == Pickup.Kind.ORB:
 				Fx.burst(o.position, player.kami_color(player.main_god()) if player.main_god() != "" else Color(1, 1, 1), 5, 120.0, 2.5, 0.3, true)
 				o.queue_free()
-		add_score(50 * wave + player.grazes)
+		add_score(50 * wave)
 	if _boss_reward:
 		_boss_reward = false
 		_open_relics()
@@ -897,7 +894,6 @@ func _on_player_died() -> void:
 		["功徳", str(score)],
 		["討たれた相手", player.last_hit_by if player.last_hit_by != "" else "不明"],
 		["最も働いた神器", mvp],
-		["かすり", str(player.grazes)],
 		["神々", "・".join(god_names) if not god_names.is_empty() else "なし"],
 	]
 	ui.overlay.tip = _death_tip()
@@ -924,8 +920,6 @@ func _death_tip() -> String:
 		return "副神の枠が空いていた。位 4 と位 7 で副神を迎えると神器が増え、火力が伸びる"
 	if player.last_hit_by.ends_with("体当たり"):
 		return "体当たりで倒れた。疾走（短くなぞる／Space）の無敵で抜けよう"
-	if player.grazes < 5:
-		return "敵弾のすれすれを抜ける「かすり」で神招きゲージが溜まる。神招きで切り抜けよう"
 	return "神格は神器を当てるほど上がる。主神の神器が当たる位置取りを意識しよう"
 
 

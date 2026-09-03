@@ -52,6 +52,8 @@ var pending_levels := 0
 var alive := true
 
 var radius := 7.0
+var _shape: CircleShape2D
+var _dash_hit := {}          # この疾走で触れた敵（大導き）
 var fire_cd := 0.0
 var cast_charges := 2
 var iframe := 0.0
@@ -71,7 +73,6 @@ var call_power := 1.0
 var haste_t := 0.0           # 道開き：移動と連射が速くなる時間
 var dash_mult := 1.0         # 疾走の距離倍率（神の強化で伸ばす余地）
 var dash_buff_t := 0.0       # 疾走してからの猶予（猿田彦：追い風）
-var graze_buff_t := 0.0      # かすってからの猶予（猿田彦：道開き）
 var _fog_t := 0.0            # 霧の中の回復の刻み（少名毘古那：薬酒）
 var fan_heal_cd := 0.0       # 舞い手の護りの間隔
 var _dash_ready_ping := true
@@ -98,6 +99,7 @@ func _ready() -> void:
 	var c := CircleShape2D.new()
 	c.radius = radius
 	cs.shape = c
+	_shape = c
 	add_child(cs)
 	area_entered.connect(_on_area)
 	hp = stats["max_hp"]
@@ -178,6 +180,12 @@ func kami_power(kami_id: String) -> float:
 ## 基本のダメージ（位で少しずつ伸びる）
 func has_relic(id: String) -> bool:
 	return relics.has(id)
+
+
+## 当たり判定の倍率（1.0 が素）
+func hit_scale() -> float:
+	var s := 1.0 - val("saru_u9") * 0.01 - (0.25 if has_relic("r_small") else 0.0)
+	return clampf(s, 0.4, 1.0)
 
 
 func base_damage() -> float:
@@ -266,7 +274,11 @@ func cost_mult(kind: String) -> float:
 
 func on_boons_changed() -> void:
 	var base_hp := (100.0 + float(level - 1) * 3.0) * cost_mult("hp")
-	var new_max := base_hp + (val("uzume_u5") if has("uzume_u5") else 0.0) - (20.0 if has("curse_haste") else 0.0) + (30.0 if has_relic("r_hp") else 0.0)
+	var new_max := base_hp + (val("uzume_u5") if has("uzume_u5") else 0.0) - (20.0 if has("curse_haste") else 0.0) - (25.0 if has("curse_wind") else 0.0) + (30.0 if has_relic("r_hp") else 0.0)
+	# 当たり判定の大きさ（小さな身・隠れ蓑）
+	radius = 7.0 * hit_scale()
+	if _shape != null:
+		_shape.radius = radius
 	new_max = maxf(new_max, 30.0)
 	var diff := new_max - float(stats["max_hp"])
 	stats["max_hp"] = new_max
@@ -316,6 +328,8 @@ func move_speed() -> float:
 		m += 0.10
 	if has_relic("r_speed"):
 		m += 0.10
+	if has("curse_wind"):
+		m += 0.20
 	if familiar_id == "karasu":
 		m += 0.06
 	if haste_t > 0.0:
@@ -324,7 +338,8 @@ func move_speed() -> float:
 
 
 func dash_cd_time() -> float:
-	return float(stats["dash_cd"]) * (1.0 - val("saru_u4") * 0.01) * cost_mult("dash_cd") * (0.75 if has_relic("r_dash") else 1.0)
+	return float(stats["dash_cd"]) * (1.0 - val("saru_u4") * 0.01) * (1.0 - val("saru_leg") * 0.01) * cost_mult("dash_cd") \
+			* (0.75 if has_relic("r_dash") else 1.0) * (0.7 if has("curse_wind") else 1.0)
 
 
 func _touch() -> Touch:
@@ -346,6 +361,14 @@ func _move(delta: float) -> void:
 		dash_t -= delta
 		iframe = maxf(iframe, 0.05)
 		position += dash_dir * move_speed() * 2.6 * dash_mult * delta
+		# 大導き（伝説）：疾走で触れた敵は怯み、大きなダメージ
+		if has("saru_leg"):
+			for e in _enemies_within(radius + 26.0):
+				if _dash_hit.has(e.get_instance_id()):
+					continue
+				_dash_hit[e.get_instance_id()] = true
+				Combat.hit(e, base_damage() * 2.5 * kami_power("saru"), e.position, {"tag": "wind", "kami": "saru", "dir": dash_dir})
+				e.stagger(1.0)
 		_ghost_t -= delta
 		if _ghost_t <= 0.0:
 			_ghost_t = 0.025
@@ -395,6 +418,7 @@ func _start_dash(dir: Vector2) -> void:
 	Sfx.play("suzu", -18.0, 1.5)
 	Game.inst.hitstop(0.03, 0.3)
 	dash_buff_t = 3.0
+	_dash_hit.clear()
 	# 疾風の刃：疾走すると周囲へ風の刃を放つ
 	if has("saru_u8"):
 		var n := int(round(val("saru_u8")))
@@ -799,7 +823,6 @@ func _upkeep(delta: float) -> void:
 	# 神招きのゲージは時間で溜まるのが主（満タンまで約 45 秒、1/4 なら約 11 秒）
 	add_call_gauge(delta * 0.022)
 	dash_buff_t = maxf(0.0, dash_buff_t - delta)
-	graze_buff_t = maxf(0.0, graze_buff_t - delta)
 	fan_heal_cd = maxf(0.0, fan_heal_cd - delta)
 	if has("suku_u7"):
 		_fog_t += delta
@@ -843,8 +866,7 @@ func _graze() -> void:
 		if d < 30.0 and d > radius + b.radius:
 			_grazed[b.get_instance_id()] = true
 			grazes += 1
-			graze_buff_t = 3.0
-			add_call_gauge(0.004 + val("saru_leg") * 0.01)
+			add_call_gauge(0.004)
 			Fx.sparks(b.position, Vector2.UP, Color(1, 1, 1), 2, 200.0)
 			Fx.number(position + Vector2(0, -40), "かすり", Color(1, 1, 1, 0.6), 9.0)
 	if _grazed.size() > 400:

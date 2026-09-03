@@ -188,8 +188,6 @@ func setup(k: String, w: int) -> void:
 			contact_dmg = 18.0
 			color = Color(1.0, 0.62, 0.25)
 	var pl := Game.inst.player if Game.inst != null else null
-	if pl != null and is_instance_valid(pl) and pl.has("curse_greed"):
-		max_hp *= 1.2
 	hp = max_hp
 
 

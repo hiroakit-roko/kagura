@@ -427,8 +427,6 @@ func _wind() -> void:
 		return
 	var lv: int = p.kami_lv.get(kami, 1)
 	var rate := 1.0 + p.val("saru_u1") * 0.01
-	if p.has("saru_u9") and p.graze_buff_t > 0.0:
-		rate *= 1.0 + p.val("saru_u9") * 0.01   # 道開き：かすった直後は連射が速い
 	cd = _rate(0.13 / rate)
 	var dmg := base_dmg() * 0.45 * power() * (1.0 + p.val("saru_u2") * 0.01)
 	if p.has("saru_u7") and p.dash_buff_t > 0.0:

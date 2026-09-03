@@ -16,7 +16,7 @@ const LIST := [
 	{"id": "r_gauge", "name": "神楽鈴", "mark": "楽", "desc": "神招きの溜まり +25%"},
 	{"id": "r_heal_drop", "name": "薬袋", "mark": "薬", "desc": "団子が落ちる確率 2 倍"},
 	{"id": "r_revive", "name": "身代わり人形", "mark": "代", "desc": "一度だけ致命傷を防ぎ、HP 半分で立ち上がる"},
-	{"id": "r_score", "name": "賽銭箱", "mark": "賽", "desc": "功徳 +20%"},
+	{"id": "r_small", "name": "隠れ蓑", "mark": "隠", "desc": "自機の当たり判定 -25%"},
 	{"id": "r_speed", "name": "韋駄天の足", "mark": "速", "desc": "移動速度 +10%"},
 	{"id": "r_fam_dmg", "name": "使い魔の首輪", "mark": "魔", "desc": "使い魔の威力 +60%"},
 	{"id": "r_fam_rate", "name": "使い魔の鈴", "mark": "連", "desc": "使い魔の連射 +40%"},
