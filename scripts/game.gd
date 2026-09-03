@@ -87,6 +87,9 @@ func _ready() -> void:
 	inst = self
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	randomize()
+	# スマホは発熱対策で 30fps に制限（PC は project.godot の 60fps）。物理は 60 回/秒のまま
+	if DisplayServer.is_touchscreen_available():
+		Engine.max_fps = 30
 
 	# 2D グロー（ネオン感の要）。Compatibility レンダラ（Web）でも動くよう、
 	# 使えるプロパティだけを設定し、閾値は 1.0 未満にしておく。
