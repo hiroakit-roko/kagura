@@ -183,7 +183,7 @@ func _wave() -> void:
 	var lv: int = p.kami_lv.get(kami, 1)
 	var size := 70.0 * (1.0 + p.val("susa_u2") * 0.01) * (1.0 + 0.05 * float(lv / 3))
 	var reach := 260.0 * (1.0 + p.val("susa_u3") * 0.01)
-	var dmg := base_dmg() * 3.6 * power() * (1.0 + p.val("susa_u1") * 0.01)
+	var dmg := base_dmg() * 3.42 * power() * (1.0 + p.val("susa_u1") * 0.01)   # 押し戻しが強いので素の威力は 5% 控えめ
 	if p.has("susa_u9"):
 		# 怒りの海：画面の敵が多いほど強い
 		dmg *= 1.0 + p.val("susa_u9") * 0.01 * float(mini(_enemies().size(), 10))
