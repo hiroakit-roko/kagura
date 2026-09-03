@@ -851,7 +851,7 @@ func _contact() -> void:
 	if _contact_cd > 0.0 or iframe > 0.0:
 		return
 	for a in get_overlapping_areas():
-		if a is Enemy:
+		if a is Enemy and (a as Enemy).st["charm"] <= 0.0:   # 魅了された敵は味方なので体当たりしない
 			_contact_cd = 0.4
 			take_damage(float((a as Enemy).contact_dmg) * (a as Enemy).out_dmg_mult(), false, Vector2.ZERO, (a as Enemy).display_name() + "の体当たり")
 			return
@@ -889,7 +889,7 @@ func _on_area(a: Area2D) -> void:
 				pick_orb()
 		Fx.burst(p.position, p.color_of(), 5, 110.0, 2.5, 0.28, true)
 		p.queue_free()
-	elif a is Enemy and _contact_cd <= 0.0 and iframe <= 0.0:
+	elif a is Enemy and (a as Enemy).st["charm"] <= 0.0 and _contact_cd <= 0.0 and iframe <= 0.0:
 		_contact_cd = 0.4
 		take_damage(float((a as Enemy).contact_dmg) * (a as Enemy).out_dmg_mult(), false, Vector2.ZERO, (a as Enemy).display_name() + "の体当たり")
 

@@ -623,6 +623,7 @@ func _aim_target() -> Node2D:
 				best = e
 		if best != null:
 			return best
+		return null   # 魅了中に他の敵がいなければ撃たない（自機を狙わない）
 	return _player()
 
 
