@@ -3,7 +3,8 @@ extends Node2D
 
 ## ゲーム全体の進行役：ウェーブ生成・状態遷移・神と恩恵の受け渡し・ヒットストップ。
 
-enum St {TITLE, PLAY, KAMI, BOON, MIKI, PAUSE, OVER, CLEAR, FAMILIAR}
+enum St {TITLE, PLAY, KAMI, BOON, MIKI, PAUSE, OVER, CLEAR, FAMILIAR, STORY}
+static var story_seen := false   # 開幕の物語は起動ごとに 1 回
 
 static var inst: Game
 static var enemy_bullet_slow := 0.0
@@ -143,6 +144,7 @@ func _ready() -> void:
 	ui.continue_requested.connect(continue_endless)
 	ui.title_requested.connect(_show_title)
 	ui.name_submitted.connect(_on_name_submitted)
+	ui.story_done.connect(_on_story_done)
 
 	_load_best()
 	_show_title()
@@ -260,6 +262,7 @@ func continue_endless() -> void:
 	_between = 2.0
 	Music.play("stage")
 	ui.banner("祟りの参道", "踏破の先へ。穢れはさらに濃くなる", Color(1, 0.5, 0.6))
+	ui.cutin("dash", Color(1, 0.5, 0.6), 2.0)
 	Sfx.play("taiko", -4.0, 0.8)
 
 
@@ -310,10 +313,22 @@ func start_game() -> void:
 	_tut_step = 0
 	_tut_t = 0.0
 	_seen_items.clear()
-	# まず使い魔を選ぶ（時間は止まったまま）
+	resetting = false
+	# 初回は開幕の物語を見せ、そのあと使い魔を選ぶ（時間は止まったまま）
+	if not story_seen and Ui.art("cutin/opening") != null and not OS.get_cmdline_user_args().has("--capture"):
+		story_seen = true
+		_pause_for_choice(St.STORY)
+		ui.show_story()
+		return
 	_pause_for_choice(St.FAMILIAR)
 	ui.show_familiar_choice()
-	resetting = false
+
+
+func _on_story_done() -> void:
+	if state != St.STORY:
+		return
+	_pause_for_choice(St.FAMILIAR)
+	ui.show_familiar_choice()
 
 
 ## アイテムが初めて落ちたとき、絵付きで何かを短く案内する

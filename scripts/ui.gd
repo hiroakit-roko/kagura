@@ -6,6 +6,7 @@ extends CanvasLayer
 
 signal kami_chosen(id: String)
 signal familiar_chosen(id: String)
+signal story_done
 signal boon_chosen(idx: int)
 signal reroll_requested
 signal miki_chosen(id: String)
@@ -27,6 +28,7 @@ var confirm_view: ConfirmView
 var boons_view: BoonsView
 var miki_view: MikiView
 var relic_view: RelicView
+var story_view: StoryView
 var ranking_view: RankingView
 var overlay: OverlayView
 
@@ -229,6 +231,9 @@ func _ready() -> void:
 	relic_view = RelicView.new()
 	_setup_view(relic_view)
 	relic_view.visible = false
+	story_view = StoryView.new()
+	_setup_view(story_view)
+	story_view.visible = false
 	ranking_view = RankingView.new()
 	_setup_view(ranking_view)
 	ranking_view.z_index = 20   # 題目・結果画面の上に重ねる
@@ -252,6 +257,12 @@ func _setup_view(v: Control) -> void:
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(v)
+
+
+func show_story() -> void:
+	hide_cards()
+	story_view.t = 0.0
+	story_view.visible = true
 
 
 func show_familiar_choice() -> void:
@@ -300,6 +311,7 @@ func hide_cards() -> void:
 	boons_view.visible = false
 	miki_view.visible = false
 	relic_view.visible = false
+	story_view.visible = false
 
 
 ## 討伐の褒賞：神宝を 3 つから選ぶ
@@ -344,6 +356,14 @@ func boss_intro(name: String, title: String, final: bool, key := "") -> void:
 	hud.intro_t = 3.6
 
 
+## 主人公のカットイン（神招きなど）。key は image/cutin/<key>.jpg
+func cutin(key: String, col := Color(1, 1, 1), sec := HudView.CUTIN_T) -> void:
+	hud.cutin_key = key
+	hud.cutin_col = col
+	hud.cutin_len = sec
+	hud.cutin_t = sec
+
+
 ## 小さな告知（詠唱名など）：画面下寄りに短く
 func banner_small(text: String, col := Color(1, 1, 1)) -> void:
 	hud.small_text = text
@@ -356,6 +376,12 @@ func _unhandled_input(e: InputEvent) -> void:
 	var click := Vector2(-1, -1)
 	if ranking_view.visible:
 		ranking_view.handle(e)
+		return
+	if story_view.visible:
+		if (e is InputEventKey and e.pressed and not e.echo) or (e is InputEventMouseButton and e.pressed):
+			if story_view.t > 0.6:
+				story_view.visible = false
+				story_done.emit()
 		return
 	if e is InputEventKey and e.pressed and not e.echo:
 		var k := (e as InputEventKey).keycode
@@ -540,6 +566,11 @@ class HudView:
 	var banner_sub := ""
 	var banner_col := Color(1, 1, 1)
 	var banner_icon := -1   # Pickup.Kind（アイテムの案内）。-1 なら絵なし
+	var cutin_t := 0.0      # 主人公のカットイン（神招きなど）の残り秒
+	var cutin_len := 1.6
+	var cutin_key := ""     # image/cutin/<key>.jpg
+	var cutin_col := Color(1, 1, 1)
+	const CUTIN_T := 1.6
 	var banner_t := 0.0
 	var small_text := ""
 	var small_col := Color(1, 1, 1)
@@ -559,6 +590,7 @@ class HudView:
 		banner_t = maxf(0.0, banner_t - delta)
 		small_t = maxf(0.0, small_t - delta)
 		intro_t = maxf(0.0, intro_t - delta)
+		cutin_t = maxf(0.0, cutin_t - delta)
 		# HUD は文字が多く、毎フレーム描き直すと文字の整形が重い。30fps に間引く
 		_rd += delta
 		if _rd >= 1.0 / 30.0:
@@ -579,6 +611,9 @@ class HudView:
 					_draw_skills(p)
 			_draw_top(g)
 			_draw_boss(g)
+		if cutin_t > 0.0:
+			_draw_cutin()
+
 		if banner_t > 0.0:
 			_draw_banner()
 		if intro_t > 0.0:
@@ -813,6 +848,31 @@ class HudView:
 			Ui.txt(self, ui.font, Vector2(0, y + 26), banner_sub, 15,
 					Color(1, 1, 1, a * 0.85), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 
+	## 主人公のカットイン：右から滑り込み、光の帯の上に絵を敷く
+	func _draw_cutin() -> void:
+		var tex := Ui.art("cutin/" + cutin_key)
+		if tex == null:
+			return
+		var k := 1.0 - cutin_t / maxf(0.1, cutin_len)
+		var a := clampf(minf(k * 8.0, (1.0 - k) * 5.0), 0.0, 1.0)
+		var slide := (1.0 - minf(1.0, k * 6.0)) * 120.0
+		# 帯は告知（y=300 前後）と重ならない高さに置く
+		var band := Rect2(0, 96.0, Cfg.W, 156.0)
+		draw_rect(band.grow(6.0), Color(0, 0, 0, 0.6 * a))
+		draw_rect(band, Color(0.03, 0.02, 0.06, 0.85 * a))
+		var pr := Rect2(slide, band.position.y, Cfg.W, band.size.y)
+		Ui.draw_cover(self, tex, pr, a, 0.4)
+		# 左右を暗く落として帯に馴染ませる
+		for gi in 6:
+			var kk := float(gi) / 6.0
+			draw_rect(Rect2(kk * 60.0, band.position.y, 10.0, band.size.y), Color(0.03, 0.02, 0.06, 0.6 * (1.0 - kk) * a))
+		draw_rect(Rect2(band.position.x, band.position.y, Cfg.W, 3), Cfg.with_a(cutin_col, a))
+		draw_rect(Rect2(band.position.x, band.end.y - 3, Cfg.W, 3), Cfg.with_a(cutin_col, a))
+		for i in 5:
+			var ang := -0.3 + float(i) * 0.15
+			var x := 40.0 + float(i) * 130.0 + slide * 0.5
+			draw_line(Vector2(x, band.position.y), Vector2(x + 60.0 * ang, band.end.y), Color(1, 1, 1, 0.12 * a), 6.0)
+
 	## ボスの名乗り
 	func _draw_intro() -> void:
 		var k := intro_t / 3.2
@@ -829,6 +889,13 @@ class HudView:
 				draw_rect(Rect2(0, pr.end.y - 120.0 + kk * 120.0, Cfg.W, 120.0 / 8.0 + 1.0), Color(0.03, 0.02, 0.06, 0.9 * kk * a))
 			draw_rect(Rect2(0, pr.position.y, Cfg.W, 2), Cfg.with_a(col, a))
 			draw_rect(Rect2(0, pr.end.y - 2, Cfg.W, 2), Cfg.with_a(col, a))
+		var hero := Ui.art("cutin/boss")
+		if hero != null:
+			# 主人公：帯の下、左側に小さく（大妖と向き合う）
+			var hr := Rect2(16, 410, 250, 110)
+			draw_rect(hr.grow(3.0), Color(0, 0, 0, 0.55 * a))
+			Ui.draw_cover(self, hero, hr, a, 0.35)
+			draw_rect(hr, Cfg.with_a(Color(0.85, 0.7, 1.0), 0.8 * a), false, 1.5)
 		var x := Cfg.W - 90.0
 		draw_rect(Rect2(x - 46, 110, 92, 330), Color(0, 0, 0, 0.55 * a))
 		draw_rect(Rect2(x - 46, 110, 92, 330), Cfg.with_a(col, 0.7 * a), false, 1.5)
@@ -1405,6 +1472,13 @@ class MikiView:
 
 	func _draw() -> void:
 		backdrop(Cfg.C_GOLD)
+		var pray := Ui.art("cutin/kami")
+		if pray != null:
+			var prr := Rect2(0, 0, Cfg.W, 120)
+			Ui.draw_cover(self, pray, prr, 0.55 * anim, 0.3)
+			for gi in 6:
+				var kk := float(gi) / 6.0
+				draw_rect(Rect2(0, prr.end.y - 60.0 + kk * 60.0, Cfg.W, 60.0 / 6.0 + 1.0), Color(0.03, 0.02, 0.06, 0.9 * kk * anim))
 		Ui.txt(self, ui.font_display, Vector2(0, 150), "神との邂逅", 48, Cfg.with_a(Cfg.C_GOLD, anim),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		Ui.txt(self, ui.font, Vector2(0, 188), "強化する神を選ぶ", 15,
@@ -1544,13 +1618,22 @@ class OverlayView:
 				var kk := float(gi) / 10.0
 				draw_rect(Rect2(0, 260.0 + kk * (Cfg.H - 260.0), Cfg.W, (Cfg.H - 260.0) / 10.0 + 1.0), Color(0.03, 0.02, 0.06, 0.85 * minf(1.0, kk * 2.0)))
 		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Cfg.with_a(Cfg.C_GOLD, 0.06), 52.0, _t)
-		var c := Vector2(Cfg.W * 0.5, 150.0)
-		for i in 16:
-			var ang := _t * 0.3 + TAU * float(i) / 16.0
-			draw_line(c + Vector2(cos(ang), sin(ang)) * 40.0, c + Vector2(cos(ang), sin(ang)) * (160.0 + 30.0 * sin(_t * 2.0 + float(i))),
-					Cfg.with_a(Cfg.C_GOLD, 0.12), 6.0, true)
-		draw_circle(c, 46.0, Cfg.with_a(Cfg.C_GOLD, 0.25))
-		draw_circle(c, 34.0, Color(1, 0.97, 0.85, 0.9))
+		var win := Ui.art("cutin/clear")
+		if win != null:
+			var wr := Rect2(0, 40, Cfg.W, 170)
+			Ui.draw_cover(self, win, wr, 0.95, 0.3)
+			for gi in 6:
+				var kk := float(gi) / 6.0
+				draw_rect(Rect2(0, wr.end.y - 60.0 + kk * 60.0, Cfg.W, 60.0 / 6.0 + 1.0), Color(0.03, 0.02, 0.06, 0.9 * kk))
+			draw_rect(Rect2(0, wr.position.y, Cfg.W, 2), Cfg.with_a(Cfg.C_GOLD, 0.9))
+		else:
+			var c := Vector2(Cfg.W * 0.5, 150.0)
+			for i in 16:
+				var ang := _t * 0.3 + TAU * float(i) / 16.0
+				draw_line(c + Vector2(cos(ang), sin(ang)) * 40.0, c + Vector2(cos(ang), sin(ang)) * (160.0 + 30.0 * sin(_t * 2.0 + float(i))),
+						Cfg.with_a(Cfg.C_GOLD, 0.12), 6.0, true)
+			draw_circle(c, 46.0, Cfg.with_a(Cfg.C_GOLD, 0.25))
+			draw_circle(c, 34.0, Color(1, 0.97, 0.85, 0.9))
 		Ui.txt(self, ui.font_display, Vector2(0, 250), "踏破", 66, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		Ui.txt(self, ui.font, Vector2(0, 284), "奥宮の穢れは祓われ、参道に朝日が差した", 13, Color(1, 0.95, 0.85, 0.9),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
@@ -1655,6 +1738,14 @@ class OverlayView:
 				var kk := float(gi) / 10.0
 				draw_rect(Rect2(0, 240.0 + kk * (Cfg.H - 240.0), Cfg.W, (Cfg.H - 240.0) / 10.0 + 1.0), Color(0.02, 0.01, 0.05, 0.88 * minf(1.0, kk * 2.0)))
 		Ui.pattern(self, Rect2(0, 0, Cfg.W, Cfg.H), Color(1, 0.3, 0.4, 0.04), 52.0, _t)
+		var hurt := Ui.art("cutin/hurt")
+		if hurt != null:
+			var hr := Rect2(0, 40, Cfg.W, 150)
+			Ui.draw_cover(self, hurt, hr, 0.9, 0.35)
+			for gi in 6:
+				var kk := float(gi) / 6.0
+				draw_rect(Rect2(0, hr.end.y - 50.0 + kk * 50.0, Cfg.W, 50.0 / 6.0 + 1.0), Color(0.02, 0.01, 0.05, 0.95 * kk))
+			draw_rect(Rect2(0, hr.position.y, Cfg.W, 2), Color(1, 0.3, 0.4, 0.8))
 		Ui.txt(self, ui.font_display, Vector2(0, 200), "討たれた", 58, Color(1, 0.3, 0.4),
 				HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
 		Ui.txt(self, ui.font, Vector2(0, 234), "神楽は途切れ、参道は闇に沈んだ", 13, Color(0.9, 0.8, 0.85, 0.8),
@@ -2143,3 +2234,38 @@ class RotateHint:
 		draw_circle(Vector2(0, 38), 3.0, Cfg.C_GOLD)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		Ui.txt(self, ui.font_display, Vector2(0, c.y + 90), "縦にしてください", 26, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+
+
+# =====================================================================
+## 開幕の物語：一枚絵と短い言葉。タップで先へ
+class StoryView:
+	extends Control
+
+	var ui: Ui
+	var t := 0.0
+	const LINES := ["参道は穢れに沈み、灯は消えた。", "神楽の巫女はひとり、八百万の神々に呼びかける。", "――踏破の朝日を、もう一度。"]
+
+	func _process(delta: float) -> void:
+		if visible:
+			t += delta
+			queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(0, 0, Cfg.W, Cfg.H), Color(0.03, 0.02, 0.06, 1.0))
+		var tex := Ui.art("cutin/opening")
+		var a := clampf(t * 1.5, 0.0, 1.0)
+		if tex != null:
+			var pr := Rect2(0, 120, Cfg.W, 360)
+			Ui.draw_cover(self, tex, pr, a, 0.4)
+			for gi in 8:
+				var kk := float(gi) / 8.0
+				draw_rect(Rect2(0, pr.end.y - 100.0 + kk * 100.0, Cfg.W, 100.0 / 8.0 + 1.0), Color(0.03, 0.02, 0.06, 0.95 * kk * a))
+				draw_rect(Rect2(0, pr.position.y + kk * 60.0, Cfg.W, 60.0 / 8.0 + 1.0), Color(0.03, 0.02, 0.06, 0.9 * (1.0 - kk) * a))
+		var y := 540.0
+		for i in LINES.size():
+			var la := clampf((t - 0.8 - float(i) * 0.9) * 1.5, 0.0, 1.0)
+			Ui.txt(self, ui.font_display, Vector2(0, y), LINES[i], 20 if i < 2 else 24, Color(1, 0.96, 0.9, la) if i < 2 else Cfg.with_a(Cfg.C_GOLD, la), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)
+			y += 44.0
+		if t > 0.6:
+			var blink := 0.5 + 0.5 * sin(t * 4.0)
+			Ui.txt(self, ui.font, Vector2(0, Cfg.H - 60.0), "タップで進む", 14, Color(1, 1, 1, 0.6 * blink), HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)

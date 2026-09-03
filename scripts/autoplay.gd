@@ -113,6 +113,9 @@ func _run() -> void:
 	if OS.get_cmdline_user_args().has("--clicktest"):
 		await _click_test()
 		return
+	if OS.get_cmdline_user_args().has("--storytest"):
+		await _story_test()
+		return
 	if OS.get_cmdline_user_args().has("--fantest"):
 		await _fan_test()
 		return
@@ -585,4 +588,36 @@ func _click_test() -> void:
 	await _wait(0.5)
 	print("[click] after: ranking_visible=%s state=%d overlay=%s rows=%d" % [str(g.ui.ranking_view.visible), g.state, str(g.ui.overlay.visible), g.ui.ranking_view.rows.size()])
 	await shot("07_click_ranking.png")
+	get_tree().quit()
+
+
+## 開幕の物語と神招き・詠唱のカットインを撮る
+func _story_test() -> void:
+	_no_ai = true
+	var g := Game.inst
+	Game.story_seen = false
+	g.start_game()
+	await _wait(0.3)
+	g._pause_for_choice(Game.St.STORY)
+	g.ui.show_story()
+	await _wait(3.4)
+	await shot("00_story.png")
+	g.ui.story_view.visible = false
+	g._on_story_done()
+	g._on_familiar_chosen("karasu")
+	var p := g.player
+	p.add_god("tsuki")
+	p.stats["max_hp"] = 9999.0
+	p.hp = 9999.0
+	await _wait(0.5)
+	p.call_gauge = 1.0
+	p._try_call()
+	await _wait(0.45)
+	await shot("61_call_cutin.png")
+	await _wait(3.0)
+	p.cast_charges = 3
+	p._try_cast()
+	await _wait(0.3)
+	await shot("62_cast_cutin.png")
+	print("[story] done")
 	get_tree().quit()

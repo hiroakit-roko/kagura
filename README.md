@@ -106,6 +106,9 @@ image/
   scene/clear.jpg      踏破の一枚絵、scene/gameover.jpg ゲームオーバーの一枚絵
   relic/<id>.jpg       神宝の絵（討伐の褒賞のカード。手描き風・コミカル、512×512）
   item/{xp,heal,orb}.jpg  勾玉・団子・詠唱の札の絵（初めて落ちたときの案内）
+  cutin/<key>.jpg      主人公のカットイン（16:9、title.png を画像プロンプトにして生成）
+                       opening 開幕の物語 / call 神招き / cast 詠唱 / boss 大妖の名乗り / kami 神との邂逅
+                       clear 踏破 / hurt 討たれた / dash 祟りの参道
   player_walk.png      walk.gif から抽出した歩行スプライトシート（10 フレーム、ピンポン再生）
   walk.gif             元素材（ゲームでは未使用）
 music/
