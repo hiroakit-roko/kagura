@@ -224,6 +224,10 @@ func _ready() -> void:
 	_setup_view(ranking_view)
 	ranking_view.z_index = 20   # 題目・結果画面の上に重ねる
 	ranking_view.visible = false
+	var rot := RotateHint.new()
+	rot.ui = self
+	_setup_view(rot)
+	rot.z_index = 40
 	overlay = OverlayView.new()
 	_setup_view(overlay)
 	overlay.visible = false
@@ -2080,3 +2084,32 @@ class RankingView:
 		var ver2 := String(e.get("version", ""))
 		var vtxt := ("版 v%s（%s）" % [ver2, String(e.get("commit", ""))]) if ver2 != "" else "版 不明（古い記録）"
 		Ui.txt(self, ui.font, Vector2(x0 + 14, y0 + h - 12.0), "%s　%s　%s" % [vtxt, String(e.get("platform", "")), dur_txt], 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_LEFT, w - 28.0)
+
+
+# =====================================================================
+## タッチ端末が横向きのとき、すべての上に「縦にしてください」を出す
+class RotateHint:
+	extends Control
+
+	var ui: Ui
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		var g := Game.inst
+		var show := g != null and g.landscape_block
+		if show != visible:
+			visible = show
+		if visible:
+			queue_redraw()
+
+	func _draw() -> void:
+		draw_rect(Rect2(-3000, -3000, 7000, 7000), Color(0.03, 0.02, 0.06, 0.97))
+		var c := Vector2(Cfg.W * 0.5, Cfg.H * 0.5)
+		var ang := sin(_t * 2.0) * 0.35
+		draw_set_transform(c, ang, Vector2.ONE)
+		draw_rect(Rect2(-26, -46, 52, 92), Color(1, 1, 1, 0.12))
+		draw_rect(Rect2(-26, -46, 52, 92), Cfg.C_GOLD, false, 2.5)
+		draw_circle(Vector2(0, 38), 3.0, Cfg.C_GOLD)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		Ui.txt(self, ui.font_display, Vector2(0, c.y + 90), "縦にしてください", 26, Cfg.C_GOLD, HORIZONTAL_ALIGNMENT_CENTER, Cfg.W)

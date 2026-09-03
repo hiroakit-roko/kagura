@@ -49,6 +49,7 @@ var net: Net
 var _relic_offers: Array = []                        # 討伐の褒賞（神宝）の候補
 var _seen_items := {}                                # 初めて落ちたアイテムの案内を出したか
 var resetting := false                               # やり直しで world を片付けている間（珠を落とさない）
+var landscape_block := false                         # タッチ端末が横向き（縦にするまで止める）
 static var _en_cache: Array = []
 static var _en_stamp := -1
 static var _eb_cache: Array = []
@@ -160,6 +161,13 @@ func _fit_viewport() -> void:
 		return
 	var aspect := size.y / size.x
 	var base_aspect := Cfg.H_BASE / Cfg.W
+	# タッチ端末で横向きになったら止めて「縦にして」と促す
+	var was_land := landscape_block
+	landscape_block = DisplayServer.is_touchscreen_available() and size.x > size.y
+	if landscape_block and not was_land and state == St.PLAY:
+		toggle_pause()
+	elif was_land and not landscape_block and state == St.PAUSE:
+		toggle_pause()
 	if aspect > base_aspect * 1.01:
 		win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP_WIDTH
 		Cfg.H = floorf(Cfg.W * aspect)

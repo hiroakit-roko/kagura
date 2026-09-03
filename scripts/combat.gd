@@ -8,6 +8,7 @@ extends RefCounted
 ##   opts: tag(String) kami(String) crit(bool) dir(Vector2) kb(float) quiet(bool) doom(float) charm_chance(float)
 
 const EXPOSED_T := 5.0
+const CHILL_MAX := 5      # 冷気がこの段階で砕ける（10 だと当て切れない）
 const RUPTURE_T := 3.0
 const JOLT_T := 8.0
 const WEAK_T := 4.0
@@ -396,7 +397,7 @@ static func shatter(en: Enemy) -> void:
 	Sfx.play("hit_ice", -6.0, 0.7)
 	Game.inst.hitstop(0.05, 0.05)
 	var p := _p()
-	var d := scaled("iza_u3", "iza") if _has("iza_u3") else (p.base_damage() * 2.0 * p.kami_power("iza") if p != null else 25.0)
+	var d := scaled("iza_u3", "iza") if _has("iza_u3") else (p.base_damage() * 1.5 * p.kami_power("iza") if p != null else 25.0)
 	en.freeze(0.8)
 	hit(en, d, en.position, {"tag": "shatter", "kami": "iza"})
 	if _has("iza_u4"):

@@ -283,7 +283,7 @@ func speed_mult() -> float:
 	var m := 1.0
 	var c: Dictionary = st["chill"]
 	if int(c["stacks"]) > 0:
-		m *= 1.0 - minf(0.08 * float(c["stacks"]), 0.6 if not is_boss else 0.3)
+		m *= 1.0 - minf(0.12 * float(c["stacks"]), 0.6 if not is_boss else 0.3)
 	if int(st["hangover"]["stacks"]) > 0:
 		m *= 1.0 - Combat.hangover_slow()
 	if st["charm"] > 0.0:
@@ -352,7 +352,7 @@ func add_chill(stacks: int) -> void:
 	var c: Dictionary = st["chill"]
 	c["stacks"] = int(c["stacks"]) + stacks
 	c["t"] = 5.0
-	if int(c["stacks"]) >= 10:
+	if int(c["stacks"]) >= Combat.CHILL_MAX:
 		c["stacks"] = 0
 		Combat.shatter(self)
 
@@ -649,11 +649,14 @@ func take_damage(d: float, crit: bool, at: Vector2, quiet := false) -> void:
 		return
 	hp -= d
 	flash = 1.0 if not quiet else maxf(flash, 0.5)
-	if not quiet or crit or randf() < 0.3:
-		Fx.number(at + Vector2(0, -radius), str(int(round(d))),
-				Cfg.C_CRIT if crit else Color(1, 1, 1, 0.92), 21.0 if crit else (14.0 if not quiet else 11.0), crit)
 	if crit:
-		Fx.sparks(at, Vector2.UP, Cfg.C_CRIT, 6, 380.0)
+		# 会心：大きな橙金の数字に「会心」を添え、光条と閃きで一目で分かるように
+		Fx.number(at + Vector2(0, -radius - 6.0), "会心 " + str(int(round(d))), Cfg.C_CRIT, 26.0, true)
+		Fx.rays(at, Cfg.C_CRIT, 8, 6.0, 34.0, 0.22)
+		Fx.puff(at, 6.0, radius * 2.4, Cfg.with_a(Cfg.C_CRIT, 0.9), 0.25)
+		Fx.sparks(at, Vector2.UP, Cfg.C_CRIT, 8, 420.0)
+	elif not quiet or randf() < 0.3:
+		Fx.number(at + Vector2(0, -radius), str(int(round(d))), Color(1, 1, 1, 0.92), 14.0 if not quiet else 11.0, false)
 	if hp <= 0.0:
 		die()
 
@@ -932,7 +935,7 @@ func _draw_status_aura() -> void:
 	var cs: int = int(st["chill"]["stacks"])
 	if cs > 0 or st["frozen"] > 0.0:
 		var c := Color(0.8, 0.95, 1.0)
-		var n := mini(cs, 10) if st["frozen"] <= 0.0 else 12
+		var n := mini(cs * 2, 10) if st["frozen"] <= 0.0 else 12
 		for i in n:
 			var a := float(i) * 2.4 + 0.3
 			var pos := Vector2(cos(a), sin(a)) * r * 0.85
