@@ -195,8 +195,8 @@ func _ready() -> void:
 	z_index = Cfg.Z_ENEMY
 	collision_layer = Cfg.L_ENEMY
 	collision_mask = 0
-	monitoring = false
-	monitorable = true
+	set_deferred("monitoring", false)   # 衝突シグナル中に生成されても安全に
+	set_deferred("monitorable", true)
 	add_to_group("enemy")
 	var cs := CollisionShape2D.new()
 	var c := CircleShape2D.new()

@@ -35,7 +35,7 @@ func setup_boss(w: int) -> void:
 	kind = "boss"
 	is_boss = true
 	boss_name = NAMES[mini(tier - 1, NAMES.size() - 1)]
-	max_hp = 1300.0 * (1.0 + float(tier - 1) * 1.0) * (1.6 if is_final else 1.0)
+	max_hp = 1300.0 * (1.0 + float(tier - 1) * 1.0) * (2.8 if is_final else 1.0)
 	hp = max_hp
 	radius = 56.0 if not is_final else 70.0
 	speed = 70.0

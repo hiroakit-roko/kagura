@@ -914,28 +914,37 @@ class HudView:
 		for i in 7:
 			var x0 := -60.0 + float(i) * 120.0 + (1.0 - a) * 80.0
 			draw_line(Vector2(x0, cy + 240), Vector2(x0 + 140, cy - 240), Color(1, 1, 1, 0.10 * a), 10.0)
-		# 顔絵（透過 PNG）：右から滑り込む
-		var por := Ui.art_png("portrait/shout")
-		if por != null:
-			# 顔絵は右側 6 割に収め、左の文字と重ねない
-			var slide := (1.0 - minf(1.0, k * 5.0)) * 160.0
-			var aspect := float(por.get_width()) / float(por.get_height())
-			var w := minf(Cfg.W * 0.62 / 0.88, Cfg.H * 0.5 * aspect)
-			var h := w / aspect
-			var pr := Rect2(Cfg.W - w * 0.88 + slide, cy - h * 0.5, w, h)
-			draw_texture_rect(por, pr, false, Color(1, 1, 1, a))
-		# 技の名とセリフ（左側）
-		var name_y := cy - 40.0
-		draw_rect(Rect2(0, name_y - 56, Cfg.W * 0.44, 76), Color(0.03, 0.02, 0.06, 0.7 * a))
+		# 絵：16:9 のカットイン絵を右寄せ（顔側）で大きく敷き、右から滑り込む
+		var tex := Ui.art("cutin/call")
+		var pr := Rect2(0, cy - 240.0, Cfg.W, 440.0)
+		if tex != null:
+			var slide := (1.0 - minf(1.0, k * 5.0)) * 90.0
+			var tw := float(tex.get_width())
+			var th := float(tex.get_height())
+			var sw := minf(tw, th * pr.size.x / pr.size.y)
+			var sx := clampf(tw - sw - 40.0 + slide, 0.0, tw - sw)
+			draw_rect(pr.grow(3), Color(0, 0, 0, 0.6 * a))
+			draw_texture_rect_region(tex, pr, Rect2(sx, 0.0, sw, th), Color(1, 1, 1, a))
+			# 下端を暗く落として文字を載せる
+			for gi in 10:
+				var gk := float(gi) / 10.0
+				draw_rect(Rect2(pr.position.x, pr.end.y - 170.0 + gk * 170.0, pr.size.x, 17.0 + 1.0), Color(0.03, 0.02, 0.06, 0.92 * gk * a))
+			draw_rect(Rect2(0, pr.position.y, Cfg.W, 2), Cfg.with_a(col, a))
+			draw_rect(Rect2(0, pr.end.y - 2, Cfg.W, 2), Cfg.with_a(col, a))
+		else:
+			var por := Ui.art_png("portrait/shout")
+			if por != null:
+				var aspect := float(por.get_width()) / float(por.get_height())
+				var w := minf(Cfg.W, Cfg.H * 0.5 * aspect)
+				draw_texture_rect(por, Rect2(Cfg.W - w, cy - w / aspect * 0.5, w, w / aspect), false, Color(1, 1, 1, a))
+		# 技の名とセリフ（絵の下部に重ねる）
+		var name_y := pr.end.y - 92.0
 		Ui.txt(self, ui.font, Vector2(22, name_y - 34), String(kk["name"]) + ("　大神招き" if call_greater else "　神招き"), 13, Cfg.with_a(col, a))
-		Ui.txt(self, ui.font_display, Vector2(20, name_y + 4), String(kk["call"]), 36, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_LEFT, Cfg.W * 0.44)
-		draw_rect(Rect2(20, name_y + 14, Cfg.W * 0.4, 3), Cfg.with_a(col, a))
+		Ui.txt(self, ui.font_display, Vector2(20, name_y + 4), String(kk["call"]), 36, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_LEFT, Cfg.W * 0.6)
+		draw_rect(Rect2(20, name_y + 14, Cfg.W * 0.5, 3), Cfg.with_a(col, a))
 		var line := String(kk.get("call_line", ""))
 		if line != "":
-			var lr := Rect2(16, name_y + 34, Cfg.W * 0.5, 62)
-			draw_rect(lr, Color(0.03, 0.02, 0.06, 0.9 * a))
-			draw_rect(lr, Cfg.with_a(col, 0.8 * a), false, 1.5)
-			Ui.para(self, ui.font_display, Vector2(lr.position.x + 12, lr.position.y + 28), "「" + line + "」", lr.size.x - 24, 17, 2, Color(1, 0.97, 0.9, a))
+			Ui.para(self, ui.font_display, Vector2(24, name_y + 48), "「" + line + "」", Cfg.W - 48, 18, 2, Color(1, 0.97, 0.9, a))
 
 	## ボスの名乗り
 	func _draw_intro() -> void:

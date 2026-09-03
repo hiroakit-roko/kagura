@@ -26,6 +26,8 @@ var boss: Boss
 
 var _plan: Array = []
 var _plan_i := 0
+const EBULLET_CAP := 150     # 同時に存在できる敵弾の上限
+const ENEMY_CAP := 34        # 同時に存在できる雑魚の上限
 var _wave_t := 0.0
 var _wave_active := false
 var _between := 0.0
@@ -481,6 +483,8 @@ func _tick_wave(delta: float) -> void:
 
 	_wave_t += delta
 	while _plan_i < _plan.size() and float(_plan[_plan_i]["t"]) <= _wave_t:
+		if Game.enemies().size() >= ENEMY_CAP:
+			break   # 出し切るまで待つ（敵の量に天井）
 		var e: Dictionary = _plan[_plan_i]
 		_plan_i += 1
 		var en := Enemy.new()
@@ -583,7 +587,8 @@ func _build_wave(w: int) -> Array:
 	var ki := 0
 
 	# 敵の総量。後半の増え方は緩やかに（数より個々の強さで難度を出す）
-	var budget := (8.0 + float(w) * 2.2 + float(w * w) * 0.06) * 0.9
+	var wb := mini(w, 26)   # 踏破後は総量を頭打ちにし、個々の強さで難度を出す（処理落ち・メモリ対策）
+	var budget := (8.0 + float(wb) * 2.2 + float(wb * wb) * 0.06) * 0.9
 	var out: Array = []
 	var tt := 0.7
 	var pace := clampf(1.0 - float(w) * 0.02, 0.55, 1.0)   # 後半は間隔が詰まる
@@ -639,6 +644,8 @@ func spawn_deferred(n: Node) -> void:
 
 func spawn_ebullet(pos: Vector2, vel: Vector2, dmg: float, radius := 5.0,
 		col := Cfg.C_EBULLET, homing := 0.0, source := "敵の弾") -> void:
+	if Game.ebullets().size() >= EBULLET_CAP:
+		return
 	var b := Bullet.new()
 	b.radius = radius
 	b.color = col

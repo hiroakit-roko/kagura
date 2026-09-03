@@ -364,6 +364,19 @@ func _clear_test() -> void:
 	await _wait(4.0)
 	print("[cleartest] endless: state=%d wave=%d stage=%d music=%s" % [g.state, g.wave, Cfg.stage_of(g.wave), Music.inst._current])
 	await shot("82_endless.png")
+	if OS.get_cmdline_user_args().has("--long"):
+		# 踏破後を長く回してメモリ・ノード数の伸びを見る
+		_no_ai = false
+		var tl := 0.0
+		while tl < 150.0:
+			await _wait(10.0)
+			tl += 10.0
+			p.stats["max_hp"] = 9999.0
+			p.hp = 9999.0
+			if g.state == Game.St.BOON or g.state == Game.St.KAMI or g.state == Game.St.MIKI:
+				g._close_choice()
+				p.pending_levels = 0
+			print("[endless] t=%.0f state=%d paused=%s wave=%d fps=%d nodes=%d objs=%d mem=%.1fMB enemies=%d ebullets=%d fx=%d" % [tl, g.state, str(get_tree().paused), g.wave, Engine.get_frames_per_second(), Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_COUNT), Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, Game.enemies().size(), Game.ebullets().size(), Fx.inst._parts.size()])
 	get_tree().quit()
 
 

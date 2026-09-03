@@ -64,8 +64,8 @@ func _ready() -> void:
 	collision_mask = Cfg.L_ENEMY if friendly else Cfg.L_PLAYER
 	if friendly and (eraser or reflect):
 		collision_mask |= Cfg.L_EBULLET
-	monitoring = true
-	monitorable = not friendly
+	set_deferred("monitoring", true)   # 衝突シグナル中に生成されても安全に
+	set_deferred("monitorable", not friendly)
 	if not friendly:
 		add_to_group("ebullet")
 	var cs := CollisionShape2D.new()
