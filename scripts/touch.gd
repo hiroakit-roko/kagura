@@ -10,7 +10,7 @@ extends CanvasLayer
 
 static var inst: Touch
 
-const SENS := 1.25          # 指の移動量に対する自機の移動倍率
+const SENS := 1.0           # 指の移動量はそのまま渡す（倍率は Player 側の Cfg.TOUCH_SENS に一本化）
 const BTN_R := 50.0
 const SWIPE_TIME := 0.30    # 置いてから離すまでがこれより短く
 const SWIPE_FRAMES := 20    # （低 fps 端末向け）またはこのフレーム数以内で
