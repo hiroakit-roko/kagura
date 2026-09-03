@@ -51,6 +51,11 @@ jobs:
           godot --headless --path . --export-release Web build/web/index.html
           ls -la build/web
 
+      - name: Replace service worker (network-first, no stale cache)
+        run: |
+          cp web/service.worker.js build/web/index.service.worker.js
+          echo "// build ${{ github.run_number }} ${{ github.sha }}" >> build/web/index.service.worker.js
+
       - name: Disable Jekyll processing
         run: touch build/web/.nojekyll
 
