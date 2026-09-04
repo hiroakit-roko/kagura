@@ -1,0 +1,43 @@
+{
+  "names": {
+    "grunt": "鬼火",
+    "weaver": "傘の怪",
+    "charger": "突撃鬼",
+    "turret": "百目",
+    "splitter": "分かれ玉",
+    "mini": "小玉",
+    "spirit": "人魂",
+    "lantern": "提灯お化け",
+    "kite": "凧",
+    "oni": "小鬼",
+    "caster": "陰陽師",
+    "bomber": "火の玉",
+    "boss": "大妖"
+  },
+  "unlock": {
+    "grunt": 1,
+    "spirit": 2,
+    "weaver": 2,
+    "charger": 3,
+    "lantern": 4,
+    "kite": 5,
+    "turret": 6,
+    "oni": 7,
+    "splitter": 8,
+    "caster": 9,
+    "bomber": 11
+  },
+  "cost": {
+    "grunt": 1.0,
+    "weaver": 1.4,
+    "charger": 1.8,
+    "turret": 2.4,
+    "splitter": 2.6,
+    "spirit": 0.5,
+    "lantern": 2.0,
+    "kite": 1.2,
+    "oni": 3.6,
+    "caster": 3.0,
+    "bomber": 1.5
+  }
+}

@@ -5,3 +5,11 @@
 
 # macOS
 .DS_Store
+
+# Unity / .NET
+unity/**/bin/
+unity/**/obj/
+unity/Kagura/Library/
+unity/Kagura/Temp/
+unity/Kagura/Logs/
+unity/Kagura/UserSettings/

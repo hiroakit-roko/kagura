@@ -1,0 +1,1067 @@
+[
+  {
+    "id": "ama_u1",
+    "kami": "ama",
+    "tier": 0,
+    "name": "日輪の広がり",
+    "desc": "光線の幅 +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "ama_u2",
+    "kami": "ama",
+    "tier": 0,
+    "name": "灼熱の光",
+    "desc": "光線のダメージ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "ama_u6",
+    "kami": "ama",
+    "tier": 0,
+    "name": "灼き付く光",
+    "desc": "光線に触れている敵は動きが {v} 遅くなる",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "ama_u8",
+    "kami": "ama",
+    "tier": 0,
+    "name": "日輪の恵み",
+    "desc": "照覧された敵を倒すと {v} の確率で HP 1 回復",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "ama_u4",
+    "kami": "ama",
+    "tier": 1,
+    "name": "照覧の眼",
+    "desc": "照覧された敵への全ダメージ +{v}",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "ama_u7",
+    "kami": "ama",
+    "tier": 1,
+    "name": "陽炎",
+    "desc": "{v} ごとに光線が閃き、その瞬間に光線に触れている敵弾を蒸発させる",
+    "base": 4.0,
+    "fmt": "sec_down",
+    "maxlv": 3
+  },
+  {
+    "id": "ama_u9",
+    "kami": "ama",
+    "tier": 1,
+    "name": "暁の熱",
+    "desc": "同じ敵に当て続けると光線の威力が上がる（2 秒で最大 +{v}）",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "ama_u3",
+    "kami": "ama",
+    "tier": 2,
+    "name": "三光",
+    "desc": "斜めに伸びる光線 +{v} 本",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "ama_u5",
+    "kami": "ama",
+    "tier": 2,
+    "name": "鏡の護り",
+    "desc": "被弾を一度防ぐ光の鏡を纏う。{v} ごとに再生成",
+    "base": 14.0,
+    "fmt": "sec_down",
+    "maxlv": 3
+  },
+  {
+    "id": "ama_leg",
+    "kami": "ama",
+    "name": "日食",
+    "rar": 4,
+    "desc": "{v} ごとに画面全体が光で満たされ、全敵に光線 1 秒分のダメージと照覧",
+    "base": 8.0,
+    "fmt": "sec_down",
+    "maxlv": 2
+  },
+  {
+    "id": "susa_u1",
+    "kami": "susa",
+    "tier": 0,
+    "name": "怒涛",
+    "desc": "大波のダメージ +{v}",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "susa_u2",
+    "kami": "susa",
+    "tier": 0,
+    "name": "大津波",
+    "desc": "大波の大きさ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_u3",
+    "kami": "susa",
+    "tier": 0,
+    "name": "遠鳴り",
+    "desc": "大波の届く距離 +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_u6",
+    "kami": "susa",
+    "tier": 0,
+    "name": "早潮",
+    "desc": "大波の間隔 -{v}",
+    "base": 15.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_u4",
+    "kami": "susa",
+    "tier": 1,
+    "name": "裂傷の波",
+    "desc": "押し戻された敵は裂傷を負い、動くたび {v} のダメージ",
+    "base": 4.0,
+    "fmt": "num",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_u8",
+    "kami": "susa",
+    "tier": 1,
+    "name": "重い波",
+    "desc": "押し戻した敵に威力 {v} の追加ダメージ",
+    "base": 150.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_u5",
+    "kami": "susa",
+    "tier": 1,
+    "name": "怯み波",
+    "desc": "押し戻された敵は {v} のあいだ動けず撃てない",
+    "base": 0.8,
+    "fmt": "sec",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_u7",
+    "kami": "susa",
+    "tier": 2,
+    "name": "潮騒",
+    "desc": "大波が触れた敵弾を {v} の確率で消す",
+    "base": 32.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_u9",
+    "kami": "susa",
+    "tier": 2,
+    "name": "怒りの海",
+    "desc": "画面の敵 1 体ごとに大波のダメージ +{v}（10 体まで）",
+    "base": 6.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "susa_leg",
+    "kami": "susa",
+    "name": "八岐大蛇殺し",
+    "rar": 4,
+    "desc": "大波が 2 連になり、触れた敵弾を 70% の確率で消す。押し戻した敵に威力 {v} の追加ダメージ",
+    "base": 400.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "take_u1",
+    "kami": "take",
+    "tier": 0,
+    "name": "雷帯",
+    "desc": "雷のダメージ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "take_u2",
+    "kami": "take",
+    "tier": 0,
+    "name": "早鳴り",
+    "desc": "雷の間隔 -{v}",
+    "base": 18.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "take_u6",
+    "kami": "take",
+    "tier": 0,
+    "name": "天罰",
+    "desc": "大妖（ボス）への雷のダメージ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "take_u8",
+    "kami": "take",
+    "tier": 0,
+    "name": "雷の加護",
+    "desc": "雷が命中するたび神招きゲージ +{v}",
+    "base": 1.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "take_u3",
+    "kami": "take",
+    "tier": 1,
+    "name": "双雷",
+    "desc": "雷の連鎖 +{v}",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 3
+  },
+  {
+    "id": "take_u4",
+    "kami": "take",
+    "tier": 1,
+    "name": "帯電の呪",
+    "desc": "雷を受けた敵は帯電し、攻撃するたび威力 {v} の雷を受ける",
+    "base": 200.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "take_u9",
+    "kami": "take",
+    "tier": 1,
+    "name": "遠雷",
+    "desc": "雷が {v} の確率でもう 1 体にも同時に落ちる",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "take_u5",
+    "kami": "take",
+    "tier": 2,
+    "name": "落雷の広がり",
+    "desc": "雷が落ちた周囲 {v} の敵にも半分のダメージ",
+    "base": 70.0,
+    "fmt": "num",
+    "maxlv": 3
+  },
+  {
+    "id": "take_u7",
+    "kami": "take",
+    "tier": 2,
+    "name": "雷雲",
+    "desc": "雷が落ちた所に {v} のあいだ雷雲が残り、近くの敵に小さな落雷を続ける",
+    "base": 1.0,
+    "fmt": "sec",
+    "maxlv": 3
+  },
+  {
+    "id": "take_leg",
+    "kami": "take",
+    "name": "神鳴りの矛",
+    "rar": 4,
+    "desc": "雷が命中するたび {v} の確率で別の敵にも雷が落ちる",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "tsuki_u5",
+    "kami": "tsuki",
+    "tier": 0,
+    "name": "月光の刃",
+    "desc": "刃のダメージ +{v}",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "tsuki_u4",
+    "kami": "tsuki",
+    "tier": 0,
+    "name": "遠い月",
+    "desc": "刃の軌道半径 +{v}",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "tsuki_u2",
+    "kami": "tsuki",
+    "tier": 0,
+    "name": "月の満ち欠け",
+    "desc": "宿命の爆発ダメージ +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "tsuki_u6",
+    "kami": "tsuki",
+    "tier": 0,
+    "name": "速い月",
+    "desc": "刃の回る速さ +{v}（当たる間隔も短くなる）",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "tsuki_u3",
+    "kami": "tsuki",
+    "tier": 1,
+    "name": "宵闇の加護",
+    "desc": "宿命の爆発範囲 +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "tsuki_u9",
+    "kami": "tsuki",
+    "tier": 1,
+    "name": "月華",
+    "desc": "宿命の爆発が {v} の確率で会心になる",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "tsuki_u7",
+    "kami": "tsuki",
+    "tier": 1,
+    "name": "新月の影",
+    "desc": "宿命が爆ぜて敵が倒れると、{v} の確率で近くの敵に宿命が移る",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "tsuki_u1",
+    "kami": "tsuki",
+    "tier": 2,
+    "name": "月輪の刃",
+    "desc": "回る刃 +{v}",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 3
+  },
+  {
+    "id": "tsuki_u8",
+    "kami": "tsuki",
+    "tier": 2,
+    "name": "月の帳",
+    "desc": "自機の近くに来た敵弾の速さ -{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "tsuki_leg",
+    "kami": "tsuki",
+    "name": "月読の裁定",
+    "rar": 4,
+    "desc": "宿命が爆ぜるとき、残り HP {v} 以下の敵（ボス以外）は即座に倒れる",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "uzume_u2",
+    "kami": "uzume",
+    "tier": 0,
+    "name": "大扇",
+    "desc": "扇の大きさとダメージ +{v}",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "uzume_u6",
+    "kami": "uzume",
+    "tier": 0,
+    "name": "遠投",
+    "desc": "扇の飛距離 +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "uzume_u7",
+    "kami": "uzume",
+    "tier": 0,
+    "name": "早舞",
+    "desc": "扇を投げる間隔 -{v}",
+    "base": 15.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "uzume_u5",
+    "kami": "uzume",
+    "tier": 0,
+    "name": "宴の恵み",
+    "desc": "最大 HP +{v}",
+    "base": 25.0,
+    "fmt": "num",
+    "maxlv": 4
+  },
+  {
+    "id": "uzume_u3",
+    "kami": "uzume",
+    "tier": 1,
+    "name": "艶やかな加護",
+    "desc": "弱体した敵への与ダメージ +{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "uzume_u4",
+    "kami": "uzume",
+    "tier": 1,
+    "name": "誘いの舞",
+    "desc": "扇が触れた敵を {v} の確率で 3 秒魅了する",
+    "base": 12.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "uzume_u8",
+    "kami": "uzume",
+    "tier": 1,
+    "name": "帰り扇",
+    "desc": "戻ってくる扇のダメージ +{v}",
+    "base": 50.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "uzume_u1",
+    "kami": "uzume",
+    "tier": 2,
+    "name": "二枚扇",
+    "desc": "投げる扇 +{v}",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "uzume_u9",
+    "kami": "uzume",
+    "tier": 2,
+    "name": "舞い手の護り",
+    "desc": "扇が手元に戻ると HP {v} 回復（3 秒に 1 度まで）",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 3
+  },
+  {
+    "id": "uzume_leg",
+    "kami": "uzume",
+    "name": "八百万の宴",
+    "rar": 4,
+    "desc": "弱体した敵を倒すと {v} の確率で HP が 6 回復する",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "inari_u2",
+    "kami": "inari",
+    "tier": 0,
+    "name": "燃え盛る狐火",
+    "desc": "狐火のダメージ +{v}",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "inari_u3",
+    "kami": "inari",
+    "tier": 0,
+    "name": "狐の眼",
+    "desc": "会心率 +{v}",
+    "base": 12.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "inari_u6",
+    "kami": "inari",
+    "tier": 0,
+    "name": "早い狐",
+    "desc": "狐火の間隔 -{v}",
+    "base": 15.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "inari_u9",
+    "kami": "inari",
+    "tier": 0,
+    "name": "九尾の追い火",
+    "desc": "狐火の速さと誘導 +{v}",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "inari_u5",
+    "kami": "inari",
+    "tier": 1,
+    "name": "稲穂の実り",
+    "desc": "会心ダメージ +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "inari_u7",
+    "kami": "inari",
+    "tier": 1,
+    "name": "狐火の連鎖",
+    "desc": "狐火が敵を倒すと {v} の確率で次の敵へ跳ぶ",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "inari_u8",
+    "kami": "inari",
+    "tier": 1,
+    "name": "油揚げの供物",
+    "desc": "敵を倒すと {v} の確率で勾玉が余分に落ちる",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "inari_u1",
+    "kami": "inari",
+    "tier": 2,
+    "name": "狐火の群れ",
+    "desc": "一度に放つ狐火 +{v} 本",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "inari_u4",
+    "kami": "inari",
+    "tier": 2,
+    "name": "眷属の狐",
+    "desc": "自機の周りを回り狐火を放つ眷属 +{v}",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "inari_leg",
+    "kami": "inari",
+    "name": "白狐の加護",
+    "rar": 4,
+    "desc": "会心が出るたび、近くの敵へ威力 {v} の狐火が飛ぶ",
+    "base": 250.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "suku_u1",
+    "kami": "suku",
+    "tier": 0,
+    "name": "大瓢箪",
+    "desc": "霧の大きさ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "suku_u2",
+    "kami": "suku",
+    "tier": 0,
+    "name": "深い霧",
+    "desc": "霧の持続時間 +{v}",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "suku_u6",
+    "kami": "suku",
+    "tier": 0,
+    "name": "早い瓢",
+    "desc": "瓢箪を投げる間隔 -{v}",
+    "base": 15.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "suku_u8",
+    "kami": "suku",
+    "tier": 0,
+    "name": "酔いどれ狩り",
+    "desc": "酩酊した敵への与ダメージ +{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "suku_u3",
+    "kami": "suku",
+    "tier": 1,
+    "name": "強い酒",
+    "desc": "酩酊のダメージ +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "suku_u5",
+    "kami": "suku",
+    "tier": 1,
+    "name": "薬師の加護",
+    "desc": "毎秒 HP が {v} 回復する",
+    "base": 1.0,
+    "fmt": "x",
+    "maxlv": 4
+  },
+  {
+    "id": "suku_u9",
+    "kami": "suku",
+    "tier": 1,
+    "name": "百薬の長",
+    "desc": "酩酊した敵を倒すと {v} の確率で酒気の霧が残る",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "suku_u4",
+    "kami": "suku",
+    "tier": 2,
+    "name": "深酔い",
+    "desc": "酩酊の最大段階 +{v}",
+    "base": 2.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "suku_u7",
+    "kami": "suku",
+    "tier": 2,
+    "name": "薬酒",
+    "desc": "自機が霧の中にいると毎秒 HP {v} 回復し、被ダメージ -20%",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 3
+  },
+  {
+    "id": "suku_leg",
+    "kami": "suku",
+    "name": "常世の妙薬",
+    "rar": 4,
+    "desc": "HP が 3 割を切ると HP の {v} を即座に回復する（60 秒に 1 度）",
+    "base": 50.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "iza_u2",
+    "kami": "iza",
+    "tier": 0,
+    "name": "鋭い氷柱",
+    "desc": "氷柱のダメージ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "iza_u6",
+    "kami": "iza",
+    "tier": 0,
+    "name": "早い氷",
+    "desc": "氷柱の間隔 -{v}",
+    "base": 15.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "iza_u7",
+    "kami": "iza",
+    "tier": 0,
+    "name": "黄泉の冷気",
+    "desc": "氷柱が与える冷気 +{v} 段階（砕けるのが早くなる）",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 1
+  },
+  {
+    "id": "iza_u5",
+    "kami": "iza",
+    "tier": 0,
+    "name": "凍土の加護",
+    "desc": "冷気を受けた敵への与ダメージ +{v}",
+    "base": 15.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "iza_u3",
+    "kami": "iza",
+    "tier": 1,
+    "name": "氷砕",
+    "desc": "冷気が 5 段階に達して砕けたとき威力 {v} のダメージ",
+    "base": 300.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "iza_u4",
+    "kami": "iza",
+    "tier": 1,
+    "name": "凍土",
+    "desc": "砕けた所に {v} のあいだ凍土が残り、中の敵を遅くする",
+    "base": 2.0,
+    "fmt": "sec",
+    "maxlv": 3
+  },
+  {
+    "id": "iza_u8",
+    "kami": "iza",
+    "tier": 1,
+    "name": "氷の棘",
+    "desc": "氷柱が敵を {v} 体貫く",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "iza_u1",
+    "kami": "iza",
+    "tier": 2,
+    "name": "氷柱の広がり",
+    "desc": "撒く氷柱 +{v} 方向",
+    "base": 2.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "iza_u9",
+    "kami": "iza",
+    "tier": 2,
+    "name": "黄泉の門",
+    "desc": "砕けた敵から氷柱が {v} 本飛び散る",
+    "base": 4.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "iza_leg",
+    "kami": "iza",
+    "name": "黄泉比良坂",
+    "rar": 4,
+    "desc": "砕けた敵は爆ぜて周囲の敵を凍結させ、威力 {v} のダメージを与える",
+    "base": 600.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "saru_u1",
+    "kami": "saru",
+    "tier": 0,
+    "name": "先駈け",
+    "desc": "刃の連射 +{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "saru_u2",
+    "kami": "saru",
+    "tier": 0,
+    "name": "鋭い風",
+    "desc": "刃のダメージ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 4
+  },
+  {
+    "id": "saru_u3",
+    "kami": "saru",
+    "tier": 0,
+    "name": "道開きの加護",
+    "desc": "移動速度 +{v}",
+    "base": 12.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "saru_u6",
+    "kami": "saru",
+    "tier": 0,
+    "name": "風の道",
+    "desc": "刃が敵を {v} 体貫く",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "saru_u4",
+    "kami": "saru",
+    "tier": 1,
+    "name": "疾風の御業",
+    "desc": "疾走の間隔 -{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "saru_u7",
+    "kami": "saru",
+    "tier": 1,
+    "name": "追い風",
+    "desc": "疾走してから 3 秒は刃のダメージ +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "saru_u9",
+    "kami": "saru",
+    "tier": 1,
+    "name": "小さな身",
+    "desc": "自機の当たり判定 -{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 3
+  },
+  {
+    "id": "saru_u5",
+    "kami": "saru",
+    "tier": 2,
+    "name": "神風二列",
+    "desc": "刃の同時発射 +{v} 列",
+    "base": 1.0,
+    "fmt": "num",
+    "maxlv": 1
+  },
+  {
+    "id": "saru_u8",
+    "kami": "saru",
+    "tier": 2,
+    "name": "疾風の刃",
+    "desc": "疾走すると周囲へ風の刃を {v} 本放つ",
+    "base": 6.0,
+    "fmt": "num",
+    "maxlv": 2
+  },
+  {
+    "id": "saru_leg",
+    "kami": "saru",
+    "name": "大導き",
+    "rar": 4,
+    "desc": "疾走の間隔 -{v}。疾走で触れた敵は怯み、威力 250% のダメージを受ける",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_ama_take",
+    "kami": "ama",
+    "kami2": "take",
+    "name": "天鳴",
+    "rar": 5,
+    "desc": "照覧された敵に落ちる雷のダメージ +{v}",
+    "base": 60.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_susa_iza",
+    "kami": "susa",
+    "kami2": "iza",
+    "name": "凍海",
+    "rar": 5,
+    "desc": "大波が冷気を 2 段階与える。冷気の敵への大波のダメージ +{v}",
+    "base": 60.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_tsuki_inari",
+    "kami": "tsuki",
+    "kami2": "inari",
+    "name": "月狐",
+    "rar": 5,
+    "desc": "宿命の爆発が必ず会心になる。会心ダメージ +{v}",
+    "base": 30.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_uzume_suku",
+    "kami": "uzume",
+    "kami2": "suku",
+    "name": "宴と舞",
+    "rar": 5,
+    "desc": "酩酊した敵は弱体も受ける。弱体の敵の与ダメージがさらに -{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_take_suku",
+    "kami": "take",
+    "kami2": "suku",
+    "name": "雷酔",
+    "rar": 5,
+    "desc": "酩酊した敵に雷が落ちると、酩酊の段階ごとに威力 {v} の追加ダメージ",
+    "base": 100.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_iza_tsuki",
+    "kami": "iza",
+    "kami2": "tsuki",
+    "name": "黄泉の月",
+    "rar": 5,
+    "desc": "宿命が爆ぜた敵は {v} 凍結する",
+    "base": 1.5,
+    "fmt": "sec",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_ama_uzume",
+    "kami": "ama",
+    "kami2": "uzume",
+    "name": "艶光",
+    "rar": 5,
+    "desc": "弱体した敵は照覧も受ける。弱体の敵からの被ダメージ -{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_susa_take",
+    "kami": "susa",
+    "kami2": "take",
+    "name": "嵐雷",
+    "rar": 5,
+    "desc": "大波に押し戻された敵に威力 {v} の雷が落ちる",
+    "base": 250.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_inari_saru",
+    "kami": "inari",
+    "kami2": "saru",
+    "name": "風狐",
+    "rar": 5,
+    "desc": "風の刃が命中するたび {v} の確率で狐火が追加で飛ぶ",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_ama_inari",
+    "kami": "ama",
+    "kami2": "inari",
+    "name": "光狐",
+    "rar": 5,
+    "desc": "狐火が敵を 1 体貫くようになり、照覧された敵への狐火のダメージ +{v}",
+    "base": 40.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_ama_suku",
+    "kami": "ama",
+    "kami2": "suku",
+    "name": "光霧",
+    "rar": 5,
+    "desc": "酒気の霧の中の敵は照覧も受ける。霧の大きさ +{v}",
+    "base": 20.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_take_iza",
+    "kami": "take",
+    "kami2": "iza",
+    "name": "雷氷",
+    "rar": 5,
+    "desc": "雷が落ちた敵に冷気を 2 段階与える。凍結した敵への雷のダメージ +{v}",
+    "base": 50.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_take_uzume",
+    "kami": "take",
+    "kami2": "uzume",
+    "name": "雷舞",
+    "rar": 5,
+    "desc": "扇が敵に触れるたび {v} の確率で雷が落ちる",
+    "base": 25.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_susa_inari",
+    "kami": "susa",
+    "kami2": "inari",
+    "name": "波狐",
+    "rar": 5,
+    "desc": "大波が敵に触れるたび {v} の確率で狐火が飛ぶ",
+    "base": 35.0,
+    "fmt": "pct",
+    "maxlv": 2
+  },
+  {
+    "id": "duo_tsuki_suku",
+    "kami": "tsuki",
+    "kami2": "suku",
+    "name": "月霧",
+    "rar": 5,
+    "desc": "宿命が爆ぜた所に {v} のあいだ酒気の霧が残る",
+    "base": 2.0,
+    "fmt": "sec",
+    "maxlv": 2
+  }
+]
