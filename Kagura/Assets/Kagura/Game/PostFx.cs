@@ -19,10 +19,12 @@ namespace Kagura.Game
             vol.isGlobal = true;
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
             var bloom = profile.Add<Bloom>(true);
-            bloom.threshold.Override(0.85f);
-            bloom.intensity.Override(0.9f);
-            bloom.scatter.Override(0.72f);
-            bloom.tint.Override(new Color(0.9f, 0.85f, 1f));
+            // 発光（加算合成で 1.0 を超えた部分）だけを滲ませる。しきい値が低く散らばりが広いと画面全体に靄がかかり、
+            // 黒が浮いてコントラストが落ちるので控えめにする
+            bloom.threshold.Override(1.0f);
+            bloom.intensity.Override(0.5f);
+            bloom.scatter.Override(0.55f);
+            bloom.tint.Override(new Color(0.92f, 0.88f, 1f));
             var vig = profile.Add<Vignette>(true);
             vig.intensity.Override(0.22f);
             vig.smoothness.Override(0.5f);

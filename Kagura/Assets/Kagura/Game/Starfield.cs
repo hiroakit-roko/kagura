@@ -59,6 +59,8 @@ namespace Kagura.Game
 
         private void Update()
         {
+            // 一時停止・選択画面・見せ場の静止中は背景も止める（Godot 版の PROCESS_MODE_PAUSABLE と同じ）
+            if (GameManager.I != null && GameManager.I.WorldPaused) return;
             float delta = Time.deltaTime;
             _t += delta;
             _tintCur = Color.Lerp(_tintCur, tint, Mathf.Clamp01(delta * 1.5f));

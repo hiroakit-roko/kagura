@@ -65,6 +65,14 @@ namespace Kagura.Game
 
         public Vector2 PlayerPos => player != null ? player.pos : new Vector2(Gd.W * 0.5f, Gd.H * 0.8f);
         public bool IsTouch => touchUi != null && touchUi.active;
+
+        /// <summary>
+        /// Godot 版の get_tree().paused に相当：世界（背景・敵・弾）が止まっているか。
+        /// 一時停止・選択画面・見せ場の静止中・結果画面が出た後は true。UI や演出（Fx）はこれに関わらず動く。
+        /// </summary>
+        public bool WorldPaused =>
+            State == GameState.Pause || State == GameState.Choice || _freezeT > 0f
+            || ((State == GameState.Over || State == GameState.Clear) && overlay != null && overlay.visible);
         public int EnemyCount { get { int n = 0; foreach (var e in _enemies) if (e.Active) n++; return n; } }
         public int EnemyBulletCount { get { int n = 0; foreach (var b in _eBullets) if (b.Active) n++; return n; } }
 
