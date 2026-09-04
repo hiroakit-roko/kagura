@@ -11,6 +11,9 @@ run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 run/max_fps=60
+; Web は max_fps を使わない：ブラウザのメインスレッドでは sleep が空回り（busy-wait）になり CPU が全力で待って発熱する。
+; 代わりに Game が描画だけを間引く（Cfg.DRAW_INTERVAL）
+run/max_fps.web=0
 
 [audio]
 

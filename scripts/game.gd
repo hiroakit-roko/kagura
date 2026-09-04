@@ -87,8 +87,12 @@ func _ready() -> void:
 	inst = self
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	randomize()
-	# スマホは発熱対策で 30fps に制限（PC は project.godot の 60fps）。物理は 60 回/秒のまま
-	if DisplayServer.is_touchscreen_available():
+	# スマホは発熱対策で描画を 30fps に。Web では Engine.max_fps が CPU の空回り待ちになるので使わず、
+	# 描画だけを間引く（処理と物理はそのまま）。PC 版は project.godot の max_fps=60 に任せる
+	if OS.has_feature("web"):
+		Engine.max_fps = 0
+		Cfg.DRAW_INTERVAL = (1.0 / 30.0) if DisplayServer.is_touchscreen_available() else (1.0 / 60.0)
+	elif DisplayServer.is_touchscreen_available():
 		Engine.max_fps = 30
 	for a in OS.get_cmdline_user_args():
 		if String(a).begins_with("--skip="):
@@ -121,7 +125,10 @@ func _ready() -> void:
 			Cfg.NOMUSIC = true
 			Cfg.NOSFX = true
 		elif f.begins_with("fps="):
-			Engine.max_fps = maxi(10, int(f.trim_prefix("fps=")))
+			# 描画間引きで fps を落とす（Web と同じ経路を PC でも試せる）
+			var want := maxi(10, int(f.trim_prefix("fps=")))
+			Engine.max_fps = 0
+			Cfg.DRAW_INTERVAL = 1.0 / float(want)
 
 	# 2D グロー（ネオン感の要）。Compatibility レンダラ（Web）でも動くよう、
 	# 使えるプロパティだけを設定し、閾値は 1.0 未満にしておく。
@@ -167,7 +174,11 @@ func _ready() -> void:
 	ui = Ui.new()
 	add_child(ui)
 	if Diag.wanted():
-		add_child(Diag.new())
+		var dl := CanvasLayer.new()
+		dl.layer = 100
+		dl.process_mode = Node.PROCESS_MODE_ALWAYS
+		dl.add_child(Diag.new())
+		add_child(dl)
 	fx.font = ui.font
 	fx.font_big = ui.font_display
 
@@ -408,7 +419,24 @@ func _on_familiar_chosen(id: String) -> void:
 
 # ---------- メインループ ----------
 
+var _draw_last_usec := 0
+
+## 描画の間引き：DRAW_INTERVAL ごとに 1 回だけ RenderingServer に描かせる
+func _throttle_draw() -> void:
+	if Cfg.DRAW_INTERVAL <= 0.0:
+		if not RenderingServer.render_loop_enabled:
+			RenderingServer.render_loop_enabled = true
+		return
+	var now := Time.get_ticks_usec()
+	var need := int(Cfg.DRAW_INTERVAL * 1000000.0) - 1500   # 少し手前で描く（rAF の揺れを吸収）
+	var ok := now - _draw_last_usec >= need
+	if ok:
+		_draw_last_usec = now
+	RenderingServer.render_loop_enabled = ok
+
+
 func _process(delta: float) -> void:
+	_throttle_draw()
 	var _t0 := Time.get_ticks_usec()
 	_perf_process(delta)
 	Perf.add("game", _t0)

@@ -6,6 +6,9 @@ extends Control
 var _acc := 0.0
 var _lines: PackedStringArray = []
 var _proc_max := 0.0
+var _drawn_last := 0
+var _drawn_t := 0.0
+var _log_t := 0.0
 
 
 static func wanted() -> bool:
@@ -29,25 +32,34 @@ func _process(delta: float) -> void:
 	_acc += delta
 	if _acc < 0.5:
 		return
+	var dt := _acc
 	_acc = 0.0
+	var drawn := Engine.get_frames_drawn()
+	var draw_fps := float(drawn - _drawn_last) / maxf(dt, 0.001)
+	_drawn_last = drawn
 	var g := Game.inst
 	var en := Game.enemies().size() if g != null else 0
 	var eb := Game.ebullets().size() if g != null else 0
 	var pb := get_tree().get_nodes_in_group("pbullet").size()
 	_lines = PackedStringArray([
-		"fps %d  frame %.1fms (max %.1f)  phys %.1fms" % [Engine.get_frames_per_second(),
+		"loop %d  drawn %.0f/s  frame %.1fms (max %.1f)  phys %.1fms" % [Engine.get_frames_per_second(), draw_fps,
 			Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, _proc_max,
 			Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0],
 		"draw %d  objs %d  nodes %d  mem %.0fMB" % [int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
 			int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
 			Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0],
+		"tscale %.2f  paused %s  delta %.1fms  state %d" % [Engine.time_scale, str(get_tree().paused), get_process_delta_time() * 1000.0, g.state if g != null else -1],
 		"enemies %d  ebullets %d  pbullets %d  parts %d  wave %d  dpr %.1f  %dx%d" % [en, eb, pb,
 			Fx.inst._parts.size() if Fx.inst != null else 0, g.wave if g != null else 0,
 			DisplayServer.screen_get_scale(), get_viewport().size.x, get_viewport().size.y],
 	])
 	_proc_max = 0.0
 	queue_redraw()
+	_log_t += dt
+	if _log_t >= 2.0:
+		_log_t = 0.0
+		print("[diag] " + " | ".join(_lines))
 
 
 func _draw() -> void:

@@ -529,6 +529,8 @@ func _ability_test(gods: Array) -> void:
 	var perf_acc := {"proc": 0.0, "phys": 0.0, "n": 0, "draw": 0.0, "nodes": 0.0, "obj": 0.0}
 	Perf.on = OS.get_cmdline_user_args().has("--perf")
 	var perf_frames := Engine.get_process_frames()
+	var perf_drawn := Engine.get_frames_drawn()
+	var perf_loops := Engine.get_process_frames()
 	while _t - t0 < 40.0:
 		await _wait(0.5)
 		if OS.get_cmdline_user_args().has("--perf") and g.state == Game.St.PLAY:
@@ -548,6 +550,9 @@ func _ability_test(gods: Array) -> void:
 					Fx.inst._parts.size()])
 				print("[perf] ms/frame: " + Perf.report(Engine.get_process_frames() - perf_frames))
 				perf_frames = Engine.get_process_frames()
+				print("[perf] drawn=%d loops=%d in last window" % [Engine.get_frames_drawn() - perf_drawn, Engine.get_process_frames() - perf_loops])
+				perf_drawn = Engine.get_frames_drawn()
+				perf_loops = Engine.get_process_frames()
 		if not is_instance_valid(p) or not p.alive:
 			break
 		p.stats["max_hp"] = 9999.0

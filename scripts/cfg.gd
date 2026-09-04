@@ -10,6 +10,8 @@ static var H := 960.0
 ## 軽量描画（スマホ）。発光の省略・アンチエイリアス無し・粒を減らす
 static var LITE := false
 ## 実機での切り分け用（URL の ?noglow ?noscenery ?fps=24 ?dpr=1.5 で切替）
+## Web の描画間引き：この秒数に 1 回だけ描く（0 なら毎フレーム）。CPU を空回りさせずに fps を落とす
+static var DRAW_INTERVAL := 0.0
 static var NOGLOW := false
 static var NOMUSIC := false
 static var NOSFX := false
