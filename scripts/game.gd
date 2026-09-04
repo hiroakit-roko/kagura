@@ -113,6 +113,13 @@ func _ready() -> void:
 			Cfg.NOSCENERY = true
 		elif f == "noaa":
 			Cfg.AA = false
+		elif f == "nomusic":
+			Cfg.NOMUSIC = true
+		elif f == "nosfx":
+			Cfg.NOSFX = true
+		elif f == "nosound":
+			Cfg.NOMUSIC = true
+			Cfg.NOSFX = true
 		elif f.begins_with("fps="):
 			Engine.max_fps = maxi(10, int(f.trim_prefix("fps=")))
 

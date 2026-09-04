@@ -11,6 +11,8 @@ static var H := 960.0
 static var LITE := false
 ## 実機での切り分け用（URL の ?noglow ?noscenery ?fps=24 ?dpr=1.5 で切替）
 static var NOGLOW := false
+static var NOMUSIC := false
+static var NOSFX := false
 static var NOSCENERY := false
 ## 計測用：--skip=stars,hud のように描画を系ごとに止める
 static var SKIP: PackedStringArray = []

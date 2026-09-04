@@ -62,7 +62,7 @@ func _process(delta: float) -> void:
 
 
 static func play(name: String) -> void:
-	if inst == null or not inst._players.has(name):
+	if inst == null or not inst._players.has(name) or Cfg.NOMUSIC:
 		return
 	if inst._current == name:
 		return

@@ -26,7 +26,7 @@ func _ready() -> void:
 
 
 static func play(name: String, vol_db := 0.0, pitch := 1.0, min_gap := 0.0) -> void:
-	if inst != null:
+	if inst != null and not Cfg.NOSFX:
 		inst._play(name, vol_db, pitch, min_gap)
 
 
