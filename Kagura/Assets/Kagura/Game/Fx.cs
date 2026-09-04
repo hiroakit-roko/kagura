@@ -166,7 +166,8 @@ namespace Kagura.Game
             _vecTop.Begin();
             if (flashT > 0f)
             {
-                float fa = flashCol.a * Mathf.Min(1f, flashT * 6f);
+                // ブルームの後処理があるので Godot 版より弱める（全面が閾値を超えると HUD まで白く滲む）
+                float fa = flashCol.a * 0.55f * Mathf.Min(1f, flashT * 6f);
                 _vecTop.DrawRect(new Rect(-100, -100, Gd.W + 200, Gd.H + 200), Gd.WithA(flashCol, fa));
             }
             _vecTop.End();

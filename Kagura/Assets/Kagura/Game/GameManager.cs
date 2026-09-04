@@ -114,7 +114,12 @@ namespace Kagura.Game
             ui.OnStoryDone = OnStoryDone;
             PostFx.Setup(_cam);
             string url = Application.absoluteURL ?? "";
-            if (url.Contains("autoplay") || url.Contains("cleartest")) { var ap = gameObject.AddComponent<Autoplay>(); ap.god = url.Contains("cleartest"); }
+            if (url.Contains("autoplay") || url.Contains("cleartest"))
+            {
+                var ap = gameObject.AddComponent<Autoplay>(); ap.god = url.Contains("cleartest");
+                var m = System.Text.RegularExpressions.Regex.Match(url, @"wave=(\d+)");
+                if (m.Success) ap.startWave = int.Parse(m.Groups[1].Value);
+            }
             diag = url.Contains("diag");
             ShowTitle();
         }
@@ -930,7 +935,7 @@ namespace Kagura.Game
         private void SubmitGlobal()
         {
             overlay.globalRank = 0;
-            if (net == null || !net.Configured || !BuildInfo.CanSubmit || Records.LastEntry == null) return;
+            if (net == null || !net.Configured || !BuildInfo.CanSubmit || Records.LastEntry == null || GetComponent<Autoplay>() != null) return;   // 自動プレイの記録は世界に送らない
             overlay.globalRank = -1;
             var entry = Records.LastEntry;
             net.Submit(entry, ok =>
@@ -956,7 +961,7 @@ namespace Kagura.Game
             Sfx.Play("suzu", -8f);
             Fx.Sparks(new Vector2(Gd.W * 0.5f, Gd.H * 0.5f), Vector2.up, Gd.C_GOLD, 8, 200f);
             var last = Records.LastEntry;
-            if (net != null && net.Configured && last != null && last.run == runId && State != GameState.Title)
+            if (net != null && net.Configured && last != null && last.run == runId && State != GameState.Title && GetComponent<Autoplay>() == null)
             {
                 last.name = Records.DisplayName();
                 net.Submit(last, ok => { });

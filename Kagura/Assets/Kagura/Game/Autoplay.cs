@@ -11,6 +11,7 @@ namespace Kagura.Game
     public class Autoplay : MonoBehaviour
     {
         public bool god;
+        public int startWave;   // URL の wave=N：その波の直前から始める（検証用）
         private float _t, _stateT, _castT, _callT;
         private GameState _last = GameState.Title;
         private ChoiceKind _lastChoice = ChoiceKind.None;
@@ -49,6 +50,7 @@ namespace Kagura.Game
                     break;
                 case GameState.Play:
                     if (p == null || !p.alive) break;
+                    if (startWave > 1 && g.Wave == 0) g.Wave = startWave - 1;
                     {
                         // 近くの敵に横位置を合わせつつ、画面下寄りに留まる
                         var pp = p.pos;
@@ -72,7 +74,7 @@ namespace Kagura.Game
                     if (_stateT > 4f && g.overlay.visible) g.ShowTitle();
                     break;
                 case GameState.Clear:
-                    if (_stateT > 6f && g.overlay.visible) g.ContinueEndless();
+                    if (_stateT > 30f && g.overlay.visible) g.ContinueEndless();
                     break;
             }
         }
