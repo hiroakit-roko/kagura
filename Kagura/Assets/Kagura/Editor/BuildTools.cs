@@ -50,7 +50,7 @@ namespace Kagura.Editor
             ApplyCommonSettings();
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
             PlayerSettings.WebGL.decompressionFallback = true;   // GitHub Pages は Content-Encoding を付けないので JS 側で展開
-            PlayerSettings.WebGL.template = "APPLICATION:Default";
+            PlayerSettings.WebGL.template = "PROJECT:Kagura";   // Assets/WebGLTemplates/Kagura（全画面・縦・タッチ向け）
             PlayerSettings.runInBackground = true;
             // ブラウザでは縦画面のキャンバス（スマホ縦の比率）
             PlayerSettings.defaultWebScreenWidth = 480;

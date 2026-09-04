@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#09061a">
+  <title>{{{ PRODUCT_NAME }}}</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #09061a; overflow: hidden;
+      overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    #unity-container { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #09061a; }
+    #unity-canvas { background: #09061a; touch-action: none; outline: none; display: block; }
+    #loading { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 60vw; max-width: 320px;
+      color: #e8dcc0; font: 14px/1.6 -apple-system, "Hiragino Sans", sans-serif; text-align: center; letter-spacing: .1em; }
+    #bar { height: 3px; background: #2a2340; margin-top: 10px; border-radius: 2px; overflow: hidden; }
+    #bar > div { height: 100%; width: 0; background: #d9b85a; transition: width .2s; }
+    #warn { position: fixed; left: 0; right: 0; bottom: 8px; text-align: center; color: #f0a0a0; font: 12px sans-serif; display: none; }
+  </style>
+</head>
+<body>
+  <div id="unity-container"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+  <div id="loading">神楽<div id="bar"><div></div></div></div>
+  <div id="warn"></div>
+  <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+  <script>
+    (function () {
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loading = document.querySelector("#loading");
+      var bar = document.querySelector("#bar > div");
+      var warn = document.querySelector("#warn");
+      var isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+
+      // 画面いっぱいに使う。横幅に合わせて縦は端末なりに伸びる（ゲーム側が横 6.4 単位を基準に合わせる）
+      function fit() {
+        var w = window.innerWidth, h = window.innerHeight;
+        // PC のブラウザでは縦画面の枠に収める（スマホ縦の比率、高さいっぱい）
+        if (!isTouch) { var aspect = 9 / 19.5; if (w > h * aspect) w = Math.round(h * aspect); }
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+      }
+      fit();
+      window.addEventListener("resize", fit);
+      window.addEventListener("orientationchange", function () { setTimeout(fit, 60); });
+
+      // 指でのスクロール・ズーム・長押しメニューを止める
+      ["touchmove", "gesturestart", "gesturechange", "contextmenu"].forEach(function (ev) {
+        document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
+      });
+      document.addEventListener("dblclick", function (e) { e.preventDefault(); }, { passive: false });
+
+      var config = {
+        arguments: [],
+        dataUrl: "Build/{{{ DATA_FILENAME }}}",
+        frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+        workerUrl: "Build/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+        codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+#if MEMORY_FILENAME
+        memoryUrl: "Build/{{{ MEMORY_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        // 文字をくっきり保つため倍率は 2 まで使う（3 倍端末は 2 に抑える）
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        showBanner: function (msg, type) {
+          warn.style.display = "block";
+          warn.textContent = msg;
+          if (type !== "error") setTimeout(function () { warn.style.display = "none"; }, 5000);
+        },
+      };
+
+      createUnityInstance(canvas, config, function (p) {
+        bar.style.width = Math.round(p * 100) + "%";
+      }).then(function (instance) {
+        loading.style.display = "none";
+        canvas.focus();
+      }).catch(function (message) {
+        loading.textContent = "読み込みに失敗しました: " + message;
+      });
+    })();
+  </script>
+</body>
+</html>
