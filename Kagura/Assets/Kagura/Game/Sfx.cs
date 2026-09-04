@@ -15,6 +15,15 @@ namespace Kagura.Game
         private readonly List<AudioSource> _players = new List<AudioSource>();
         private readonly Dictionary<string, float> _last = new Dictionary<string, float>();
         private int _idx;
+        // 実録サンプル（Kenney CC0）を合成音に重ねる：名前 → (Resources/Sfx のファイル名の頭, 本数, 相対 dB)
+        private static readonly Dictionary<string, (string prefix, int n, float db)> Layers = new Dictionary<string, (string, int, float)>
+        {
+            { "explode", ("explosionCrunch_00", 5, -8f) }, { "boom", ("lowFrequency_explosion_00", 2, -2f) },
+            { "hit_heavy", ("impactMetal_heavy_00", 5, -10f) }, { "hurt", ("impactPunch_heavy_00", 5, -4f) },
+            { "shield", ("impactBell_heavy_00", 5, -8f) }, { "deflect", ("impactMetal_light_00", 5, -8f) },
+            { "hit_ice", ("impactGlass_heavy_00", 5, -10f) }, { "dash", ("cloth", 4, -6f) }, { "levelup", ("impactBell_heavy_00", 5, -12f) },
+        };
+        private readonly Dictionary<string, AudioClip[]> _layerClips = new Dictionary<string, AudioClip[]>();
         private static readonly System.Random _rng = new System.Random(12345);
 
         public static Sfx Create(Transform parent)
@@ -29,6 +38,15 @@ namespace Kagura.Game
                 s._players.Add(a);
             }
             s.BuildBank();
+            foreach (var kv in Layers)
+            {
+                var arr = new AudioClip[kv.Value.n];
+                for (int i = 0; i < kv.Value.n; i++) arr[i] = Resources.Load<AudioClip>("Sfx/" + kv.Value.prefix + (kv.Value.prefix == "cloth" ? (i + 1).ToString() : i.ToString()));
+                s._layerClips[kv.Key] = arr;
+            }
+            int loaded = 0, total = 0;
+            foreach (var arr in s._layerClips.Values) foreach (var c in arr) { total++; if (c != null) loaded++; }
+            Debug.Log("[Kagura] sfx layers loaded " + loaded + "/" + total);
             I = s;
             return s;
         }
@@ -50,6 +68,19 @@ namespace Kagura.Game
             p.volume = Mathf.Pow(10f, volDb / 20f);
             p.pitch = pitch;
             p.Play();
+            if (_layerClips.TryGetValue(name, out var layer))
+            {
+                var lc = layer[UnityEngine.Random.Range(0, layer.Length)];
+                if (lc != null)
+                {
+                    var q = _players[_idx];
+                    _idx = (_idx + 1) % _players.Count;
+                    q.clip = lc;
+                    q.volume = Mathf.Pow(10f, (volDb + Layers[name].db) / 20f);
+                    q.pitch = pitch * UnityEngine.Random.Range(0.94f, 1.06f);
+                    q.Play();
+                }
+            }
         }
 
         private static float Rand() => (float)(_rng.NextDouble() * 2.0 - 1.0);
