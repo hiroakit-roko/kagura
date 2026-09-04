@@ -73,6 +73,8 @@ namespace Kagura.Core
     {
         public string id;
         public string name;
+        public string gain;
+        public string loss;
         public string desc;
     }
 

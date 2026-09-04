@@ -30,7 +30,7 @@ namespace Kagura.Editor
             cam.backgroundColor = new Color(0.035f, 0.024f, 0.10f);
             // URP 2D レンダラの追加データ
             var add = camGo.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
-            add.renderPostProcessing = false;
+            add.renderPostProcessing = true;
 
             var root = new GameObject("Game");
             root.AddComponent<Kagura.Game.Bootstrap>();
@@ -38,15 +38,51 @@ namespace Kagura.Editor
             var es = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
             es.SetActive(true);
 
+            EnsureAssets();
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             Debug.Log("[Kagura] scene created: " + ScenePath);
         }
 
+        /// <summary>コードから Shader.Find で使うシェーダを、Resources のマテリアル経由でビルドに含める。</summary>
+        public static void EnsureAssets()
+        {
+            Directory.CreateDirectory("Assets/Kagura/Resources/Materials");
+            const string path = "Assets/Kagura/Resources/Materials/Vec.mat";
+            if (AssetDatabase.LoadAssetAtPath<Material>(path) == null)
+            {
+                var sh = Shader.Find("Kagura/Vec");
+                if (sh == null) { Debug.LogError("[Kagura] shader Kagura/Vec not found"); return; }
+                AssetDatabase.CreateAsset(new Material(sh), path);
+                AssetDatabase.SaveAssets();
+                Debug.Log("[Kagura] created " + path);
+            }
+            // TextMeshPro の必須リソース（TMP Settings・SDF シェーダー）が無いと実行時に例外になる
+            if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets/TextMesh Pro/Resources/TMP Settings.asset") == null)
+            {
+                string pkg = Path.GetFullPath("Packages/com.unity.ugui/Package Resources/TMP Essential Resources.unitypackage");
+                if (!File.Exists(pkg)) pkg = Path.GetFullPath("Packages/com.unity.textmeshpro/Package Resources/TMP Essential Resources.unitypackage");
+                if (File.Exists(pkg)) { AssetDatabase.ImportPackage(pkg, false); AssetDatabase.Refresh(); Debug.Log("[Kagura] imported TMP Essential Resources"); }
+                else Debug.LogError("[Kagura] TMP Essential Resources package not found");
+            }
+            // Always Included Shaders にも入れる（Shader.Find をビルドでも確実に）
+            var shader = Shader.Find("Kagura/Vec");
+            var gs = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
+            if (shader != null && gs != null && gs.Length > 0)
+            {
+                var so = new SerializedObject(gs[0]);
+                var arr = so.FindProperty("m_AlwaysIncludedShaders");
+                bool has = false;
+                for (int i = 0; i < arr.arraySize; i++) if (arr.GetArrayElementAtIndex(i).objectReferenceValue == shader) has = true;
+                if (!has) { arr.InsertArrayElementAtIndex(arr.arraySize); arr.GetArrayElementAtIndex(arr.arraySize - 1).objectReferenceValue = shader; so.ApplyModifiedProperties(); Debug.Log("[Kagura] shader added to Always Included"); }
+            }
+        }
+
         [MenuItem("Kagura/Build Web")]
         public static void BuildWeb()
         {
+            EnsureAssets();
             ApplyCommonSettings();
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
             PlayerSettings.WebGL.decompressionFallback = true;   // GitHub Pages は Content-Encoding を付けないので JS 側で展開

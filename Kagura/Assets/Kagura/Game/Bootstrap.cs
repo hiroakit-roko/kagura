@@ -15,11 +15,10 @@ namespace Kagura.Game
                 cam = cg.GetComponent<Camera>();
             }
             cam.orthographic = true;
-            cam.backgroundColor = new Color(0.035f, 0.024f, 0.10f);
+            cam.backgroundColor = Gd.C_BG;
             cam.clearFlags = CameraClearFlags.SolidColor;
 
-            var gm = gameObject.AddComponent<GameManager>();
-            gm.hud = Hud.Create(transform);
+            gameObject.AddComponent<GameManager>();
         }
     }
 }
