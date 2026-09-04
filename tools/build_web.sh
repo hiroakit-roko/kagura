@@ -22,11 +22,13 @@ mkdir -p "$PROJ/Assets/Kagura/Resources"
 printf '%s\n%s\n%s\n' "$VERSION" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$PROJ/Assets/Kagura/Resources/version.txt"
 echo "version: $VERSION ($SHA)"
 
+if [ "${1:-}" = "--skip-build" ]; then shift; echo "skip build"; else
 echo "building web… (log: $LOG)"
 "$UNITY" -batchmode -nographics -quit -projectPath "$PROJ" -buildTarget WebGL \
   -executeMethod Kagura.Editor.BuildTools.BuildWeb -logFile "$LOG" >/dev/null 2>&1 || {
   echo "ビルド失敗。ログ: $LOG" >&2; grep -E "error CS|Build Failed|Exception" "$LOG" | head -20 >&2; exit 1; }
 grep -E "\[Kagura\] web build" "$LOG" || true
+fi
 
 OUT="$ROOT/Kagura/Build/Web"
 SITE="$ROOT/site"

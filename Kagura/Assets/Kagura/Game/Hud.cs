@@ -29,6 +29,15 @@ namespace Kagura.Game
             return hud;
         }
 
+        private static Font _jp;
+        /// <summary>日本語フォント（Godot 版と同じ明朝のサブセット）。無ければ Unity 標準。</summary>
+        public static Font JpFont()
+        {
+            if (_jp != null) return _jp;
+            _jp = Resources.Load<Font>("Fonts/mincho") ?? Resources.Load<Font>("Fonts/gothic") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            return _jp;
+        }
+
         private static Text MakeText(Transform parent, string name, Vector2 anchor, Vector2 offset, int size, TextAnchor align)
         {
             var go = new GameObject(name, typeof(RectTransform));
@@ -39,7 +48,7 @@ namespace Kagura.Game
             rt.anchoredPosition = offset;
             rt.sizeDelta = new Vector2(620, 200);
             var t = go.AddComponent<Text>();
-            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.font = JpFont();
             t.fontSize = size;
             t.alignment = align;
             t.color = new Color(1f, 0.95f, 0.85f);

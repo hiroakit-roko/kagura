@@ -52,7 +52,10 @@ namespace Kagura.Editor
             PlayerSettings.WebGL.decompressionFallback = true;   // GitHub Pages は Content-Encoding を付けないので JS 側で展開
             PlayerSettings.WebGL.template = "APPLICATION:Default";
             PlayerSettings.runInBackground = true;
-            string outDir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../Build/Web"));
+            // ブラウザでは縦画面のキャンバス（スマホ縦の比率）
+            PlayerSettings.defaultWebScreenWidth = 480;
+            PlayerSettings.defaultWebScreenHeight = 854;
+            string outDir = Path.GetFullPath(Path.Combine(Application.dataPath, "../Build/Web"));
             var opts = new BuildPlayerOptions
             {
                 scenes = new[] { ScenePath },
