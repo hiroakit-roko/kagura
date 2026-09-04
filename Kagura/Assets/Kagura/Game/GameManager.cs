@@ -163,7 +163,7 @@ namespace Kagura.Game
         public void ShowTitle()
         {
             // 最初の操作前はブラウザが音を鳴らせないので、「tap to begin」で待ってから曲とアニメを始める
-            bool wait = !_userActive && !Net.UserActive();
+            bool wait = !Net.AudioReady();   // iOS は操作前のタップがないと音が出ない。AudioContext の状態で判定
             if (wait) Music.Stop(); else Music.Play("title");
             overlay.StartIntro(wait);
             if (State == GameState.Pause) pauseMenu.Close();

@@ -44,6 +44,9 @@ namespace Kagura.Game
         [DllImport("__Internal")] private static extern string KaguraUserAgent();
         [DllImport("__Internal")] private static extern int KaguraTouchPoints();
         [DllImport("__Internal")] private static extern int KaguraUserActive();
+        [DllImport("__Internal")] private static extern int KaguraAudioReady();
+        /// <summary>音を鳴らせる状態か（Web Audio の AudioContext が running）。ページ未操作だと偽。</summary>
+        public static bool AudioReady() { try { return KaguraAudioReady() != 0; } catch { return true; } }
         /// <summary>ページが一度でも操作されたか（未操作だとブラウザの方針で音が出ない）。</summary>
         public static bool UserActive() { try { return KaguraUserActive() != 0; } catch { return true; } }
         public static bool HasTouch() { try { return KaguraTouchPoints() > 0; } catch { return false; } }
@@ -58,6 +61,7 @@ namespace Kagura.Game
         public static string UserAgent() => "";
         public static bool HasTouch() => Application.isMobilePlatform;
         public static bool UserActive() => true;
+        public static bool AudioReady() => true;
         public static string Prompt(string msg, string def) => null;
 #endif
 

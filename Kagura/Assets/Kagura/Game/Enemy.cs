@@ -37,6 +37,7 @@ namespace Kagura.Game
         // 敵の絵（Resources/Art/enemy/<kind>.png があれば、ベクター描画の代わりに使う。無ければ従来の描画）
         private static readonly Dictionary<string, Sprite> _artCache = new Dictionary<string, Sprite>();
         private SpriteRenderer _spr;
+        private Vec _vecTop;             // 絵の前面：状態異常・発射の予兆・体力（絵は ZEnemy+1 なので、その上に描く）
         private Sprite _sprite;
 
         protected virtual void Awake()
@@ -47,6 +48,7 @@ namespace Kagura.Game
             _spr = sgo.AddComponent<SpriteRenderer>();
             _spr.sortingOrder = Gd.ZEnemy + 1;
             _spr.enabled = false;
+            _vecTop = Vec.Create(transform, "vec_top", Gd.ZEnemy + 2);
         }
 
         private static Sprite EnemyArt(string kind)
@@ -481,7 +483,7 @@ namespace Kagura.Game
                 Color tint = Color.white;
                 if (flash > 0f) tint = Color.Lerp(tint, new Color(1f, 0.6f, 0.65f), flash * 0.7f);
                 if (st.frozen > 0f) tint = Color.Lerp(tint, new Color(0.7f, 0.9f, 1f), 0.7f);
-                else if (st.chillStacks > 0) tint = Color.Lerp(tint, new Color(0.75f, 0.9f, 1f), 0.08f * st.chillStacks);
+                else if (st.chillStacks > 0) tint = Color.Lerp(tint, new Color(0.7f, 0.88f, 1f), 0.16f * st.chillStacks);
                 _spr.color = tint;
                 _spr.transform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * 2.2f + _phase) * 6f);
                 _spr.transform.localPosition = new Vector3(0, Mathf.Sin(t * 3f + _phase) * 2f, 0);
@@ -498,6 +500,8 @@ namespace Kagura.Game
                     v.DrawArc(new Vector2(0, radius * 0.15f), radius * 0.78f, 0.35f, Mathf.PI - 0.35f, 14, new Color(0f, 0f, 0.05f, 0.18f), radius * 0.28f);
                 }
             }
+            v.End();
+            v = _vecTop; v.Begin();   // ここから絵の前面（状態異常が絵に隠れない）
             DrawStatusAura(v);
             if (fireT > 0f && fireT < 0.35f && (kind == "grunt" || kind == "weaver" || kind == "turret" || kind == "splitter" || kind == "lantern" || kind == "oni" || kind == "caster"))
             {
@@ -697,15 +701,26 @@ namespace Kagura.Game
             }
             if (st.chillStacks > 0 || st.frozen > 0f)
             {
+                // 冷気：体に氷の膜と水色の輪、周りに結晶。段数は上に並ぶ小さな氷で示す。凍結は氷の塊
                 var c = new Color(0.8f, 0.95f, 1f);
-                int n = st.frozen <= 0f ? Mathf.Min(st.chillStacks * 2, 10) : 12;
+                int stacks = st.frozen > 0f ? Combat.CHILL_MAX : st.chillStacks;
+                v.DrawCircle(Vector2.zero, r * 1.05f, Gd.WithA(new Color(0.6f, 0.85f, 1f), st.frozen > 0f ? 0.45f : 0.10f + 0.06f * stacks));
+                v.DrawArc(Vector2.zero, r + 4f, 0, Gd.TAU, 28, Gd.WithA(c, 0.9f), 2.5f);
+                int n = st.frozen <= 0f ? Mathf.Min(stacks * 2, 10) : 12;
                 for (int i = 0; i < n; i++)
                 {
                     float a = i * 2.4f + 0.3f;
-                    Vector2 p = Gd.Dir(a) * r * 0.85f, dd = Gd.Dir(a);
-                    v.DrawColoredPolygon(new[] { p + dd * 7f, p + Gd.Orth(dd) * 2.5f, p - dd * 2f, p - Gd.Orth(dd) * 2.5f }, Gd.WithA(c, 0.9f));
+                    Vector2 p = Gd.Dir(a) * r * 0.9f, dd = Gd.Dir(a);
+                    v.DrawColoredPolygon(new[] { p + dd * 11f, p + Gd.Orth(dd) * 3.5f, p - dd * 3f, p - Gd.Orth(dd) * 3.5f }, new Color(1, 1, 1, 0.95f));
+                    v.DrawColoredPolygon(new[] { p + dd * 9f, p + Gd.Orth(dd) * 2f, p - dd * 1.5f, p - Gd.Orth(dd) * 2f }, Gd.WithA(c, 0.9f));
                 }
-                if (st.frozen > 0f) { v.DrawCircle(Vector2.zero, r * 1.25f, Gd.WithA(c, 0.35f)); v.DrawArc(Vector2.zero, r * 1.25f, 0, Gd.TAU, 24, new Color(1, 1, 1, 0.8f), 2f); }
+                for (int i = 0; i < Mathf.Min(stacks, Combat.CHILL_MAX); i++)
+                {
+                    Vector2 q = new Vector2((i - (Mathf.Min(stacks, Combat.CHILL_MAX) - 1) * 0.5f) * 10f, -r - 22f);
+                    v.DrawColoredPolygon(new[] { q + new Vector2(0, -5), q + new Vector2(4, 0), q + new Vector2(0, 5), q + new Vector2(-4, 0) }, new Color(1, 1, 1, 0.95f));
+                    v.DrawColoredPolygon(new[] { q + new Vector2(0, -3), q + new Vector2(2.4f, 0), q + new Vector2(0, 3), q + new Vector2(-2.4f, 0) }, new Color(0.55f, 0.85f, 1f, 0.95f));
+                }
+                if (st.frozen > 0f) { v.DrawCircle(Vector2.zero, r * 1.25f, Gd.WithA(c, 0.4f)); v.DrawArc(Vector2.zero, r * 1.25f, 0, Gd.TAU, 24, new Color(1, 1, 1, 0.9f), 3f); }
             }
             if (st.stagger > 0f)
                 for (int i = 0; i < 3; i++) { float a = t * 7f + Gd.TAU * i / 3f; Star(v, new Vector2(Mathf.Cos(a) * (r + 6f), -r - 10f + Mathf.Sin(a) * 4f), 3.5f, new Color(1, 1, 0.85f, 0.9f)); }

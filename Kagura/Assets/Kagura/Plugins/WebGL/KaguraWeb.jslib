@@ -11,6 +11,11 @@ mergeInto(LibraryManager.library, {
     return buf;
   },
   // ページが一度でも操作された（クリック・タップ・キー）か。未操作だとブラウザは音を鳴らさない
+  // Unity の Web Audio が鳴らせる状態か（AudioContext が running）。未操作のページでは suspended
+  KaguraAudioReady: function () {
+    try { if (typeof WEBAudio !== "undefined" && WEBAudio.audioContext) return WEBAudio.audioContext.state === "running" ? 1 : 0; } catch (e) {}
+    try { return (navigator.userActivation && navigator.userActivation.hasBeenActive) ? 1 : 0; } catch (e) { return 0; }
+  },
   KaguraUserActive: function () { try { return (navigator.userActivation && navigator.userActivation.hasBeenActive) ? 1 : 0; } catch (e) { return 0; } },
   KaguraTouchPoints: function () { try { return navigator.maxTouchPoints || 0; } catch (e) { return 0; } },
   KaguraUserAgent: function () {
