@@ -24,7 +24,22 @@
   <div id="unity-container"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
   <div id="loading">神楽<div id="bar"><div></div></div></div>
   <div id="warn"></div>
-  <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+      <script>
+      // 検証用：Web Audio の生成・再生回数を数える（音が実際に鳴っているかを外から確かめる）
+      (function () {
+        var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+        window.__kaguraAudio = { ctxs: [], starts: 0 };
+        var proto = A.prototype, orig = proto.createBufferSource;
+        proto.createBufferSource = function () {
+          var src = orig.apply(this, arguments), st = src.start;
+          src.start = function () { window.__kaguraAudio.starts++; return st.apply(this, arguments); };
+          return src;
+        };
+        var Wrapped = function () { var c = new A(); window.__kaguraAudio.ctxs.push(c); return c; };
+        Wrapped.prototype = proto; window.AudioContext = Wrapped; if (window.webkitAudioContext) window.webkitAudioContext = Wrapped;
+      })();
+    </script>
+<script src="Build/{{{ LOADER_FILENAME }}}"></script>
   <script>
     (function () {
       var container = document.querySelector("#unity-container");
@@ -84,6 +99,7 @@
       createUnityInstance(canvas, config, function (p) {
         bar.style.width = Math.round(p * 100) + "%";
       }).then(function (instance) {
+        window.unityInstance = instance;   // 検証用（Web Audio の状態などを外から見る）
         loading.style.display = "none";
         canvas.focus();
       }).catch(function (message) {
