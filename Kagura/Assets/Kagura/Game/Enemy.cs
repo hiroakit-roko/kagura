@@ -487,7 +487,17 @@ namespace Kagura.Game
                 _spr.transform.localPosition = new Vector3(0, Mathf.Sin(t * 3f + _phase) * 2f, 0);
                 if (kind == "charger" && state == 2) _spr.transform.localScale = new Vector3(_spr.transform.localScale.x, _spr.transform.localScale.x * 1.25f, 1f);
             }
-            else DrawBodyOverride(v, c);
+            else
+            {
+                DrawBodyOverride(v, c);
+                if (!isBoss)
+                {
+                    // 輪郭の締めと艶（Godot 版より一段はっきり見えるように）：暗い縁取りと左上の光沢
+                    v.DrawArc(Vector2.zero, radius * 1.04f, 0f, Gd.TAU, 28, new Color(0.05f, 0.02f, 0.08f, 0.35f), 1.6f);
+                    v.DrawCircle(new Vector2(-radius * 0.38f, -radius * 0.42f), radius * 0.18f, new Color(1f, 1f, 1f, 0.22f));
+                    v.DrawArc(new Vector2(0, radius * 0.15f), radius * 0.78f, 0.35f, Mathf.PI - 0.35f, 14, new Color(0f, 0f, 0.05f, 0.18f), radius * 0.28f);
+                }
+            }
             DrawStatusAura(v);
             if (fireT > 0f && fireT < 0.35f && (kind == "grunt" || kind == "weaver" || kind == "turret" || kind == "splitter" || kind == "lantern" || kind == "oni" || kind == "caster"))
             {
