@@ -34,8 +34,29 @@ namespace Kagura.Game
         protected float _phase, _dir = 1f, _spawnIn, _stateT, _kbHitCd, _ruptureAcc, _hangT;
         protected Vector2 _chargeDir = Vector2.down, _lastPos;
         protected Vec _vec;
+        // 敵の絵（Resources/Art/enemy/<kind>.png があれば、ベクター描画の代わりに使う。無ければ従来の描画）
+        private static readonly Dictionary<string, Sprite> _artCache = new Dictionary<string, Sprite>();
+        private SpriteRenderer _spr;
+        private Sprite _sprite;
 
-        protected virtual void Awake() { _vec = Vec.Create(transform, "vec", Gd.ZEnemy); }
+        protected virtual void Awake()
+        {
+            _vec = Vec.Create(transform, "vec", Gd.ZEnemy);
+            var sgo = new GameObject("spr");
+            sgo.transform.SetParent(transform, false);
+            _spr = sgo.AddComponent<SpriteRenderer>();
+            _spr.sortingOrder = Gd.ZEnemy + 1;
+            _spr.enabled = false;
+        }
+
+        private static Sprite EnemyArt(string kind)
+        {
+            if (_artCache.TryGetValue(kind, out var sp)) return sp;
+            var tex = Resources.Load<Texture2D>("Art/enemy/" + kind);
+            sp = tex != null ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 1f) : null;
+            _artCache[kind] = sp;
+            return sp;
+        }
 
         public virtual string DisplayName() => Enemies.Names.TryGetValue(kind, out var n) ? n : kind;
 
@@ -66,6 +87,15 @@ namespace Kagura.Game
                 default: maxHp = 16f * hs; speed = 118f * ss; radius = 15f; break;
             }
             hp = maxHp;
+            _sprite = k == "boss" ? null : EnemyArt(k);
+            _spr.enabled = _sprite != null;
+            if (_sprite != null)
+            {
+                _spr.sprite = _sprite;
+                float sc = radius * 2.7f / Mathf.Max(_sprite.rect.height, 1f);
+                _spr.transform.localScale = new Vector3(sc, sc, 1f);
+                _spr.color = Color.white;
+            }
             Active = true;
             gameObject.SetActive(true);
             Apply();
@@ -445,7 +475,19 @@ namespace Kagura.Game
                 float k = _spawnIn / 0.35f;
                 v.DrawArc(Vector2.zero, radius * (1f + k * 2.5f), 0f, Gd.TAU, 24, new Color(c.r, c.g, c.b, 1f - k), 2f);
             }
-            DrawBodyOverride(v, c);
+            if (_sprite != null)
+            {
+                // 絵：閃き・凍結は色で、ゆらぎは少し傾けて表す
+                Color tint = Color.white;
+                if (flash > 0f) tint = Color.Lerp(tint, new Color(1f, 0.6f, 0.65f), flash * 0.7f);
+                if (st.frozen > 0f) tint = Color.Lerp(tint, new Color(0.7f, 0.9f, 1f), 0.7f);
+                else if (st.chillStacks > 0) tint = Color.Lerp(tint, new Color(0.75f, 0.9f, 1f), 0.08f * st.chillStacks);
+                _spr.color = tint;
+                _spr.transform.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * 2.2f + _phase) * 6f);
+                _spr.transform.localPosition = new Vector3(0, Mathf.Sin(t * 3f + _phase) * 2f, 0);
+                if (kind == "charger" && state == 2) _spr.transform.localScale = new Vector3(_spr.transform.localScale.x, _spr.transform.localScale.x * 1.25f, 1f);
+            }
+            else DrawBodyOverride(v, c);
             DrawStatusAura(v);
             if (fireT > 0f && fireT < 0.35f && (kind == "grunt" || kind == "weaver" || kind == "turret" || kind == "splitter" || kind == "lantern" || kind == "oni" || kind == "caster"))
             {
