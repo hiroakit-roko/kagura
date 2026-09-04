@@ -87,7 +87,7 @@ namespace Kagura.Game
                 default: maxHp = 16f * hs; speed = 118f * ss; radius = 15f; break;
             }
             hp = maxHp;
-            _sprite = k == "boss" ? null : EnemyArt(k);
+            _sprite = (k == "boss" || (GameManager.I != null && !GameManager.I.enemySprites)) ? null : EnemyArt(k);
             _spr.enabled = _sprite != null;
             if (_sprite != null)
             {

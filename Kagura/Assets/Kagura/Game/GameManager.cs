@@ -38,6 +38,7 @@ namespace Kagura.Game
         public string runKey = "";
         public float enemySlow = 1f, enemyBulletSlow;
         public bool diag; private float _diagT;
+        public bool enemySprites = true;
 
         private readonly List<Bullet> _pBullets = new List<Bullet>();
         private readonly List<Bullet> _eBullets = new List<Bullet>();
@@ -121,6 +122,7 @@ namespace Kagura.Game
                 if (m.Success) ap.startWave = int.Parse(m.Groups[1].Value);
             }
             diag = url.Contains("diag");
+            enemySprites = !url.Contains("vector");   // ?vector で従来のベクター描画に戻せる
             ShowTitle();
         }
 
