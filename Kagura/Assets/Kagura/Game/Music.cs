@@ -65,7 +65,7 @@ namespace Kagura.Game
                 if (!p.isPlaying && p.clip != null) p.Play();
                 // 0..1 を dB に（対数で自然なフェード）
                 float db = BaseDb + 20f * Mathf.Log10(Mathf.Max(cur, 0.001f));
-                p.volume = Mathf.Pow(10f, db / 20f);
+                p.volume = Mathf.Pow(10f, db / 20f) * Audio.BgmGain;
             }
         }
 

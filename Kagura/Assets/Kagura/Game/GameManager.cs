@@ -31,6 +31,7 @@ namespace Kagura.Game
         public TouchUi touchUi;
         public Views ui;
         public RankingView ranking;
+        public PauseMenu pauseMenu;
         public Net net;
         public Transform world;
         public float runDuration;
@@ -38,6 +39,7 @@ namespace Kagura.Game
         public string runKey = "";
         public float enemySlow = 1f, enemyBulletSlow;
         public bool diag; private float _diagT;
+        public string forceKami = "";
         public bool enemySprites = true;
 
         private readonly List<Bullet> _pBullets = new List<Bullet>();
@@ -113,6 +115,7 @@ namespace Kagura.Game
             touchUi = TouchUi.Create(transform);
             ui = Views.Create(transform);
             ranking = new RankingView(transform);
+            pauseMenu = new PauseMenu(transform);
             net = Net.Create(transform);
             ui.OnFamiliarChosen = OnFamiliarChosen;
             ui.OnKamiChosen = OnKamiChosen;
@@ -130,6 +133,10 @@ namespace Kagura.Game
                 if (m.Success) ap.startWave = int.Parse(m.Groups[1].Value);
             }
             diag = url.Contains("diag");
+            {   // ?kami=susa：神の選択肢の先頭にその神を出す（検証用。autoplay は先頭を選ぶ）
+                var km = System.Text.RegularExpressions.Regex.Match(url, @"kami=([\w,]+)");
+                if (km.Success) forceKami = km.Groups[1].Value;
+            }
             enemySprites = !url.Contains("vector");   // ?vector で従来のベクター描画に戻せる
             ShowTitle();
         }
@@ -152,6 +159,7 @@ namespace Kagura.Game
         public void ShowTitle()
         {
             Music.Stop();
+            if (State == GameState.Pause) pauseMenu.Close();
             State = GameState.Title; choice = ChoiceKind.None;
             Time.timeScale = 1f; _hitstop = 0f; _freezeT = 0f;
             ui.HideCards();
@@ -220,8 +228,15 @@ namespace Kagura.Game
 
         public void TogglePause()
         {
-            if (State == GameState.Play) { State = GameState.Pause; Music.Muffle(true); }
-            else if (State == GameState.Pause) { State = GameState.Play; Music.Muffle(false); }
+            if (State == GameState.Play) { State = GameState.Pause; Music.Muffle(true); pauseMenu.Open(); }
+            else if (State == GameState.Pause) { pauseMenu.Close(); State = GameState.Play; Music.Muffle(false); }
+        }
+
+        /// <summary>小休止のメニューから「あきらめる」：この参拝を記録せず題目へ戻る。</summary>
+        public void GiveUp()
+        {
+            if (State != GameState.Pause) return;
+            ShowTitle();
         }
 
         /// <summary>ヒットストップ：dur 秒（実時間）だけ時間の流れを scale に落とす。小さな止めは間引く。</summary>
@@ -259,6 +274,8 @@ namespace Kagura.Game
             bool tap = (ts != null && ts.primaryTouch.press.wasPressedThisFrame) || (ms != null && ms.leftButton.wasPressedThisFrame && (ts == null || !ts.primaryTouch.press.isPressed));
             Vector2 tapPx = Vector2.zero;
             if (tap) tapPx = TouchUi.ToPx(ts != null && ts.primaryTouch.press.wasPressedThisFrame ? ts.primaryTouch.position.ReadValue() : ms.position.ReadValue());
+            bool held = (ts != null && ts.primaryTouch.press.isPressed) || (ms != null && ms.leftButton.isPressed);
+            Vector2 heldPx = held ? TouchUi.ToPx(ts != null && ts.primaryTouch.press.isPressed ? ts.primaryTouch.position.ReadValue() : ms.position.ReadValue()) : Vector2.zero;
             bool enter = kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame);
             bool rKey = kb != null && kb.rKey.wasPressedThisFrame;
             if (kb != null && kb.mKey.wasPressedThisFrame)
@@ -307,17 +324,16 @@ namespace Kagura.Game
                     if (enter || tap) ContinueEndless();
                     return;
                 case GameState.Pause:
-                    if (kb != null && kb.pKey.wasPressedThisFrame) TogglePause();
-                    if (kb != null && kb.escapeKey.wasPressedThisFrame) ShowTitle();
-                    if (touchUi != null && touchUi.Take("pause")) TogglePause();
+                    pauseMenu.Tick(Time.unscaledDeltaTime, !IsTouch && ms != null ? TouchUi.ToPx(ms.position.ReadValue()) : (Vector2?)null);
+                    if (tap && PauseMenu.GearHit(tapPx)) { TogglePause(); return; }
+                    pauseMenu.HandleInput(tap, tapPx, held, heldPx, kb);
                     return;
                 case GameState.Choice:
                     if (kb != null && kb.escapeKey.wasPressedThisFrame && !ui.confirm.visible) { ShowTitle(); return; }
                     return;
             }
-            if (kb != null && kb.pKey.wasPressedThisFrame) { TogglePause(); return; }
-            if (touchUi != null && touchUi.Take("pause")) { TogglePause(); return; }
-            if (kb != null && kb.escapeKey.wasPressedThisFrame) { ShowTitle(); return; }
+            if (kb != null && (kb.pKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame)) { TogglePause(); return; }
+            if (tap && PauseMenu.GearHit(tapPx)) { Sfx.Play("select", -12f); TogglePause(); return; }
 
             stars.speed = 1f + Wave * 0.04f;
             if (player == null || !player.alive) return;
@@ -377,7 +393,12 @@ namespace Kagura.Game
                     _diagT = 0f;
                     int pb = 0; string sample = "";
                     foreach (var b in _pBullets) if (b.Active) { pb++; if (sample == "") sample = $"pos={b.pos} vel={b.vel} life={b.life:0.00} r={b.radius} kind={b.shapeKind} go={b.gameObject.activeSelf} vecpos={b.transform.position}"; }
-                    Debug.Log($"[diag] dt={dt:0.000} ts={Time.timeScale} wave={Wave} enemies={EnemyCount} pb={pb} eb={EnemyBulletCount} pool={_pBullets.Count} player={player.pos} alive={player.alive} fireRate={player.fireRate} {sample}");
+                    string why = ""; foreach (var kv in Bullet.DiagWhy) why += kv.Key + "=" + kv.Value + " ";
+                    var kinds = new Dictionary<int, int>(); foreach (var b in _pBullets) if (b.Active) kinds[b.shapeKind] = kinds.TryGetValue(b.shapeKind, out var kn) ? kn + 1 : 1;
+                    string pk = ""; foreach (var kv in kinds) pk += kv.Key + "=" + kv.Value + " ";
+                    string ws = ""; foreach (var w in player.weapons.Keys) ws += w + " ";
+                    Debug.Log($"[diag] pbKinds[{pk}] weapons[{ws}]");
+                    Debug.Log($"[diag] dt={dt:0.000} ts={Time.timeScale} wave={Wave} enemies={EnemyCount} pb={pb} eb={EnemyBulletCount} pool={_pBullets.Count} player={player.pos} alive={player.alive} fireRate={player.fireRate} gods={string.Join("+", player.gods)} ebSpawned={Bullet.DiagSpawned} why[{why}] {sample}");
                 }
             }
             player.Tick(dt);
@@ -427,7 +448,7 @@ namespace Kagura.Game
                     if (SegDist2(b.prevPos, b.pos, pp) <= r * r)
                     {
                         if (player.iframe > 0f || player.dashT > 0f) continue;
-                        b.Vanish();
+                        b.Vanish("player-hit");
                         player.TakeDamage(b.damage, b.source);
                         if (!player.alive) break;
                     }
@@ -623,9 +644,9 @@ namespace Kagura.Game
 
         public void EraseEnemyBulletsNear(Vector2 pos, float r)
         {
-            foreach (var b in _eBullets) if (b.Active && Vector2.Distance(b.pos, pos) <= r) b.Vanish();
+            foreach (var b in _eBullets) if (b.Active && Vector2.Distance(b.pos, pos) <= r) b.Vanish("near");
         }
-        public void EraseAllEnemyBullets() { foreach (var b in _eBullets) if (b.Active) b.Vanish(); }
+        public void EraseAllEnemyBullets() { foreach (var b in _eBullets) if (b.Active) b.Vanish("call-all"); }
 
         public Pickup Drop(Vector2 pos, int kind, float value)
         {
@@ -761,6 +782,15 @@ namespace Kagura.Game
         {
             PauseForChoice(ChoiceKind.Kami);
             var ids = BoonsLogic.RollKamiChoices(player, 3);
+            if (forceKami != "")
+            {   // "susa,suku" のように並べると、その順に主神・副神の先頭候補になる
+                foreach (var fk in forceKami.Split(','))
+                {
+                    if (player.gods.Contains(fk) || Data.KamiOf(fk) == null) continue;
+                    ids.Remove(fk); ids.Insert(0, fk); if (ids.Count > 3) ids.RemoveAt(3);
+                    break;
+                }
+            }
             Sfx.Play("descend", -6f);
             ui.ShowKamiChoice(ids, player.gods.Count == 0 ? "主神" : "副神");
         }
@@ -770,6 +800,7 @@ namespace Kagura.Game
             if (choice != ChoiceKind.Kami) return;
             bool main = player.gods.Count == 0;
             player.AddGod(id);
+            if (diag) Debug.Log($"[diag] kami chosen {id} main={main} wave={Wave}");
             var k = Data.KamiOf(id);
             var col = Data.ColorOf(k.color);
             Sfx.Play("descend", -4f, main ? 1.2f : 1.3f);

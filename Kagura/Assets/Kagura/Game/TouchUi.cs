@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 namespace Kagura.Game
 {
     /// <summary>
-    /// スマホ向けのタッチ操作（Godot 版 touch.gd の移植）。画面下の丸ボタンで詠唱／神招き、右上の小ボタンで小休止。
+    /// スマホ向けのタッチ操作（Godot 版 touch.gd の移植）。画面下の丸ボタンで詠唱／神招き。右上の歯車（小休止）は HUD と GameManager が受け持つ。
     /// 短くなぞってすぐ離すと疾走。ボタンの上の指は自機の移動に使わない。
     /// </summary>
     public class TouchUi : MonoBehaviour
@@ -80,14 +80,14 @@ namespace Kagura.Game
             {
                 if (down)
                 {
-                    if (g.State == GameState.Pause) { g.TogglePause(); }
-                    else if (g.State == GameState.Play)
+                    // 小休止中の操作は GameManager → PauseMenu が受ける（ここで再開してしまうと二重に切り替わる）
+                    if (g.State == GameState.Play)
                     {
                         Vector2 p = ToPx(sp);
                         bool onBtn = false;
                         foreach (var kv in _pos)
                         {
-                            if (Vector2.Distance(p, kv.Value) <= _r[kv.Key] * 1.25f) { _just[kv.Key] = true; _held[kv.Key] = true; onBtn = true; if (kv.Key == "pause") g.TogglePause(); break; }
+                            if (Vector2.Distance(p, kv.Value) <= _r[kv.Key] * 1.25f) { _just[kv.Key] = true; _held[kv.Key] = true; onBtn = true; break; }
                         }
                         if (!onBtn) { _tracking = true; _touchStartT = Time.unscaledTime; _touchStartPos = sp; }
                     }
@@ -125,6 +125,7 @@ namespace Kagura.Game
                 foreach (var kv in _pos)
                 {
                     string name = kv.Key; Vector2 c = kv.Value; float r = _r[name];
+                    if (name == "pause") continue;   // 右上の歯車は HUD が描く（PauseMenu.DrawGear）
                     bool pressed = _held[name];
                     Color col = Color.white; bool enabled = true; float fill = 0f; string sub = "";
                     switch (name)

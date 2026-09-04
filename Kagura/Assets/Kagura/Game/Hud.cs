@@ -65,6 +65,7 @@ namespace Kagura.Game
                         if (!g.IsTouch) DrawSkills(p);
                     }
                     DrawTop(g); DrawBoss(g);
+                    if (g.State == GameState.Play || g.State == GameState.Pause) PauseMenu.DrawGear(l.front, _t, g.State == GameState.Pause);
                 }
                 if (cutinT > 0f) DrawCutin();
                 if (callT > 0f) DrawCallCutin();
@@ -74,13 +75,6 @@ namespace Kagura.Game
                 {
                     float a = Mathf.Clamp01(smallT * 2f);
                     UiKit.Txt(l, WorldText.Face.Display, new Vector2(0, Gd.H - 150f), smallText, 20, Gd.WithA(smallCol, a), TextAnchor.MiddleCenter, Gd.W);
-                }
-                if (g.State == GameState.Pause)
-                {
-                    l.front.DrawRect(new Rect(0, 0, Gd.W, Gd.H), new Color(0.02f, 0.03f, 0.06f, 0.62f));
-                    UiKit.Txt(l, WorldText.Face.Display, new Vector2(0, 300), "小休止", 52, Color.white, TextAnchor.MiddleCenter, Gd.W);
-                    UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, 336), g.IsTouch ? "画面をタップ か P で再開" : "P で再開", 16, new Color(0.85f, 0.9f, 1f, 0.85f), TextAnchor.MiddleCenter, Gd.W);
-                    if (p != null) DrawBuild(l, p, 390f);
                 }
             }
             l.End();

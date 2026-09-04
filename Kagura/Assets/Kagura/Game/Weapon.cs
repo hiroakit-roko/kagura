@@ -134,7 +134,7 @@ namespace Kagura.Game
                             Vector2 rel = eb.pos - origin;
                             if (Vector2.Dot(rel, d) < 0f || Mathf.Abs(Vector2.Dot(rel, Gd.Orth(d))) > w * 0.5f + 6f) continue;
                             Fx.Sparks(eb.pos, Vector2.up, col, 3, 200f);
-                            eb.Vanish(); nErased++;
+                            eb.Vanish("ama-kagerou"); nErased++;
                             break;
                         }
                     }
@@ -230,7 +230,7 @@ namespace Kagura.Game
                 for (int i = 0; i < n; i++)
                 {
                     Vector2 bp = p.pos + Gd.Dir(spin + Gd.TAU * i / n) * r;
-                    if (Vector2.Distance(bp, eb.pos) <= br + eb.radius) { Fx.Sparks(eb.pos, Vector2.up, col, 2, 160f); eb.Vanish(); break; }
+                    if (Vector2.Distance(bp, eb.pos) <= br + eb.radius) { Fx.Sparks(eb.pos, Vector2.up, col, 2, 160f); eb.Vanish("tsuki-blade"); break; }
                 }
             }
             foreach (var e in G.EnemyList())

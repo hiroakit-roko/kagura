@@ -59,13 +59,15 @@ namespace Kagura.Game
         private void PlayInternal(string name, float volDb, float pitch, float minGap)
         {
             if (muted || !_bank.TryGetValue(name, out var clip)) return;
+            float gain = Audio.SfxGain;
+            if (gain <= 0f) return;
             float now = Time.realtimeSinceStartup;
             if (minGap > 0f && _last.TryGetValue(name, out var last) && now - last < minGap) return;
             _last[name] = now;
             var p = _players[_idx];
             _idx = (_idx + 1) % _players.Count;
             p.clip = clip;
-            p.volume = Mathf.Pow(10f, volDb / 20f);
+            p.volume = Mathf.Pow(10f, volDb / 20f) * gain;
             p.pitch = pitch;
             p.Play();
             if (_layerClips.TryGetValue(name, out var layer))
@@ -76,7 +78,7 @@ namespace Kagura.Game
                     var q = _players[_idx];
                     _idx = (_idx + 1) % _players.Count;
                     q.clip = lc;
-                    q.volume = Mathf.Pow(10f, (volDb + Layers[name].db) / 20f);
+                    q.volume = Mathf.Pow(10f, (volDb + Layers[name].db) / 20f) * gain;
                     q.pitch = pitch * UnityEngine.Random.Range(0.94f, 1.06f);
                     q.Play();
                 }

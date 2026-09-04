@@ -561,7 +561,7 @@ namespace Kagura.Game
                     {
                         hasteT = 6f;
                         Fx.SlashFx(from, -Mathf.PI * 0.5f, 220f, col, 3f, 0.35f, 18f);
-                        foreach (var eb in g.EnemyBullets()) if (eb.Active && eb.pos.y < pos.y && Mathf.Abs(eb.pos.x - pos.x) < 220f) eb.Vanish();
+                        foreach (var eb in g.EnemyBullets()) if (eb.Active && eb.pos.y < pos.y && Mathf.Abs(eb.pos.x - pos.x) < 220f) eb.Vanish("saru-cast");
                         for (int i = 0; i < 3; i++)
                         {
                             float a = -Mathf.PI * 0.5f + (i - 1f) * 14f * Mathf.Deg2Rad;

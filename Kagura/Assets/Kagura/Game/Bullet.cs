@@ -43,7 +43,8 @@ namespace Kagura.Game
             pos = p; prevPos = p; vel = v; damage = dmg; friendly = isFriendly; radius = r; color = col;
             shapeKind = kind >= 0 ? kind : (isFriendly ? 0 : 7);
             life = isFriendly ? 5f : 6f;
-            _t = 0f; _travel = 0f; _speed = v.magnitude; _returning = false; _retarget = 0f;
+            _t = 0f; _travel = 0f; _speed = v.magnitude; _returning = false; _retarget = 0f; _why = "";
+            if (!isFriendly) DiagSpawned++;
             _hit.Clear();
             pierce = 0; homing = 0f; critChance = -1f; isCrit = false; kami = ""; tag = isFriendly ? "attack" : "enemy";
             eraser = false; reflect = false; charmed = false; eraseChance = 1f; zoneKind = ""; zoneR = 60f; zoneLife = 2f; zoneDmg = 10f;
@@ -63,7 +64,7 @@ namespace Kagura.Game
             var g = GameManager.I;
             _t += dt;
             life -= dt;
-            if (life <= 0f) { Expire(); return; }
+            if (life <= 0f) { _why = "expire"; Expire(); return; }
 
             if (homing > 0f)
             {
@@ -100,10 +101,12 @@ namespace Kagura.Game
                     float wantA = Gd.Angle(pl.pos - pos);
                     float diff = Mathf.DeltaAngle(cur * Mathf.Rad2Deg, wantA * Mathf.Rad2Deg) * Mathf.Deg2Rad;
                     vel = Gd.Dir(cur + Mathf.Clamp(diff, -9f * dt, 9f * dt)) * _speed;
-                    if (Vector2.Distance(pos, pl.pos) < 26f) { Combat.OnFanReturn(this); Despawn(); return; }
+                    if (Vector2.Distance(pos, pl.pos) < 26f) { Combat.OnFanReturn(this); _why = "return"; Despawn(); return; }
                 }
             }
-            if (Gd.OffScreen(pos, shapeKind == 4 ? 200f : 60f)) { Despawn(); return; }
+            if (Gd.OffScreen(pos, shapeKind == 4 ? 200f : 60f)) { _why = "offscreen"; Despawn(); return; }
+            // 自機弾の消え方の内訳（検証用）
+            
             Apply();
             Draw();
         }
@@ -161,14 +164,14 @@ namespace Kagura.Game
             if (splitOnHit > 0) { Split(splitOnHit); splitOnHit = 0; }
             Fx.Cone(pos, -vel.normalized, color, 4, 150f, 0.9f, 2.5f, 0.22f);
             if (shapeKind == 4) pierce = 999;
-            if (pierce > 0) pierce--; else Despawn();
+            if (pierce > 0) pierce--; else { _why = "hit"; Despawn(); }
         }
 
         /// <summary>自機弾が敵弾に触れた：反射／消弾。</summary>
         public void OnTouchEnemyBullet(Bullet eb)
         {
             if (reflect) { eb.ReflectToFriendly(damage); Sfx.Play("deflect", -14f, Gd.Rand(0.95f, 1.15f), 0.03f); }
-            else if (eraser && Random.value < eraseChance) { eb.Vanish(); Combat.OnErase(this); }
+            else if (eraser && Random.value < eraseChance) { eb.Vanish("eraser:" + kami + ":" + tag); Combat.OnErase(this); }
         }
 
         private void Split(int n)
@@ -194,14 +197,29 @@ namespace Kagura.Game
             Despawn();
         }
 
-        public void Vanish()
+        public void Vanish(string why = "vanish")
         {
             if (!Active) return;
+            _why = why;
             Fx.Burst(pos, Gd.WithA(color, 0.7f), 3, 80f, 2f, 0.2f, true);
             Despawn();
         }
 
-        public void Despawn() { Active = false; gameObject.SetActive(false); }
+        /// <summary>検証用：敵弾が消えた理由の集計（?diag のときだけ意味を持つ）。</summary>
+        public static readonly Dictionary<string, int> DiagWhy = new Dictionary<string, int>();
+        public static int DiagSpawned;
+        private string _why = "";
+        public void Despawn()
+        {
+            if (!Active) return;
+            if (GameManager.I != null && GameManager.I.diag)
+            {
+                string k = (friendly ? "p" + shapeKind + ":" : "") + (_why == "" ? "despawn" : _why);
+                DiagWhy[k] = DiagWhy.TryGetValue(k, out var n) ? n + 1 : 1;
+            }
+            _why = "";
+            Active = false; gameObject.SetActive(false);
+        }
 
         // ---------- 描画（Godot 版 _draw） ----------
 
