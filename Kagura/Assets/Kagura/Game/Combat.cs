@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Kagura.Core;
 
@@ -11,7 +12,7 @@ namespace Kagura.Game
         public bool crit, quiet;
         public Vector2 dir;
         public float kb, doom, charmChance;
-        public static HitOpts Of(string tag, string kami) => new HitOpts { tag = tag, kami = kami, dir = Vector2.up };
+        public static HitOpts Of(string tag, string kami) => new HitOpts { tag = tag, kami = kami, dir = Vector2.down };
     }
 
     /// <summary>
@@ -53,7 +54,7 @@ namespace Kagura.Game
             var p = P();
             string tag = o.tag ?? "attack", kami = o.kami ?? "";
             bool crit = o.crit;
-            Vector2 dir = o.dir == Vector2.zero ? Vector2.up : o.dir;
+            Vector2 dir = o.dir == Vector2.zero ? Vector2.down : o.dir;   // 既定は画面の上向き（Godot の UP）
             var st = en.st;
 
             float mult = 1f;
@@ -231,16 +232,16 @@ namespace Kagura.Game
             float bonus = Has("duo_take_suku") ? Scaled("duo_take_suku", "take") * en.st.hangoverStacks : 0f;
             var p = P();
             bool crit = p != null && Random.value < p.CritChance();
-            Hit(en, dmg + bonus, en.pos, new HitOpts { tag = "lightning", kami = "take", crit = crit, dir = Vector2.up });
-            if (!en.Active) return;
+            Hit(en, dmg + bonus, en.pos, new HitOpts { tag = "lightning", kami = "take", crit = crit, dir = Vector2.down });
+            // 倒れても連鎖・余波は続く（Godot 版は queue_free が遅延するので続いていた）
             if (Has("take_u4")) en.AddJolt(JOLT_T);
             if (Has("duo_take_iza")) en.AddChill(2);
             if (Has("take_u5"))
             {
                 float r = Val("take_u5");
-                foreach (var o in GameManager.I.EnemyList())
+                foreach (var o in GameManager.I.EnemyList().ToArray())
                     if (o != en && o.Active && !used.Contains(o) && Vector2.Distance(o.pos, en.pos) <= r)
-                        Hit(o, dmg * 0.5f, o.pos, new HitOpts { tag = "lightning", kami = "take", quiet = true, dir = Vector2.up });
+                        Hit(o, dmg * 0.5f, o.pos, new HitOpts { tag = "lightning", kami = "take", quiet = true, dir = Vector2.down });
             }
             if (Has("take_leg") && Random.value < Val("take_leg") * 0.01f)
             {
@@ -260,7 +261,7 @@ namespace Kagura.Game
             if (d <= 0f) d = 15f;
             Fx.BoltFx(en.pos + new Vector2(Gd.Rand(-40, 40), -70), en.pos, new Color(1f, 0.97f, 0.7f), 0.14f);
             Sfx.Play("hit_thunder", -16f, 1.3f, 0.05f);
-            Hit(en, d, en.pos, new HitOpts { tag = "lightning", kami = "take", dir = Vector2.up });
+            Hit(en, d, en.pos, new HitOpts { tag = "lightning", kami = "take", dir = Vector2.down });
         }
 
         // ---------- 宿命 ----------
@@ -285,7 +286,7 @@ namespace Kagura.Game
                 Fx.Number(pos + new Vector2(0, -en.radius - 10), "裁定", new Color(1, 0.9f, 1), 18f, true);
                 en.TakeDamage(en.hp + 1f, true, pos);
             }
-            else Hit(en, dmg, pos, new HitOpts { tag = "doom", kami = "tsuki", crit = crit, dir = Vector2.up });
+            else Hit(en, dmg, pos, new HitOpts { tag = "doom", kami = "tsuki", crit = crit, dir = Vector2.down });
             if ((!en.Active || en.hp <= 0f) && Has("tsuki_u7") && Random.value < Val("tsuki_u7") * 0.01f)
             {
                 var nxt = NearestEnemy(pos, 170f, en);
@@ -293,9 +294,9 @@ namespace Kagura.Game
             }
             if (en.Active && en.hp > 0f && Has("duo_iza_tsuki")) en.Freeze(Val("duo_iza_tsuki"));
             if (Has("duo_tsuki_suku")) GameManager.I.SpawnZone(pos, "fog", r * 0.9f, Val("duo_tsuki_suku"), 0f, new Color(0.62f, 1f, 0.55f));
-            foreach (var o in GameManager.I.EnemyList())
+            foreach (var o in GameManager.I.EnemyList().ToArray())
                 if (o != en && o.Active && Vector2.Distance(o.pos, pos) <= r)
-                    Hit(o, dmg * 0.5f, o.pos, new HitOpts { tag = "doom", kami = "tsuki", crit = crit, dir = Vector2.up });
+                    Hit(o, dmg * 0.5f, o.pos, new HitOpts { tag = "doom", kami = "tsuki", crit = crit, dir = Vector2.down });
         }
 
         // ---------- 押し戻し ----------
@@ -305,9 +306,9 @@ namespace Kagura.Game
             en.Knockback(v);
             Fx.Cone(at, v.normalized, new Color(0.35f, 0.82f, 0.95f), 4, 260f, 0.5f, 3f, 0.25f);
             if (Has("duo_susa_take")) Lightning(en, Scaled("duo_susa_take", "take"), at + new Vector2(0, -70), 0);
-            if (Has("susa_u8")) Hit(en, Scaled("susa_u8", "susa"), en.pos, new HitOpts { tag = "wave", kami = "susa", quiet = true, dir = Vector2.up });
+            if (Has("susa_u8")) Hit(en, Scaled("susa_u8", "susa"), en.pos, new HitOpts { tag = "wave", kami = "susa", quiet = true, dir = Vector2.down });
             if (Has("susa_u5")) en.Stagger(Val("susa_u5"));
-            if (Has("susa_leg")) Hit(en, Scaled("susa_leg", "susa"), en.pos, new HitOpts { tag = "wave", kami = "susa", quiet = true, dir = Vector2.up });
+            if (Has("susa_leg")) Hit(en, Scaled("susa_leg", "susa"), en.pos, new HitOpts { tag = "wave", kami = "susa", quiet = true, dir = Vector2.down });
         }
 
         /// <summary>壁・仲間への衝突（ダメージは廃止、Godot 版と同じ no-op）。</summary>
@@ -327,7 +328,7 @@ namespace Kagura.Game
             var p = P();
             float d = Has("iza_u3") ? Scaled("iza_u3", "iza") : (p != null ? p.BaseDamage() * 1.5f * p.KamiPower("iza") : 25f);
             en.Freeze(0.8f);
-            Hit(en, d, en.pos, new HitOpts { tag = "shatter", kami = "iza", dir = Vector2.up });
+            Hit(en, d, en.pos, new HitOpts { tag = "shatter", kami = "iza", dir = Vector2.down });
             if (Has("iza_u4")) GameManager.I.SpawnZone(en.pos, "frost", 60f, Val("iza_u4"), p != null ? p.BaseDamage() * 0.3f : 3f, new Color(0.58f, 0.82f, 1f));
             if (Has("iza_u9") && p != null)
             {
@@ -343,8 +344,8 @@ namespace Kagura.Game
             if (Has("iza_leg"))
             {
                 float ld = Scaled("iza_leg", "iza");
-                foreach (var o in GameManager.I.EnemyList())
-                    if (o != en && o.Active && Vector2.Distance(o.pos, en.pos) <= 120f) { o.Freeze(1.2f); Hit(o, ld, o.pos, new HitOpts { tag = "shatter", kami = "iza", dir = Vector2.up }); }
+                foreach (var o in GameManager.I.EnemyList().ToArray())
+                    if (o != en && o.Active && Vector2.Distance(o.pos, en.pos) <= 120f) { o.Freeze(1.2f); Hit(o, ld, o.pos, new HitOpts { tag = "shatter", kami = "iza", dir = Vector2.down }); }
             }
         }
 

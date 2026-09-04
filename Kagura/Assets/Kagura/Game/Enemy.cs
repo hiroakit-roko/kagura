@@ -32,7 +32,7 @@ namespace Kagura.Game
         public Vector2 kb;
         public string lastTag = "";
         protected float _phase, _dir = 1f, _spawnIn, _stateT, _kbHitCd, _ruptureAcc, _hangT;
-        protected Vector2 _chargeDir = Vector2.down, _lastPos;
+        protected Vector2 _chargeDir = Vector2.up, _lastPos;   // 画面の下向き（Godot の DOWN）
         protected Vec _vec;
         // 敵の絵（Resources/Art/enemy/<kind>.png があれば、ベクター描画の代わりに使う。無ければ従来の描画）
         private static readonly Dictionary<string, Sprite> _artCache = new Dictionary<string, Sprite>();
@@ -259,7 +259,7 @@ namespace Kagura.Game
                     else if (state == 1)
                     {
                         _stateT -= delta; pos.y += 14f * delta;
-                        if (_stateT <= 0f) { state = 2; _chargeDir = p != null ? (p.pos - pos).normalized : Vector2.down; Sfx.Play("eshot", -16f, 0.7f, 0.05f); }
+                        if (_stateT <= 0f) { state = 2; _chargeDir = p != null ? (p.pos - pos).normalized : Vector2.up; Sfx.Play("eshot", -16f, 0.7f, 0.05f); }
                     }
                     else { pos += _chargeDir * speed * delta; Fx.Cone(pos, -_chargeDir, color, 1, 60f, 0.5f, 3f, 0.25f); }
                     break;
@@ -276,8 +276,8 @@ namespace Kagura.Game
                     break;
                 case "mini":
                     {
-                        Vector2 dir = p != null ? (p.pos - pos).normalized : Vector2.down;
-                        pos += Vector2.Lerp(dir, Vector2.down, 0.35f) * speed * delta;
+                        Vector2 dir = p != null ? (p.pos - pos).normalized : Vector2.up;
+                        pos += Vector2.Lerp(dir, Vector2.up, 0.35f) * speed * delta;   // 自機へ寄りつつ画面の下へ（Godot の DOWN）
                         break;
                     }
                 case "spirit":
@@ -507,11 +507,11 @@ namespace Kagura.Game
             }
             if (kind == "charger" && state == 1)
             {
-                Vector2 d = ((P() != null ? P().pos : pos + Vector2.down) - pos).normalized;
+                Vector2 d = ((P() != null ? P().pos : pos + Vector2.up) - pos).normalized;
                 v.DrawLine(Vector2.zero, d * 900f, new Color(1, 0.4f, 0.5f, 0.25f + 0.2f * Mathf.Sin(t * 30f)), 2f);
             }
             if (kind == "bomber" && state == 0 && pos.y > 40f)
-                v.DrawLine(Vector2.zero, ((P() != null ? P().pos : pos + Vector2.down) - pos).normalized * 120f, new Color(1, 0.6f, 0.3f, 0.3f), 1.5f);
+                v.DrawLine(Vector2.zero, ((P() != null ? P().pos : pos + Vector2.up) - pos).normalized * 120f, new Color(1, 0.6f, 0.3f, 0.3f), 1.5f);
             if (hp < maxHp && kind != "mini" && !isBoss)
             {
                 float w = radius * 2f, y = -radius - 9f;

@@ -10,6 +10,8 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(r, buf, len);
     return buf;
   },
+  // ページが一度でも操作された（クリック・タップ・キー）か。未操作だとブラウザは音を鳴らさない
+  KaguraUserActive: function () { try { return (navigator.userActivation && navigator.userActivation.hasBeenActive) ? 1 : 0; } catch (e) { return 0; } },
   KaguraTouchPoints: function () { try { return navigator.maxTouchPoints || 0; } catch (e) { return 0; } },
   KaguraUserAgent: function () {
     var ua = (navigator && navigator.userAgent) ? navigator.userAgent : "";

@@ -40,7 +40,7 @@ namespace Kagura.Game
         public Vector2 pos;
         public float hp = 100f, maxHp = 100f;
         public int level = 1;
-        public float xp, xpNext = 58.5f;
+        public float xp, xpNext = 50f;
         public int pendingLevels;
         public bool alive = true;
         public float radius = 7f;
@@ -92,7 +92,7 @@ namespace Kagura.Game
         public void Reset()
         {
             alive = true; hp = maxHp = 100f; iframe = 0f; t = 0f;
-            level = 1; xp = 0f; xpNext = XpNeed(1); pendingLevels = 0;
+            level = 1; xp = 0f; xpNext = 50f; pendingLevels = 0;   // Godot 版の初期値
             foreach (var w in weapons.Values) w.Destroy();
             weapons.Clear();
             gods.Clear(); kamiLv.Clear(); kamiXp.Clear(); kamiDmg.Clear(); boons.Clear(); relics.Clear();
@@ -248,11 +248,32 @@ namespace Kagura.Game
             CallTick(dt, g);
             Upkeep(dt);
             Contact(g);
+            Graze(g);
             if (familiar != null) familiar.Tick(dt);
             if (familiar2 != null) familiar2.Tick(dt);
             foreach (var d in _drones) d.Tick(dt);
             Apply();
             Draw();
+        }
+
+        public int grazes;
+
+        /// <summary>かすり：敵弾のすれすれを抜けると神招きゲージが少し溜まる（Godot 版 _graze）。</summary>
+        private void Graze(GameManager g)
+        {
+            foreach (var b in g.EnemyBullets())
+            {
+                if (!b.Active || b.grazed) continue;
+                float d = Vector2.Distance(b.pos, pos);
+                if (d < 30f && d > radius + b.radius)
+                {
+                    b.grazed = true;
+                    grazes++;
+                    AddCallGauge(0.004f);
+                    Fx.Sparks(b.pos, Vector2.down, Color.white, 2, 200f);
+                    Fx.Number(pos + new Vector2(0, -40), "かすり", new Color(1, 1, 1, 0.6f), 9f);
+                }
+            }
         }
 
         // ---------- 移動 ----------
@@ -325,7 +346,7 @@ namespace Kagura.Game
                 iframe = Mathf.Max(iframe, 0.05f);
                 pos += dashDir * MoveSpeed() * 2.6f * dashMult * dt;
                 if (Has("saru_leg"))
-                    foreach (var e in g.EnemyList())
+                    foreach (var e in g.EnemyList().ToArray())
                     {
                         if (!e.Active || Vector2.Distance(e.pos, pos) > radius + 26f || _dashHit.Contains(e)) continue;
                         _dashHit.Add(e);
@@ -360,8 +381,8 @@ namespace Kagura.Game
                 }
                 else pos += dir * MoveSpeed() * (focus ? 0.42f : 1f) * dt;
             }
-            pos.x = Mathf.Clamp(pos.x, 10f, Gd.W - 10f);
-            pos.y = Mathf.Clamp(pos.y, 60f, Gd.H - 30f);
+            pos.x = Mathf.Clamp(pos.x, 30f, Gd.W - 30f);
+            pos.y = Mathf.Clamp(pos.y, 80f, Gd.H - 50f);
         }
 
         private void StartDash(Vector2 dir, GameManager g)
@@ -609,7 +630,7 @@ namespace Kagura.Game
                     Fx.SlashFx(new Vector2(Gd.W * 0.5f, pos.y - 200f), -Mathf.PI * 0.5f, 420f, col, 2.8f, 0.4f, 26f);
                     Fx.SlashFx(new Vector2(Gd.W * 0.5f, pos.y - 220f), -Mathf.PI * 0.5f, 300f, Color.white, 2.6f, 0.3f, 10f);
                     g.EraseAllEnemyBullets();
-                    foreach (var e in g.EnemyList().ToArray()) if (e.Active && e.pos.y < pos.y) Combat.Hit(e, v * 3f, e.pos, new HitOpts { tag = "call", kami = "susa", dir = Vector2.up, kb = 700f });
+                    foreach (var e in g.EnemyList().ToArray()) if (e.Active && e.pos.y < pos.y) Combat.Hit(e, v * 3f, e.pos, new HitOpts { tag = "call", kami = "susa", dir = Vector2.down, kb = 700f });   // 画面の上へ押し飛ばす（Godot の UP）
                     Fx.ShakeAdd(18f);
                     break;
                 case "tsuki":

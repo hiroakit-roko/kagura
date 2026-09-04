@@ -43,6 +43,9 @@ namespace Kagura.Game
         [DllImport("__Internal")] private static extern string KaguraPrompt(string msg, string def);
         [DllImport("__Internal")] private static extern string KaguraUserAgent();
         [DllImport("__Internal")] private static extern int KaguraTouchPoints();
+        [DllImport("__Internal")] private static extern int KaguraUserActive();
+        /// <summary>ページが一度でも操作されたか（未操作だとブラウザの方針で音が出ない）。</summary>
+        public static bool UserActive() { try { return KaguraUserActive() != 0; } catch { return true; } }
         public static bool HasTouch() { try { return KaguraTouchPoints() > 0; } catch { return false; } }
         public static string UserAgent() { try { return KaguraUserAgent() ?? ""; } catch { return ""; } }
         /// <summary>ブラウザの入力ダイアログ。取り消しなら null。</summary>
@@ -54,6 +57,7 @@ namespace Kagura.Game
 #else
         public static string UserAgent() => "";
         public static bool HasTouch() => Application.isMobilePlatform;
+        public static bool UserActive() => true;
         public static string Prompt(string msg, string def) => null;
 #endif
 

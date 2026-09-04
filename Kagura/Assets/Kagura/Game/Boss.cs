@@ -26,7 +26,7 @@ namespace Kagura.Game
         private float _eyeT;
         private int _dashState;
         private float _dashT;
-        private Vector2 _dashDir = Vector2.down;
+        private Vector2 _dashDir = Vector2.up;   // 画面の下向き（Godot の DOWN）
         private int _headsAlive = 8, _headsPrev = 8;
 
         public void SetupBoss(int w, bool endless)
@@ -91,7 +91,7 @@ namespace Kagura.Game
                     if (_dashT <= 0f)
                     {
                         _dashState = 2; _dashT = 1.6f;
-                        _dashDir = pl != null ? (pl.pos + new Vector2(0, 40f) - pos).normalized : Vector2.down;
+                        _dashDir = pl != null ? (pl.pos + new Vector2(0, 40f) - pos).normalized : Vector2.up;
                         if (_dashDir.y < 0.35f) _dashDir = new Vector2(_dashDir.x, 0.35f).normalized;
                         Sfx.Play("hit_storm", -4f, 0.6f);
                         Fx.ShakeAdd(6f);

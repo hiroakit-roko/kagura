@@ -30,10 +30,12 @@ namespace Kagura.Game
         public float turnDist = 330f, returnMult = 1f;
         public Enemy target;
         public string source = "敵の弾";
+        public bool grazed;              // かすり判定済み（敵弾）
 
         private float _t, _travel, _speed, _retarget;
         private bool _returning;
         private readonly HashSet<Enemy> _hit = new HashSet<Enemy>();
+        private readonly HashSet<Bullet> _touchedEb = new HashSet<Bullet>();   // 消弾・反射の判定を済ませた敵弾（触れている間に振り直さない）
         private Vec _vec;
 
         private void Awake() { _vec = Vec.Create(transform, "vec", Gd.ZPBullet); }
@@ -42,10 +44,10 @@ namespace Kagura.Game
         {
             pos = p; prevPos = p; vel = v; damage = dmg; friendly = isFriendly; radius = r; color = col;
             shapeKind = kind >= 0 ? kind : (isFriendly ? 0 : 7);
-            life = isFriendly ? 5f : 6f;
+            life = 5f;
             _t = 0f; _travel = 0f; _speed = v.magnitude; _returning = false; _retarget = 0f; _why = "";
             if (!isFriendly) DiagSpawned++;
-            _hit.Clear();
+            _hit.Clear(); _touchedEb.Clear(); grazed = false;
             pierce = 0; homing = 0f; critChance = -1f; isCrit = false; kami = ""; tag = isFriendly ? "attack" : "enemy";
             eraser = false; reflect = false; charmed = false; eraseChance = 1f; zoneKind = ""; zoneR = 60f; zoneLife = 2f; zoneDmg = 10f;
             kb = 0f; mode = ""; splitOnHit = 0; doom = 0f; charmChance = 0f; turnDist = 330f; returnMult = 1f; target = null; trailLen = 14f;
@@ -170,6 +172,10 @@ namespace Kagura.Game
         /// <summary>自機弾が敵弾に触れた：反射／消弾。</summary>
         public void OnTouchEnemyBullet(Bullet eb)
         {
+            // Godot 版は area_entered（重なり始めに 1 回）で判定していた。毎フレーム振り直すと「32% で消す」が事実上 100% になる
+            if (_touchedEb.Contains(eb)) return;
+            _touchedEb.Add(eb);
+            if (GameManager.I != null && GameManager.I.diag) DiagWhy["roll"] = DiagWhy.TryGetValue("roll", out var rn) ? rn + 1 : 1;
             if (reflect) { eb.ReflectToFriendly(damage); Sfx.Play("deflect", -14f, Gd.Rand(0.95f, 1.15f), 0.03f); }
             else if (eraser && Random.value < eraseChance) { eb.Vanish("eraser:" + kami + ":" + tag); Combat.OnErase(this); }
         }

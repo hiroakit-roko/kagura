@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Kagura.Game
@@ -89,7 +90,7 @@ namespace Kagura.Game
             foreach (var d in dirs)
             {
                 Vector2 n = Gd.Orth(d);
-                foreach (var e in G.EnemyList())
+                foreach (var e in G.EnemyList().ToArray())
                 {
                     if (!e.Active) continue;
                     Vector2 rel = e.pos - origin;
@@ -153,7 +154,7 @@ namespace Kagura.Game
                     Fx.Flash(Gd.WithA(col, 0.6f), 0.4f);
                     Fx.Rays(p.pos, col, 24, 40f, 900f, 0.5f);
                     Sfx.Play("flute", -8f, 1.3f);
-                    foreach (var e in G.EnemyList()) if (e.Active) { e.AddExposed(Combat.EXPOSED_T); Combat.Hit(e, dmg * 10f, e.pos, HitOpts.Of("light", "ama")); }
+                    foreach (var e in G.EnemyList().ToArray()) if (e.Active) { e.AddExposed(Combat.EXPOSED_T); Combat.Hit(e, dmg * 10f, e.pos, HitOpts.Of("light", "ama")); }
                 }
             }
         }
@@ -233,7 +234,7 @@ namespace Kagura.Game
                     if (Vector2.Distance(bp, eb.pos) <= br + eb.radius) { Fx.Sparks(eb.pos, Vector2.up, col, 2, 160f); eb.Vanish("tsuki-blade"); break; }
                 }
             }
-            foreach (var e in G.EnemyList())
+            foreach (var e in G.EnemyList().ToArray())
             {
                 if (!e.Active) continue;
                 if (_bladeHit.TryGetValue(e, out var next) && next > t) continue;

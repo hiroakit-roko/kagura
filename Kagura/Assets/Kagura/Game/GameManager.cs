@@ -40,6 +40,8 @@ namespace Kagura.Game
         public float enemySlow = 1f, enemyBulletSlow;
         public bool diag; private float _diagT;
         public string forceKami = "";
+        public string forceBoon = "";
+        private bool _userActive;   // 一度でもタップ・キー操作があった（ブラウザの音の解禁）
         public bool enemySprites = true;
 
         private readonly List<Bullet> _pBullets = new List<Bullet>();
@@ -136,6 +138,8 @@ namespace Kagura.Game
             {   // ?kami=susa：神の選択肢の先頭にその神を出す（検証用。autoplay は先頭を選ぶ）
                 var km = System.Text.RegularExpressions.Regex.Match(url, @"kami=([\w,]+)");
                 if (km.Success) forceKami = km.Groups[1].Value;
+                var bm = System.Text.RegularExpressions.Regex.Match(url, @"boon=(\w+)");
+                if (bm.Success) forceBoon = bm.Groups[1].Value;
             }
             enemySprites = !url.Contains("vector");   // ?vector で従来のベクター描画に戻せる
             ShowTitle();
@@ -158,8 +162,10 @@ namespace Kagura.Game
 
         public void ShowTitle()
         {
-            Music.Play("title");
-            overlay.StartIntro();
+            // 最初の操作前はブラウザが音を鳴らせないので、「tap to begin」で待ってから曲とアニメを始める
+            bool wait = !_userActive && !Net.UserActive();
+            if (wait) Music.Stop(); else Music.Play("title");
+            overlay.StartIntro(wait);
             if (State == GameState.Pause) pauseMenu.Close();
             State = GameState.Title; choice = ChoiceKind.None;
             Time.timeScale = 1f; _hitstop = 0f; _freezeT = 0f;
@@ -278,6 +284,7 @@ namespace Kagura.Game
             bool held = (ts != null && ts.primaryTouch.press.isPressed) || (ms != null && ms.leftButton.isPressed);
             Vector2 heldPx = held ? TouchUi.ToPx(ts != null && ts.primaryTouch.press.isPressed ? ts.primaryTouch.position.ReadValue() : ms.position.ReadValue()) : Vector2.zero;
             bool enter = kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame);
+            if (tap || (kb != null && kb.anyKey.wasPressedThisFrame)) _userActive = true;
             bool rKey = kb != null && kb.rKey.wasPressedThisFrame;
             if (kb != null && kb.mKey.wasPressedThisFrame)
             {
@@ -299,6 +306,7 @@ namespace Kagura.Game
             switch (State)
             {
                 case GameState.Title:
+                    if (overlay.gate) { if (enter || tap || (kb != null && kb.anyKey.wasPressedThisFrame)) { overlay.PassGate(); Music.Play("title"); } return; }
                     if (overlay.IntroPlaying) { if (enter || tap) overlay.SkipIntro(); return; }
                     if (enter) { StartGame(); return; }
                     if (rKey) { ranking.Open(); return; }
@@ -361,7 +369,7 @@ namespace Kagura.Game
 
             TickWave(dt);
             // 低フレームレートでも弾がすり抜けないよう、1/60 秒以下に刻んで進める（Godot 版の物理 60Hz に相当）
-            int steps = Mathf.Clamp(Mathf.CeilToInt(dt / (1f / 60f)), 1, 4);
+            int steps = Mathf.Clamp(Mathf.CeilToInt(dt * 60f - 0.05f), 1, 4);
             float sub = dt / steps;
             for (int i = 0; i < steps; i++) { TickWorld(sub); if (State != GameState.Play || player == null || !player.alive) break; }
         }
@@ -410,7 +418,7 @@ namespace Kagura.Game
                 if (pk.Active)
                 {
                     pk.Tick(dt, player);
-                    float rr = pk.Radius + player.radius + 6f;
+                    float rr = pk.Radius + player.radius;
                     if (pk.Active && (pk.pos - pp).sqrMagnitude <= rr * rr) Collect(pk);
                 }
             foreach (var z in _zones) if (z.Active) z.Tick(dt, this);
@@ -449,8 +457,8 @@ namespace Kagura.Game
                     float r = b.radius + player.radius;
                     if (SegDist2(b.prevPos, b.pos, pp) <= r * r)
                     {
+                        b.Vanish("player-hit");   // 無敵中でも弾は消える（Godot と同じ）
                         if (player.iframe > 0f || player.dashT > 0f) continue;
-                        b.Vanish("player-hit");
                         player.TakeDamage(b.damage, b.source);
                         if (!player.alive) break;
                     }
@@ -821,6 +829,12 @@ namespace Kagura.Game
             if (kid == "") { player.pendingLevels = Mathf.Max(0, player.pendingLevels - 1); CloseChoice(); return; }
             _offerKami = kid;
             _offers = BoonsLogic.MakeOffer(player, kid, 3, minRar);
+            if (forceBoon != "" && !player.Has(forceBoon))
+            {   // ?boon=xxx：その恩恵を先頭に（検証用。autoplay は先頭を選ぶ）
+                int fi = _offers.FindIndex(o => o.Id == forceBoon);
+                if (fi > 0) { var o = _offers[fi]; _offers.RemoveAt(fi); _offers.Insert(0, o); }
+                else if (fi < 0) { var def = Data.Boon(forceBoon); if (def != null && def.kami == kid) _offers.Insert(0, new Offer { type = "boon", boon = def, kami = kid, rar = Mathf.Max(minRar, 1) }); }
+            }
             if (_offers.Count == 0) { player.pendingLevels = Mathf.Max(0, player.pendingLevels - 1); CloseChoice(); return; }
             Sfx.Play("levelup", -8f);
             ui.ShowBoons(kid, _offers, _rerolls, "神との邂逅");

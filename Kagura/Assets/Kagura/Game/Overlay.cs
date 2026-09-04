@@ -16,11 +16,14 @@ namespace Kagura.Game
         private Texture2D _title;
         // 題目のアニメ：GIF を逆再生した連番をアトラスに詰めたもの（Art/title_anime）。最後のフレームでこちらを見る
         private Texture2D[] _anime;
+        private Texture2D _final;       // 最後のコマの高解像度版（Art/title_final）。GIF のコマはぼやけるので着いたら差し替える
         private int _animeN, _fw, _fh, _cols, _rows;
         private const float FrameDt = 1f / 24f;
         private float _introT;          // アニメの経過秒
         private float _afterT;          // 最後のフレームに着いてからの秒
         private bool _introSkipped;
+        /// <summary>最初の操作待ち（ブラウザは操作前に音を鳴らせない）。タップで曲とアニメが始まる。</summary>
+        public bool gate;
         private float IntroLen => _animeN * FrameDt;
         /// <summary>アニメがまだ最後のフレームに着いていない（タップで飛ばせる）。</summary>
         public bool IntroPlaying => _anime != null && _introT < IntroLen;
@@ -36,6 +39,7 @@ namespace Kagura.Game
             o._layer = UiLayer.Create(go.transform, "overlay_layer", Gd.ZHud + 20);
             o._title = Resources.Load<Texture2D>("Art/title");
             o.LoadAnime();
+            o._final = Resources.Load<Texture2D>("Art/title_final");
             for (int i = 0; i < 40; i++)
                 o._petals.Add(new Petal { pos = new Vector2(Random.value * Gd.W, Random.value * Gd.H), vel = new Vector2(Gd.Rand(-20, 20), Gd.Rand(40, 110)), rot = Random.value * Gd.TAU, spin = Gd.Rand(-3, 3), size = Gd.Rand(2.5f, 5f) });
             var ver = Resources.Load<TextAsset>("version");
@@ -64,7 +68,8 @@ namespace Kagura.Game
         }
 
         /// <summary>題目を開く：アニメを頭から流す。</summary>
-        public void StartIntro() { _introT = 0f; _afterT = 0f; _introSkipped = false; }
+        public void StartIntro(bool waitForTap = false) { _introT = 0f; _afterT = 0f; _introSkipped = false; gate = waitForTap; }
+        public void PassGate() { gate = false; _introT = 0f; _afterT = 0f; }
 
         /// <summary>タップで飛ばす：最後のフレームへ飛び、題目を手早く出す。</summary>
         public void SkipIntro() { if (!IntroPlaying) return; _introT = IntroLen; _afterT = 0f; _introSkipped = true; }
@@ -73,7 +78,7 @@ namespace Kagura.Game
         {
             float dt = Time.unscaledDeltaTime;
             _t += dt;
-            if (visible && mode == 0 && _anime != null)
+            if (visible && mode == 0 && _anime != null && !gate)
             {
                 if (_introT < IntroLen) { _introT += dt; if (_introT >= IntroLen) { _introT = IntroLen; _afterT = 0f; } }
                 else _afterT += dt;
@@ -117,9 +122,19 @@ namespace Kagura.Game
             var tex = _anime[Mathf.Clamp(i / per, 0, _anime.Length - 1)];
             int k = i % per;
             float sx = (k % _cols) * _fw, sy = (k / _cols) * _fh;
-            float scale = Mathf.Max(Gd.W / _fw, Gd.H / _fh);
+            DrawCoverPart(tex, sx, sy, _fw, _fh, 1f);
+            // 最後のコマに着いたら、同じ構図の高解像度の絵へ溶かし込む
+            if (i >= _animeN - 1 && _final != null)
+                DrawCoverPart(_final, 0, 0, _final.width, _final.height, Mathf.Clamp01(_afterT / 0.6f));
+        }
+
+        /// <summary>テクスチャの一部（左上 sx,sy・大きさ fw×fh）を画面いっぱいに敷く（cover、顔のある上寄せ）。</summary>
+        private void DrawCoverPart(Texture2D tex, float sx, float sy, float fw, float fh, float a)
+        {
+            if (a <= 0f) return;
+            float scale = Mathf.Max(Gd.W / fw, Gd.H / fh);
             float sw = Gd.W / scale, sh = Gd.H / scale;
-            _layer.img.Draw(tex, new Rect(0, 0, Gd.W, Gd.H), new Rect(sx + (_fw - sw) * 0.5f, sy + (_fh - sh) * 0.3f, sw, sh), Color.white);
+            _layer.img.Draw(tex, new Rect(0, 0, Gd.W, Gd.H), new Rect(sx + (fw - sw) * 0.5f, sy + (fh - sh) * 0.3f, sw, sh), new Color(1, 1, 1, a));
         }
 
         private void DrawTitle()
@@ -136,6 +151,18 @@ namespace Kagura.Game
             if (_anime != null)
             {
                 DrawAnimeFrame(Mathf.Clamp(Mathf.FloorToInt(_introT / FrameDt), 0, _animeN - 1));
+                if (gate)
+                {
+                    v.DrawRect(new Rect(0, 0, Gd.W, Gd.H), new Color(0.02f, 0.01f, 0.04f, 0.55f));
+                    float ga = 0.55f + 0.35f * Mathf.Sin(_t * 2.2f);
+                    UiKit.Txt(l, WorldText.Face.Display, new Vector2(0, Gd.H * 0.5f), "tap to begin", 22, new Color(1, 1, 1, ga), TextAnchor.MiddleCenter, Gd.W);
+                    return;
+                }
+                if (IntroPlaying)
+                {   // 題目が出るまで、ゆっくり点滅する案内
+                    float blinkA = 0.30f + 0.30f * Mathf.Sin(_t * 2.2f);
+                    UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, Gd.H - 44f), "tap to skip", 13, new Color(1, 1, 1, blinkA), TextAnchor.MiddleCenter, Gd.W);
+                }
                 if (ta <= 0f) return;   // まだ絵だけ
             }
             else if (_title != null)
