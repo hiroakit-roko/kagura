@@ -1,0 +1,22 @@
+{
+  "name": "Kagura.Editor",
+  "rootNamespace": "Kagura.Editor",
+  "references": [
+    "Kagura.Core",
+    "Kagura.Game",
+    "Unity.InputSystem",
+    "UnityEngine.UI",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

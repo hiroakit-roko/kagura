@@ -13,3 +13,9 @@ unity/Kagura/Library/
 unity/Kagura/Temp/
 unity/Kagura/Logs/
 unity/Kagura/UserSettings/
+unity/Kagura/*.csproj
+unity/Kagura/*.sln
+unity/Kagura/*.slnx
+unity/Kagura/.vs/
+unity/Kagura/.idea/
+unity/Build/
