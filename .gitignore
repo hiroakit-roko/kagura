@@ -1,5 +1,5 @@
 # Godot 4+ が生成するキャッシュ
-.godot/
+godot/.godot/
 /android/
 /build/
 
@@ -7,15 +7,20 @@
 .DS_Store
 
 # Unity / .NET
-unity/**/bin/
-unity/**/obj/
-unity/Kagura/Library/
-unity/Kagura/Temp/
-unity/Kagura/Logs/
-unity/Kagura/UserSettings/
-unity/Kagura/*.csproj
-unity/Kagura/*.sln
-unity/Kagura/*.slnx
-unity/Kagura/.vs/
-unity/Kagura/.idea/
-unity/Build/
+KaguraCore/bin/
+KaguraCore.Tests/bin/
+KaguraCore/obj/
+KaguraCore.Tests/obj/
+Kagura/Library/
+Kagura/Temp/
+Kagura/Logs/
+Kagura/UserSettings/
+Kagura/*.csproj
+Kagura/*.sln
+Kagura/*.slnx
+Kagura/.vs/
+Kagura/.idea/
+Kagura/Build/
+
+# Godot 版のローカル書き出し
+godot/build/

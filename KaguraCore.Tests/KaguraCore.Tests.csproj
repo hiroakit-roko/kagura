@@ -19,7 +19,7 @@
 
   <!-- Godot 版が書き出した正解データ（export/data）をテスト実行フォルダへ -->
   <ItemGroup>
-    <None Include="../../export/data/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="data" />
+    <None Include="../data/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="data" />
   </ItemGroup>
 
 </Project>

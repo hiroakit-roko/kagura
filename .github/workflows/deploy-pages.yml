@@ -1,9 +1,13 @@
-# main に push するたびに Godot 4.7.1 で Web 版を書き出し、GitHub Pages に公開する。
-name: Deploy Web build to GitHub Pages
+name: Deploy site to GitHub Pages
 
+# site/ にコミットされた Unity の Web ビルドをそのまま Pages に配信する。
+# ビルド自体は手元で tools/build_web.sh --deploy が行う（Unity のライセンスが CI に無いため）。
 on:
   push:
     branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -15,63 +19,25 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-env:
-  GODOT_VERSION: 4.7.1
-
 jobs:
-  export-web:
-    name: Export Web (Godot 4.7.1)
-    runs-on: ubuntu-latest
-    container:
-      image: barichello/godot-ci:4.7.1
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Move export templates into place
-        # コンテナ内では HOME が /github/home になるので、イメージ同梱のテンプレートを移す
-        run: |
-          mkdir -v -p ~/.local/share/godot/export_templates
-          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/
-
-      - name: Stamp build version
-        # 版はデプロイごとに必ず上がる（実行番号）。記録にどの版で遊んだかが残る
-        run: |
-          VERSION="1.${{ github.run_number }}"
-          SHORT_SHA="$(echo "$GITHUB_SHA" | cut -c1-7)"
-          printf '[build]\nversion="%s"\ncommit="%s"\ntime="%s"\n' "$VERSION" "$SHORT_SHA" "$(date -u +%Y-%m-%dT%H:%MZ)" > build.cfg
-          cat build.cfg
-
-      - name: Import assets
-        run: godot --headless --path . --import || true
-
-      - name: Export Web
-        run: |
-          mkdir -v -p build/web
-          godot --headless --path . --export-release Web build/web/index.html
-          ls -la build/web
-
-      - name: Replace service worker (network-first, no stale cache)
-        run: |
-          cp web/service.worker.js build/web/index.service.worker.js
-          echo "// build ${{ github.run_number }} ${{ github.sha }}" >> build/web/index.service.worker.js
-
-      - name: Disable Jekyll processing
-        run: touch build/web/.nojekyll
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
-
   deploy:
-    name: Deploy to GitHub Pages
-    needs: export-web
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp deploy number
+        run: |
+          echo "run=${{ github.run_number }} sha=${GITHUB_SHA::7} at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > site/deploy.txt
+          ls -la site | head -20
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
