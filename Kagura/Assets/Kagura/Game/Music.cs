@@ -17,6 +17,8 @@ namespace Kagura.Game
         private readonly Dictionary<string, float> _level = new Dictionary<string, float>();
         private string _current = "";
         private float _duck;
+        private AudioLowPassFilter _lpf;
+        private float _muffle, _muffleTarget;   // 選択画面・一時停止中はこもった音にする（0..1）
 
         public string Current => _current;
 
@@ -36,6 +38,8 @@ namespace Kagura.Game
                 m._target[name] = 0f;
                 m._level[name] = 0f;
             }
+            m._lpf = go.AddComponent<AudioLowPassFilter>();
+            m._lpf.cutoffFrequency = 22000f;
             I = m;
             return m;
         }
@@ -44,6 +48,8 @@ namespace Kagura.Game
         {
             float delta = Time.unscaledDeltaTime;
             _duck = Mathf.Max(0f, _duck - delta);
+            _muffle = Mathf.MoveTowards(_muffle, _muffleTarget, delta * 3f);
+            if (_lpf != null) _lpf.cutoffFrequency = Mathf.Lerp(22000f, 900f, _muffle);
             foreach (var name in Tracks)
             {
                 var p = _players[name];
@@ -77,6 +83,9 @@ namespace Kagura.Game
             I._current = "";
             foreach (var k in Tracks) I._target[k] = 0f;
         }
+
+        /// <summary>選択画面・一時停止：曲をこもらせる（Unity の AudioLowPassFilter）。</summary>
+        public static void Muffle(bool on) { if (I != null) I._muffleTarget = on ? 1f : 0f; }
 
         public static void Duck(float sec)
         {

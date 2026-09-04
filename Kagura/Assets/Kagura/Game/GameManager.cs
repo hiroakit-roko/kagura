@@ -145,6 +145,7 @@ namespace Kagura.Game
             State = GameState.Title; choice = ChoiceKind.None;
             Time.timeScale = 1f; _hitstop = 0f; _freezeT = 0f;
             ui.HideCards();
+            Music.Muffle(false);
             overlay.mode = 0; overlay.visible = true;
             stars.speed = 0.4f;
         }
@@ -209,8 +210,8 @@ namespace Kagura.Game
 
         public void TogglePause()
         {
-            if (State == GameState.Play) { State = GameState.Pause; }
-            else if (State == GameState.Pause) { State = GameState.Play; }
+            if (State == GameState.Play) { State = GameState.Pause; Music.Muffle(true); }
+            else if (State == GameState.Pause) { State = GameState.Play; Music.Muffle(false); }
         }
 
         /// <summary>ヒットストップ：dur 秒（実時間）だけ時間の流れを scale に落とす。小さな止めは間引く。</summary>
@@ -733,6 +734,7 @@ namespace Kagura.Game
         private void PauseForChoice(ChoiceKind kind)
         {
             State = GameState.Choice; choice = kind;
+            Music.Muffle(true);
             Time.timeScale = 1f; _hitstop = 0f; _freezeT = 0f;
             hud.bannerT = 0f;
         }
@@ -742,6 +744,7 @@ namespace Kagura.Game
             ui.HideCards();
             choice = ChoiceKind.None;
             State = GameState.Play;
+            Music.Muffle(false);
         }
 
         private void OpenKamiChoice()
