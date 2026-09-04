@@ -11,7 +11,7 @@ namespace Kagura.Game
         public const float Fade = 1.6f;
         public bool muted;
 
-        private static readonly string[] Tracks = { "stage", "boss", "lastboss" };
+        private static readonly string[] Tracks = { "title", "stage", "boss", "lastboss" };
         private readonly Dictionary<string, AudioSource> _players = new Dictionary<string, AudioSource>();
         private readonly Dictionary<string, float> _target = new Dictionary<string, float>();
         private readonly Dictionary<string, float> _level = new Dictionary<string, float>();

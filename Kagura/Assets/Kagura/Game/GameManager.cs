@@ -158,7 +158,8 @@ namespace Kagura.Game
 
         public void ShowTitle()
         {
-            Music.Stop();
+            Music.Play("title");
+            overlay.StartIntro();
             if (State == GameState.Pause) pauseMenu.Close();
             State = GameState.Title; choice = ChoiceKind.None;
             Time.timeScale = 1f; _hitstop = 0f; _freezeT = 0f;
@@ -298,6 +299,7 @@ namespace Kagura.Game
             switch (State)
             {
                 case GameState.Title:
+                    if (overlay.IntroPlaying) { if (enter || tap) overlay.SkipIntro(); return; }
                     if (enter) { StartGame(); return; }
                     if (rKey) { ranking.Open(); return; }
                     if (nKey) { NamePrompt(); return; }

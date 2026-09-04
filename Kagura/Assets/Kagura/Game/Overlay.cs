@@ -14,6 +14,16 @@ namespace Kagura.Game
         private float _t;
         private UiLayer _layer;
         private Texture2D _title;
+        // 題目のアニメ：GIF を逆再生した連番をアトラスに詰めたもの（Art/title_anime）。最後のフレームでこちらを見る
+        private Texture2D[] _anime;
+        private int _animeN, _fw, _fh, _cols, _rows;
+        private const float FrameDt = 1f / 24f;
+        private float _introT;          // アニメの経過秒
+        private float _afterT;          // 最後のフレームに着いてからの秒
+        private bool _introSkipped;
+        private float IntroLen => _animeN * FrameDt;
+        /// <summary>アニメがまだ最後のフレームに着いていない（タップで飛ばせる）。</summary>
+        public bool IntroPlaying => _anime != null && _introT < IntroLen;
         private class Petal { public Vector2 pos, vel; public float rot, spin, size; }
         private readonly List<Petal> _petals = new List<Petal>();
         public string versionLabel = "";
@@ -25,6 +35,7 @@ namespace Kagura.Game
             var o = go.AddComponent<Overlay>();
             o._layer = UiLayer.Create(go.transform, "overlay_layer", Gd.ZHud + 20);
             o._title = Resources.Load<Texture2D>("Art/title");
+            o.LoadAnime();
             for (int i = 0; i < 40; i++)
                 o._petals.Add(new Petal { pos = new Vector2(Random.value * Gd.W, Random.value * Gd.H), vel = new Vector2(Gd.Rand(-20, 20), Gd.Rand(40, 110)), rot = Random.value * Gd.TAU, spin = Gd.Rand(-3, 3), size = Gd.Rand(2.5f, 5f) });
             var ver = Resources.Load<TextAsset>("version");
@@ -33,10 +44,40 @@ namespace Kagura.Game
             return o;
         }
 
+        private void LoadAnime()
+        {
+            var info = Resources.Load<TextAsset>("Art/title_anime/info");
+            if (info == null) return;
+            var f = info.text.Trim().Split(' ');
+            if (f.Length < 5) return;
+            _animeN = int.Parse(f[0]); _fw = int.Parse(f[1]); _fh = int.Parse(f[2]); _cols = int.Parse(f[3]); _rows = int.Parse(f[4]);
+            var list = new List<Texture2D>();
+            for (int i = 0; ; i++)
+            {
+                var t = Resources.Load<Texture2D>($"Art/title_anime/atlas_{i:00}");
+                if (t == null) break;
+                list.Add(t);
+            }
+            if (list.Count == 0) { _animeN = 0; return; }
+            _anime = list.ToArray();
+            _animeN = Mathf.Min(_animeN, _anime.Length * _cols * _rows);
+        }
+
+        /// <summary>題目を開く：アニメを頭から流す。</summary>
+        public void StartIntro() { _introT = 0f; _afterT = 0f; _introSkipped = false; }
+
+        /// <summary>タップで飛ばす：最後のフレームへ飛び、題目を手早く出す。</summary>
+        public void SkipIntro() { if (!IntroPlaying) return; _introT = IntroLen; _afterT = 0f; _introSkipped = true; }
+
         private void Update()
         {
             float dt = Time.unscaledDeltaTime;
             _t += dt;
+            if (visible && mode == 0 && _anime != null)
+            {
+                if (_introT < IntroLen) { _introT += dt; if (_introT >= IntroLen) { _introT = IntroLen; _afterT = 0f; } }
+                else _afterT += dt;
+            }
             foreach (var p in _petals)
             {
                 p.pos += p.vel * dt;
@@ -69,10 +110,35 @@ namespace Kagura.Game
             return -1;
         }
 
+        /// <summary>アニメの 1 コマを画面いっぱいに敷く（cover、顔のある上寄せ）。</summary>
+        private void DrawAnimeFrame(int i)
+        {
+            int per = _cols * _rows;
+            var tex = _anime[Mathf.Clamp(i / per, 0, _anime.Length - 1)];
+            int k = i % per;
+            float sx = (k % _cols) * _fw, sy = (k / _cols) * _fh;
+            float scale = Mathf.Max(Gd.W / _fw, Gd.H / _fh);
+            float sw = Gd.W / scale, sh = Gd.H / scale;
+            _layer.img.Draw(tex, new Rect(0, 0, Gd.W, Gd.H), new Rect(sx + (_fw - sw) * 0.5f, sy + (_fh - sh) * 0.3f, sw, sh), Color.white);
+        }
+
         private void DrawTitle()
         {
             var l = _layer; var v = l.front;
-            if (_title != null)
+            // 題目とメニューの現れ方：自然に最後まで見たら 2 秒かけてゆっくり、飛ばしたときは手早く
+            float ta = 1f, ma = 1f;
+            if (_anime != null)
+            {
+                if (IntroPlaying) { ta = 0f; ma = 0f; }
+                else if (_introSkipped) { ta = Mathf.Clamp01(_afterT / 0.5f); ma = Mathf.Clamp01((_afterT - 0.15f) / 0.5f); }
+                else { ta = Mathf.Clamp01((_afterT - 0.4f) / 2.2f); ma = Mathf.Clamp01((_afterT - 1.6f) / 2f); }
+            }
+            if (_anime != null)
+            {
+                DrawAnimeFrame(Mathf.Clamp(Mathf.FloorToInt(_introT / FrameDt), 0, _animeN - 1));
+                if (ta <= 0f) return;   // まだ絵だけ
+            }
+            else if (_title != null)
             {
                 float tw = _title.width, th = _title.height;
                 float scale = Gd.H / th;
@@ -81,31 +147,46 @@ namespace Kagura.Game
                 l.img.Draw(_title, new Rect(0, 0, Gd.W, Gd.H), new Rect(srcX, 0, srcW, th), new Color(0.92f, 0.88f, 1f));
             }
             else l.back.DrawRect(new Rect(0, 0, Gd.W, Gd.H), Gd.C_BG);
-            for (int i = 0; i < 14; i++)
+            // 下だけ暗くしてメニューを載せる（上は絵の顔を隠さない）。段差が見えないよう細かく刻む
+            const int steps = 40;
+            for (int i = 0; i < steps; i++)
             {
-                float k = i / 14f;
-                v.DrawRect(new Rect(0, k * 330f, Gd.W, 330f / 14f + 1f), new Color(0.05f, 0.02f, 0.10f, 0.85f * (1f - k)));
-                v.DrawRect(new Rect(0, Gd.H - 330f + k * 330f, Gd.W, 330f / 14f + 1f), new Color(0.05f, 0.02f, 0.10f, 0.88f * k));
+                float k = (float)i / steps;
+                v.DrawRect(new Rect(0, Gd.H - 360f + k * 360f, Gd.W, 360f / steps + 1f), new Color(0.05f, 0.02f, 0.10f, 0.9f * k * k * ma));
             }
             foreach (var p in _petals)
             {
                 Vector2 d = Gd.Dir(p.rot), n = Gd.Orth(d);
                 float s = p.size;
-                v.DrawColoredPolygon(new[] { p.pos + d * s * 1.5f, p.pos + n * s * 0.7f, p.pos - d * s * 1.5f, p.pos - n * s * 0.7f }, new Color(0.9f, 0.7f, 1f, 0.5f));
+                v.DrawColoredPolygon(new[] { p.pos + d * s * 1.5f, p.pos + n * s * 0.7f, p.pos - d * s * 1.5f, p.pos - n * s * 0.7f }, new Color(0.9f, 0.7f, 1f, 0.5f * ta));
             }
             float bob = Mathf.Sin(_t * 1.6f) * 3f;
-            UiKit.Txt(l, WorldText.Face.Display, new Vector2(0, 178 + bob), "神楽", 122, new Color(0.98f, 0.94f, 1f), TextAnchor.MiddleCenter, Gd.W);
-            UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, 214 + bob), "K A G U R A   A S C E N T", 17, new Color(0.85f, 0.6f, 1f), TextAnchor.MiddleCenter, Gd.W);
-            UiKit.Txt(l, WorldText.Face.Display, new Vector2(0, 252 + bob), "八百万の加護を纏いて、穢れを祓え", 17, new Color(1, 0.9f, 0.75f, 0.95f), TextAnchor.MiddleCenter, Gd.W);
+            float rise = (1f - ta) * 14f;   // 現れながら少し浮き上がる
+            if (_anime != null)
+            {
+                // 絵の左の黒地に縦書き：顔（右上）を隠さない
+                UiKit.Vtxt(l, WorldText.Face.Display, new Vector2(104, 150 + bob + rise), "神楽", 118, new Color(0.98f, 0.94f, 1f, ta));
+                // 縦書きは右の行から読む
+                UiKit.Vtxt(l, WorldText.Face.Display, new Vector2(222, 158 + bob + rise), "八百万の加護を纏いて", 15, new Color(1, 0.9f, 0.75f, 0.95f * ta));
+                UiKit.Vtxt(l, WorldText.Face.Display, new Vector2(196, 158 + bob + rise), "穢れを祓え", 15, new Color(1, 0.9f, 0.75f, 0.95f * ta));
+                UiKit.Txt(l, WorldText.Face.Body, new Vector2(46, 432 + bob + rise), "KAGURA  ASCENT", 13, new Color(0.85f, 0.6f, 1f, ta), TextAnchor.MiddleLeft, 200f);
+            }
+            else
+            {
+                UiKit.Txt(l, WorldText.Face.Display, new Vector2(0, 178 + bob + rise), "神楽", 122, new Color(0.98f, 0.94f, 1f, ta), TextAnchor.MiddleCenter, Gd.W);
+                UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, 214 + bob + rise), "K A G U R A   A S C E N T", 17, new Color(0.85f, 0.6f, 1f, ta), TextAnchor.MiddleCenter, Gd.W);
+                UiKit.Txt(l, WorldText.Face.Display, new Vector2(0, 252 + bob + rise), "八百万の加護を纏いて、穢れを祓え", 17, new Color(1, 0.9f, 0.75f, 0.95f * ta), TextAnchor.MiddleCenter, Gd.W);
+            }
+            if (ma <= 0f) return;
 
             bool touch = GameManager.I != null && GameManager.I.IsTouch;
             var rows = Records.Entries;
             int cnt3 = Mathf.Min(rows.Count, 3);
             float rh = 26f + 20f * Mathf.Max(cnt3, 1);
             float ry = MenuRect(0).yMin - rh - 34f;
-            DrawRecords(ry, 3, -1, 0.95f);
+            DrawRecords(ry, 3, -1, 0.95f * ma);
             if (Records.Best.clears > 0)
-                UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, ry - 8f), $"踏破 {Records.Best.clears} 回　最高功徳 {Records.Best.score}", 11, Gd.WithA(Gd.C_GOLD, 0.9f), TextAnchor.MiddleCenter, Gd.W);
+                UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, ry - 8f), $"踏破 {Records.Best.clears} 回　最高功徳 {Records.Best.score}", 11, Gd.WithA(Gd.C_GOLD, 0.9f * ma), TextAnchor.MiddleCenter, Gd.W);
             string[] labels = { "はじめる", "記録を見る", Records.PlayerName.Trim() == "" ? "名を刻む" : $"名を変える（{Records.DisplayName()}）" };
             string[] keys = { "Enter", "R", "N" };
             float blink = 0.75f + 0.25f * Mathf.Sin(_t * 4f);
@@ -114,14 +195,14 @@ namespace Kagura.Game
                 var r = MenuRect(i);
                 bool main = i == 0;
                 Color col = main ? Gd.C_GOLD : new Color(0.8f, 0.8f, 0.95f);
-                v.DrawRect(UiKit.Grow(r, 3f), new Color(0, 0, 0, 0.45f));
-                v.DrawRect(r, main ? new Color(0.16f, 0.11f, 0.08f, 0.95f) : new Color(0.09f, 0.06f, 0.14f, 0.92f));
-                v.DrawRect(r, Gd.WithA(col, main ? blink : 0.55f), false, main ? 2f : 1.2f);
-                foreach (float cx in new[] { r.xMin + 6f, r.xMax - 6f }) v.DrawCircle(new Vector2(cx, r.center.y), 2f, Gd.WithA(col, 0.9f));
-                UiKit.Txt(l, WorldText.Face.Display, new Vector2(r.xMin, r.center.y + 9f), labels[i], main ? 24 : 19, main ? Color.white : Gd.WithA(col, 0.95f), TextAnchor.MiddleCenter, r.width);
-                if (!touch) UiKit.Txt(l, WorldText.Face.Body, new Vector2(r.xMax - 60f, r.center.y + 5f), keys[i], 11, new Color(1, 1, 1, 0.45f), TextAnchor.MiddleRight, 48f);
+                v.DrawRect(UiKit.Grow(r, 3f), new Color(0, 0, 0, 0.45f * ma));
+                v.DrawRect(r, main ? new Color(0.16f, 0.11f, 0.08f, 0.95f * ma) : new Color(0.09f, 0.06f, 0.14f, 0.92f * ma));
+                v.DrawRect(r, Gd.WithA(col, (main ? blink : 0.55f) * ma), false, main ? 2f : 1.2f);
+                foreach (float cx in new[] { r.xMin + 6f, r.xMax - 6f }) v.DrawCircle(new Vector2(cx, r.center.y), 2f, Gd.WithA(col, 0.9f * ma));
+                UiKit.Txt(l, WorldText.Face.Display, new Vector2(r.xMin, r.center.y + 9f), labels[i], main ? 24 : 19, main ? new Color(1, 1, 1, ma) : Gd.WithA(col, 0.95f * ma), TextAnchor.MiddleCenter, r.width);
+                if (!touch) UiKit.Txt(l, WorldText.Face.Body, new Vector2(r.xMax - 60f, r.center.y + 5f), keys[i], 11, new Color(1, 1, 1, 0.45f * ma), TextAnchor.MiddleRight, 48f);
             }
-            UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, Gd.H - 12), versionLabel, 10, new Color(1, 1, 1, 0.45f), TextAnchor.MiddleRight, Gd.W - 12f);
+            UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, Gd.H - 12), versionLabel, 10, new Color(1, 1, 1, 0.45f * ma), TextAnchor.MiddleRight, Gd.W - 12f);
         }
 
         /// <summary>記録表（上位 n 件）。</summary>
