@@ -41,6 +41,7 @@ namespace Kagura.Game
         public bool diag; private float _diagT;
         public string forceKami = "";
         public string forceBoon = "";
+        public bool fullCall;       // ?fullcall：神招きを常に満タンにする（演出の確認用）
         private bool _userActive;   // 一度でもタップ・キー操作があった（ブラウザの音の解禁）
         public bool enemySprites = true;
 
@@ -140,6 +141,7 @@ namespace Kagura.Game
                 if (km.Success) forceKami = km.Groups[1].Value;
                 var bm = System.Text.RegularExpressions.Regex.Match(url, @"boon=(\w+)");
                 if (bm.Success) forceBoon = bm.Groups[1].Value;
+                fullCall = url.Contains("fullcall");
             }
             enemySprites = !url.Contains("vector");   // ?vector で従来のベクター描画に戻せる
             ShowTitle();
@@ -367,6 +369,7 @@ namespace Kagura.Game
                 return;
             }
 
+            if (fullCall) player.callGauge = 1f;
             TickWave(dt);
             // 低フレームレートでも弾がすり抜けないよう、1/60 秒以下に刻んで進める（Godot 版の物理 60Hz に相当）
             int steps = Mathf.Clamp(Mathf.CeilToInt(dt * 60f - 0.05f), 1, 4);

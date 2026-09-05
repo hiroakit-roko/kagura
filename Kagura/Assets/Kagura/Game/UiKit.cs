@@ -103,6 +103,67 @@ namespace Kagura.Game
             }
         }
 
+        public static readonly Color FLAME = new Color(0.62f, 0.32f, 1f);
+
+        /// <summary>炎のひと舐め：b から d の向きへ h の高さ、幅 w。外は淡く広く、芯は明るく細く、先は左右に揺れる。</summary>
+        private static void FlameTongue(Vec v, Vector2 b, Vector2 d, float h, float w, float t, int i, Color col)
+        {
+            Vector2 o = Gd.Orth(d);
+            float sway = Mathf.Sin(t * 6f + i * 2.3f) * w * 0.9f, sway2 = Mathf.Sin(t * 9f + i * 1.1f) * w * 0.5f;
+            Vector2[] Shape(float hh, float ww, float sw)
+            {
+                return new[] {
+                    b - o * ww, b + o * ww,
+                    b + d * hh * 0.35f + o * ww * 0.95f, b + d * hh * 0.7f + o * (ww * 0.45f + sw * 0.6f),
+                    b + d * hh + o * sw,
+                    b + d * hh * 0.7f - o * (ww * 0.45f - sw * 0.6f), b + d * hh * 0.35f - o * ww * 0.95f };
+            }
+            v.DrawColoredPolygon(Shape(h * 1.25f, w * 1.6f, sway * 1.2f), Gd.WithA(col, 0.22f));      // 外の淡い揺らめき
+            v.DrawColoredPolygon(Shape(h, w, sway), Gd.WithA(col, 0.72f));                             // 炎の本体
+            v.DrawColoredPolygon(Shape(h * 0.62f, w * 0.5f, sway2), Gd.WithA(Lighten(col, 0.6f), 0.95f)); // 明るい芯
+        }
+        private static Color Lighten(Color c, float k) => new Color(c.r + (1f - c.r) * k, c.g + (1f - c.g) * k, c.b + (1f - c.b) * k, c.a);
+
+        /// <summary>円のまわりを紫の炎がめらめらと舐める（神招きが満ちたとき）。ボタンより先に描いて根元を隠す。</summary>
+        public static void FlamesRing(Vec v, Vector2 c, float r, float t, Color? color = null)
+        {
+            Color col = color ?? FLAME;
+            v.Glow(c, r * 1.9f, Gd.WithA(col, 0.30f + 0.08f * Mathf.Sin(t * 5f)));
+            const int n = 22;
+            for (int i = 0; i < n; i++)
+            {
+                float a = Gd.TAU * i / n + Mathf.Sin(t * 1.3f + i) * 0.06f;
+                Vector2 d = Gd.Dir(a);
+                float h = 14f + 12f * Mathf.Abs(Mathf.Sin(t * 5.5f + i * 1.7f)) + 5f * Mathf.Sin(t * 11f + i * 0.9f);
+                float w = 7f + 2f * Mathf.Sin(t * 4f + i);
+                FlameTongue(v, c + d * (r - 4f), d, h, w, t, i, col);
+            }
+        }
+
+        /// <summary>矩形の縁を紫の炎が舐める（HUD の縦ゲージ）。</summary>
+        public static void FlamesRect(Vec v, Rect rc, float t, Color? color = null)
+        {
+            Color col = color ?? FLAME;
+            v.Glow(rc.center, Mathf.Max(rc.width, rc.height) * 0.75f, Gd.WithA(col, 0.25f));
+            int i = 0;
+            void Edge(Vector2 p0, Vector2 p1, Vector2 outward)
+            {
+                float len = Vector2.Distance(p0, p1);
+                int n = Mathf.Max(1, Mathf.RoundToInt(len / 8f));
+                for (int k = 0; k < n; k++, i++)
+                {
+                    Vector2 b = Vector2.Lerp(p0, p1, (k + 0.5f) / n);
+                    float h = 10f + 9f * Mathf.Abs(Mathf.Sin(t * 5.5f + i * 1.7f)) + 4f * Mathf.Sin(t * 11f + i * 0.9f);
+                    float w = 5.5f + 1.5f * Mathf.Sin(t * 4f + i);
+                    FlameTongue(v, b - outward * 3f, outward, h, w, t, i, col);
+                }
+            }
+            Edge(new Vector2(rc.xMin, rc.yMin), new Vector2(rc.xMax, rc.yMin), new Vector2(0, -1));
+            Edge(new Vector2(rc.xMax, rc.yMin), new Vector2(rc.xMax, rc.yMax), new Vector2(1, 0));
+            Edge(new Vector2(rc.xMax, rc.yMax), new Vector2(rc.xMin, rc.yMax), new Vector2(0, 1));
+            Edge(new Vector2(rc.xMin, rc.yMax), new Vector2(rc.xMin, rc.yMin), new Vector2(-1, 0));
+        }
+
         public static Rect Grow(Rect r, float g) => new Rect(r.xMin - g, r.yMin - g, r.width + g * 2f, r.height + g * 2f);
 
         /// <summary>漆の板：暗い地に金の細縁と角飾り。</summary>

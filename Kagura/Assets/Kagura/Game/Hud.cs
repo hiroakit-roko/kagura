@@ -191,6 +191,7 @@ namespace Kagura.Game
             float gx = Gd.W - 44f, gy = Gd.H - 270f, gw = 26f, gh = 150f;
             UiKit.Panel(v, new Rect(gx - 6, gy - 30, gw + 12, gh + 60), main != "" ? mc : UiKit.GOLD, 0.95f, 0.75f);
             float k = p.callGauge;
+            if (main != "" && k >= 0.999f) UiKit.FlamesRect(v, new Rect(gx, gy, gw, gh), _t);   // 満ちた：紫の炎がめらめら
             v.DrawRect(new Rect(gx, gy, gw, gh), new Color(0.05f, 0.03f, 0.08f, 0.9f));
             if (k > 0f)
             {
@@ -205,9 +206,8 @@ namespace Kagura.Game
                     v.DrawColoredPolygon(new[] { new Vector2(fx - 4, gy + gh - fh), new Vector2(fx + 4, gy + gh - fh), new Vector2(fx, gy + gh - fh - fh2) }, Gd.WithA(Gd.Lightened(mc, 0.4f), 0.8f * pulse));
                 }
             }
-            for (int i = 1; i < 4; i++) { float yy = gy + gh * (1f - 0.25f * i); v.DrawLine(new Vector2(gx, yy), new Vector2(gx + gw, yy), new Color(0, 0, 0, 0.55f), 1.5f); }
             v.DrawRect(new Rect(gx, gy, gw, gh), Gd.WithA(UiKit.GOLD, 0.5f), false, 1f);
-            bool ready = main != "" && k >= 0.25f;
+            bool ready = main != "" && k >= 0.999f;
             UiKit.Txt(layer, WorldText.Face.Display, new Vector2(gx - 6, gy - 8), "招", 20, Gd.WithA(main != "" ? mc : new Color(1, 1, 1, 0.3f), 0.7f + 0.3f * (ready ? 1f : 0f) * (0.5f + 0.5f * Mathf.Sin(_t * 6f))), TextAnchor.MiddleCenter, gw + 12);
             UiKit.Txt(layer, WorldText.Face.Body, new Vector2(gx - 6, gy + gh + 18), "X", 11, new Color(1, 1, 1, 0.6f), TextAnchor.MiddleCenter, gw + 12);
 

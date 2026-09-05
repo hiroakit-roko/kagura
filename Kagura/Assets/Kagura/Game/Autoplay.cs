@@ -66,7 +66,7 @@ namespace Kagura.Game
                         p.autoDir = dir;
                         _castT += dt; _callT += dt;
                         if (_castT > 3f) { _castT = 0f; p.autoCast = true; }
-                        if (_callT > 6f) { _callT = 0f; p.autoCall = true; }
+                        if (_callT > 6f) { _callT = 0f; if (!g.fullCall) p.autoCall = true; }
                     }
                     break;
                 case GameState.Over:

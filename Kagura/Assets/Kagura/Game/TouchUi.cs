@@ -133,11 +133,12 @@ namespace Kagura.Game
                         case "cast":
                             col = main != "" ? p.KamiColor(main) : Gd.C_PBULLET; fill = p.castCharges > 0 ? 1f : 0f; enabled = p.castCharges > 0 && main != ""; sub = $"×{p.castCharges}"; break;
                         case "call":
-                            col = main != "" ? p.KamiColor(main) : new Color(0.5f, 0.5f, 0.6f); fill = p.callGauge; enabled = main != "" && p.callGauge >= 0.25f; if (main == "") sub = "未"; break;
+                            col = main != "" ? p.KamiColor(main) : new Color(0.5f, 0.5f, 0.6f); fill = p.callGauge; enabled = main != "" && p.callGauge >= 0.999f; if (main == "") sub = "未"; break;
                         default:
                             col = new Color(0.9f, 0.9f, 1f); break;
                     }
                     float a = enabled ? 0.9f : 0.45f;
+                    if (name == "call" && enabled) UiKit.FlamesRing(v, c, r, _t);   // 満ちた：紫の炎がめらめら
                     v.DrawCircle(c, r, new Color(0.05f, 0.03f, 0.09f, 0.55f));
                     v.DrawArc(c, r, 0, Gd.TAU, 40, Gd.WithA(col, 0.35f * a), 2f);
                     if (fill > 0f && name != "pause") v.DrawArc(c, r - 5f, -Mathf.PI * 0.5f, -Mathf.PI * 0.5f + Gd.TAU * Mathf.Clamp01(fill), 40, Gd.WithA(col, a), 5f);

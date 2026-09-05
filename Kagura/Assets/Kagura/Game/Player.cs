@@ -599,7 +599,8 @@ namespace Kagura.Game
         public void AddCallGauge(float amount)
         {
             if (MainGod() == "" || callT > 0f) return;
-            callGauge = Mathf.Clamp01(callGauge + amount * CostMult("gauge") * (HasRelic("r_gauge") ? 1.25f : 1f));
+            // 溜まる速さは Godot 版の半分（満ちるまで倍かかる）。満ちたときだけ撃てる
+            callGauge = Mathf.Clamp01(callGauge + amount * 0.5f * CostMult("gauge") * (HasRelic("r_gauge") ? 1.25f : 1f));
         }
 
         private float CallValue(string kami) => BaseDamage() * 4f * Boons.KamiPower(KamiLv(kami)) * (callPower <= 1f ? 1f : 1.4f);
@@ -607,10 +608,10 @@ namespace Kagura.Game
         private void TryCall(GameManager g)
         {
             string kami = MainGod();
-            if (kami == "" || callT > 0f || callGauge < 0.25f) return;
-            bool greater = callGauge >= 0.999f;
-            callPower = greater ? 1.8f : 1f;
-            callGauge = greater ? 0f : callGauge - 0.25f;
+            if (kami == "" || callT > 0f || callGauge < 0.999f) return;   // 満ちたときだけ
+            bool greater = true;
+            callPower = 1.8f;
+            callGauge = 0f;
             float v = CallValue(kami);
             var col = KamiColor(kami);
             Sfx.Play("flute", -4f);
