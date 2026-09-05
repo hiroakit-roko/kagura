@@ -220,7 +220,7 @@ namespace Kagura.Game
             _waveActive = false; _between = 1.2f; _plan.Clear(); _planI = 0; _bossReward = false; _hitstop = 0f; _freezeT = 0f;
             _tutStep = 0; _tutT = 0f; _seenItems.Clear(); _shopStages.Clear(); if (stall != null) stall.Despawn();
             combo = 0; comboTier = 0; comboBest = 0; comboT = 0f;
-            if (forceShop) player.ryo = 80;
+            if (forceShop) player.ryo = 200;
             stars.stage = 1; stars.speed = 1f; stars.tint = new Color(0.45f, 0.30f, 0.80f);
             overlay.visible = false;
             ui.HideCards();

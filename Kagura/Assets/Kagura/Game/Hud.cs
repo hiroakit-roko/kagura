@@ -315,7 +315,7 @@ namespace Kagura.Game
             string s = comboCutText;
             // 背の帯（縦長の暗い柱）
             float bandA = Mathf.Clamp01(e / 0.2f) * fade;
-            float colH = size * 1.1f * s.Length + 140f;
+            float colH = size * 1.1f * s.Length + 200f;
             v.DrawRect(new Rect(cx - 78f, top - 60f - drift, 156f, colH), new Color(0.02f, 0.01f, 0.04f, 0.55f * bandA));
             v.DrawRect(new Rect(cx - 78f, top - 60f - drift, 156f, 1.5f), Gd.WithA(c, 0.5f * bandA));
             v.DrawRect(new Rect(cx - 78f, top - 60f - drift + colH, 156f, 1.5f), Gd.WithA(c, 0.5f * bandA));
@@ -351,7 +351,7 @@ namespace Kagura.Game
             {
                 float sease = 1f - Mathf.Pow(1f - sk, 2f);
                 float ssc = 1.5f - 0.5f * sease;
-                var sc0 = new Vector2(cx, top + s.Length * size * 1.08f + 22f - drift);
+                var sc0 = new Vector2(cx, top + s.Length * size * 1.08f + 30f - drift);
                 float half = 22f * ssc;
                 var seal = new Color(0.78f, 0.12f, 0.16f, 0.95f * sease * fade);
                 v.DrawRect(new Rect(sc0.x - half, sc0.y - half, half * 2f, half * 2f), seal);
@@ -359,7 +359,10 @@ namespace Kagura.Game
                 string[] parts = comboCutSub.Split('　');
                 UiKit.Txt(layer, WorldText.Face.Display, new Vector2(sc0.x - 60f, sc0.y + 6f), parts[0], 15f * ssc, new Color(1f, 0.95f, 0.92f, sease * fade), TextAnchor.MiddleCenter, 120f, false);
                 if (parts.Length > 1)
-                    UiKit.Txt(layer, WorldText.Face.Display, new Vector2(sc0.x + half + 10f, sc0.y + 6f), parts[1], 17f, Gd.WithA(Gd.C_GOLD, sease * fade), TextAnchor.MiddleLeft, 160f);
+                {   // 功徳は落款の下、柱の幅の中に
+                    v.DrawLine(new Vector2(cx - 40f, sc0.y + half + 14f), new Vector2(cx + 40f, sc0.y + half + 14f), Gd.WithA(c, 0.5f * sease * fade), 1f);
+                    UiKit.Txt(layer, WorldText.Face.Display, new Vector2(cx - 70f, sc0.y + half + 36f), parts[1], 16f, Gd.WithA(Gd.C_GOLD, sease * fade), TextAnchor.MiddleCenter, 140f);
+                }
             }
         }
 

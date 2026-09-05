@@ -1,10 +1,74 @@
 [
-  {"id": "dango", "name": "団子", "desc": "HP を 30% 回復", "price": 6, "kind": "heal", "value": 0.3, "sec": 0},
-  {"id": "kami_dango", "name": "上団子", "desc": "HP を全回復", "price": 14, "kind": "heal", "value": 1.0, "sec": 0},
-  {"id": "chikara_dango", "name": "力団子", "desc": "最大 HP +15", "price": 18, "kind": "maxhp", "value": 15, "sec": 0},
-  {"id": "omiki", "name": "御神酒", "desc": "45 秒のあいだ威力 +35%", "price": 10, "kind": "buff_dmg", "value": 0.35, "sec": 45},
-  {"id": "hayaya", "name": "早矢の札", "desc": "45 秒のあいだ連射 +30%", "price": 10, "kind": "buff_rate", "value": 0.3, "sec": 45},
-  {"id": "idaten", "name": "韋駄天の札", "desc": "45 秒のあいだ移動 +25%、疾走の間隔 -30%", "price": 8, "kind": "buff_speed", "value": 0.25, "sec": 45},
-  {"id": "mamori", "name": "守りの札", "desc": "次の 2 発を防ぐ", "price": 12, "kind": "shield", "value": 2, "sec": 0},
-  {"id": "fukusuzu", "name": "招福の鈴", "desc": "神招きが半分溜まる", "price": 9, "kind": "gauge", "value": 0.5, "sec": 0}
+  {
+    "id": "dango",
+    "name": "団子",
+    "desc": "HP を 30% 回復",
+    "price": 14,
+    "kind": "heal",
+    "value": 0.3,
+    "sec": 0
+  },
+  {
+    "id": "kami_dango",
+    "name": "上団子",
+    "desc": "HP を全回復",
+    "price": 30,
+    "kind": "heal",
+    "value": 1.0,
+    "sec": 0
+  },
+  {
+    "id": "chikara_dango",
+    "name": "力団子",
+    "desc": "最大 HP +15",
+    "price": 40,
+    "kind": "maxhp",
+    "value": 15,
+    "sec": 0
+  },
+  {
+    "id": "omiki",
+    "name": "御神酒",
+    "desc": "45 秒のあいだ威力 +35%",
+    "price": 24,
+    "kind": "buff_dmg",
+    "value": 0.35,
+    "sec": 45
+  },
+  {
+    "id": "hayaya",
+    "name": "早矢の札",
+    "desc": "45 秒のあいだ連射 +30%",
+    "price": 24,
+    "kind": "buff_rate",
+    "value": 0.3,
+    "sec": 45
+  },
+  {
+    "id": "idaten",
+    "name": "韋駄天の札",
+    "desc": "45 秒のあいだ移動 +25%、疾走の間隔 -30%",
+    "price": 18,
+    "kind": "buff_speed",
+    "value": 0.25,
+    "sec": 45
+  },
+  {
+    "id": "mamori",
+    "name": "守りの札",
+    "desc": "次の 2 発を防ぐ",
+    "price": 26,
+    "kind": "shield",
+    "value": 2,
+    "sec": 0
+  },
+  {
+    "id": "fukusuzu",
+    "name": "招福の鈴",
+    "desc": "神招きが半分溜まる",
+    "price": 20,
+    "kind": "gauge",
+    "value": 0.5,
+    "sec": 0
+  }
 ]

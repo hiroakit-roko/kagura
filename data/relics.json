@@ -114,7 +114,7 @@
     "desc": "両が落ちる確率 +30%",
     "shop": true,
     "rar": 2,
-    "price": 26
+    "price": 60
   },
   {
     "id": "r_s_senryo",
@@ -123,7 +123,7 @@
     "desc": "波を越えるごとに +2 両",
     "shop": true,
     "rar": 2,
-    "price": 26
+    "price": 60
   },
   {
     "id": "r_s_kushi",
@@ -132,7 +132,7 @@
     "desc": "詠唱の札を拾うと HP 5 回復",
     "shop": true,
     "rar": 1,
-    "price": 12
+    "price": 34
   },
   {
     "id": "r_s_kitsune",
@@ -141,7 +141,7 @@
     "desc": "会心の威力 +40%",
     "shop": true,
     "rar": 2,
-    "price": 28
+    "price": 60
   },
   {
     "id": "r_s_hannya",
@@ -150,7 +150,7 @@
     "desc": "HP 30% 以下で威力 +30%",
     "shop": true,
     "rar": 2,
-    "price": 28
+    "price": 60
   },
   {
     "id": "r_s_tengu",
@@ -159,7 +159,7 @@
     "desc": "疾走中に触れた敵弾を消す",
     "shop": true,
     "rar": 2,
-    "price": 26
+    "price": 60
   },
   {
     "id": "r_s_ryu",
@@ -168,7 +168,7 @@
     "desc": "受けるダメージ -12%",
     "shop": true,
     "rar": 3,
-    "price": 45
+    "price": 96
   },
   {
     "id": "r_s_hidama",
@@ -177,7 +177,7 @@
     "desc": "敵を倒すと 15% で爆発が起きる",
     "shop": true,
     "rar": 3,
-    "price": 42
+    "price": 96
   },
   {
     "id": "r_s_toki",
@@ -186,7 +186,7 @@
     "desc": "被弾すると 1.5 秒のあいだ敵と敵弾が遅くなる",
     "shop": true,
     "rar": 3,
-    "price": 48
+    "price": 100
   },
   {
     "id": "r_s_hyouka",
@@ -195,7 +195,7 @@
     "desc": "冷気の鈍りが 1.5 倍",
     "shop": true,
     "rar": 2,
-    "price": 28
+    "price": 60
   },
   {
     "id": "r_s_chishio",
@@ -204,7 +204,7 @@
     "desc": "裂傷のダメージ +60%",
     "shop": true,
     "rar": 2,
-    "price": 28
+    "price": 60
   },
   {
     "id": "r_s_hiakari",
@@ -213,7 +213,7 @@
     "desc": "暴露した敵への威力 +15%",
     "shop": true,
     "rar": 2,
-    "price": 28
+    "price": 60
   },
   {
     "id": "r_s_sakazuki",
@@ -222,7 +222,7 @@
     "desc": "酩酊の段の上限 +3",
     "shop": true,
     "rar": 2,
-    "price": 26
+    "price": 60
   },
   {
     "id": "r_s_fam_kiba",
@@ -231,7 +231,7 @@
     "desc": "使い魔の弾が敵を 1 体貫く",
     "shop": true,
     "rar": 2,
-    "price": 26
+    "price": 60
   },
   {
     "id": "r_s_fam_mamori",
@@ -240,6 +240,6 @@
     "desc": "使い魔が敵を倒すと HP 2 回復",
     "shop": true,
     "rar": 3,
-    "price": 40
+    "price": 100
   }
 ]

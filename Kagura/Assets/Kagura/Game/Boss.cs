@@ -14,6 +14,7 @@ namespace Kagura.Game
         private static readonly string[] KEYS = { "aratama", "dodomeki", "orochi" };
         private static readonly Dictionary<string, Sprite[]> _animCache = new Dictionary<string, Sprite[]>();
         private Sprite[] _anim; private float _animT;
+        private float _sweepDir = 1f;
         private const float ANIM_FPS = 12f;
 
         /// <summary>ボスの連番（無ければ null → 従来のベクター描画）。</summary>
@@ -198,9 +199,9 @@ namespace Kagura.Game
             string[] opts;
             switch (ph)
             {
-                case 1: opts = isFinal ? new[] { "radial", "aimed", "spiral" } : new[] { "radial", "aimed", "radial" }; break;
-                case 2: opts = isFinal ? new[] { "spiral", "shotgun", "wall", "summon" } : new[] { "spiral", "shotgun", "radial", "summon" }; break;
-                default: opts = new[] { "spiral2", "shotgun", "summon", "wall", "spiral2" }; break;
+                case 1: opts = isFinal ? new[] { "radial", "aimed", "spiral", "sweep" } : new[] { "radial", "aimed", "sweep", "radial" }; break;
+                case 2: opts = isFinal ? new[] { "spiral", "shotgun", "wall", "summon", "cross", "rain" } : new[] { "spiral", "shotgun", "radial", "summon", "cross", "rain" }; break;
+                default: opts = new[] { "spiral2", "shotgun", "summon", "wall", "ring", "homing", "sweep", "cross" }; break;
             }
             _burstKind = opts[Random.Range(0, opts.Length)];
             if (tier == 1 && !isFinal && ph >= 2 && Random.value < 0.35f && _dashState == 0)
@@ -210,7 +211,7 @@ namespace Kagura.Game
                 return;
             }
             if (tier == 2 && !isFinal)
-                _burstKind = !_eyeOpen ? new[] { "spiral", "spiral2", "radial" }[Random.Range(0, 3)] : new[] { "aimed", "shotgun", "summon" }[Random.Range(0, 3)];
+                _burstKind = !_eyeOpen ? new[] { "spiral", "spiral2", "radial", "cross", "ring" }[Random.Range(0, ph >= 2 ? 5 : 3)] : new[] { "aimed", "shotgun", "summon", "homing", "rain" }[Random.Range(0, ph >= 2 ? 5 : 3)];
             if (isFinal && Random.value < 0.45f) _burstKind = "heads";
             _spiralA = Random.value * Gd.TAU;
             switch (_burstKind)
@@ -223,6 +224,11 @@ namespace Kagura.Game
                 case "summon": _burstLeft = 1; _burstGap = 0.1f; _atkCd = 2.6f; break;
                 case "wall": _burstLeft = 2; _burstGap = 0.5f; _atkCd = 1.6f; break;
                 case "heads": _burstLeft = 3; _burstGap = 0.4f; _atkCd = 1.6f; break;
+                case "sweep": _burstLeft = 18; _burstGap = 0.06f; _atkCd = 1.8f; _sweepDir = Random.value < 0.5f ? 1f : -1f; break;   // 扇を左右へ薙ぐ
+                case "cross": _burstLeft = 30; _burstGap = 0.06f; _atkCd = 1.7f; break;                                           // 4 本の腕が回る
+                case "rain": _burstLeft = 10; _burstGap = 0.14f; _atkCd = 2.0f; break;                                            // 天から降る
+                case "ring": _burstLeft = 3; _burstGap = 0.5f; _atkCd = 2.2f; break;                                              // 二重の輪
+                case "homing": _burstLeft = 3; _burstGap = 0.3f; _atkCd = 2.4f; break;                                            // 追う火の玉
             }
             _burstT = 0f;
         }
@@ -267,6 +273,57 @@ namespace Kagura.Game
                             g.SpawnEnemyBullet(hp0, Gd.Dir(a) * (spd + 40f), BossBulletDmg(), 6f, Gd.C_EBULLET, 0f, bossName + "の吐息");
                         }
                         Sfx.Play("eshot", -10f, 0.6f, 0.05f);
+                        break;
+                    }
+                case "sweep":
+                    {   // 自機の方向を中心に、扇を一方向へ薙ぐ（18 発）
+                        OnFire();
+                        var pl = P();
+                        float center = pl != null ? Gd.Angle(pl.pos - pos) : Mathf.PI * 0.5f;
+                        float k = (18 - _burstLeft - 1) / 17f;
+                        float a = center + _sweepDir * (-0.9f + 1.8f * k);
+                        SpawnShot(Gd.Dir(a) * (spd + 50f));
+                        if (_burstLeft % 3 == 0) Sfx.Play("eshot", -20f, 1.1f, 0.05f);
+                        break;
+                    }
+                case "cross":
+                    {   // 4 本の腕が交互に向きを変えて回る
+                        OnFire();
+                        int step = 30 - _burstLeft;
+                        float ang = _spiralA + (step < 15 ? 0.3f * step : 0.3f * 15 - 0.3f * (step - 15));
+                        for (int a = 0; a < 4; a++) SpawnShot(Gd.Dir(ang + Gd.TAU * a / 4f) * (spd * 0.9f));
+                        if (step % 4 == 0) Sfx.Play("eshot", -20f, 0.9f, 0.05f);
+                        break;
+                    }
+                case "rain":
+                    {   // 天から降る：落ちる位置に一瞬の印を出してから撃つ
+                        OnFire();
+                        for (int i = 0; i < 2; i++)
+                        {
+                            float x = Gd.Rand(30f, Gd.W - 30f);
+                            Fx.RingFx(new Vector2(x, 8f), Gd.C_EBULLET, 4f, 26f, 0.25f, 2f);
+                            g.SpawnEnemyBullet(new Vector2(x, -12f), new Vector2(Gd.Rand(-20f, 20f), spd * 1.05f), BossBulletDmg(), 6f, Gd.C_EBULLET, 0f, bossName + "の雨");
+                        }
+                        if (_burstLeft % 3 == 0) Sfx.Play("eshot", -20f, 0.8f, 0.05f);
+                        break;
+                    }
+                case "ring":
+                    {   // 速さの違う二重の輪：外は速く内は遅く、隙間がずれる
+                        OnFire();
+                        float off = Random.value * Gd.TAU;
+                        ShootRadial(16 + ph * 2, spd * 1.15f, off);
+                        ShootRadial(12 + ph * 2, spd * 0.7f, off + 0.2f);
+                        Fx.RingFx(pos, color, radius * 0.6f, radius * 2.2f, 0.3f);
+                        Sfx.Play("eshot", -14f, 0.7f, 0.05f);
+                        break;
+                    }
+                case "homing":
+                    {   // 大きな火の玉がゆっくり自機を追う
+                        OnFire();
+                        var pl = P();
+                        float a = (pl != null ? Gd.Angle(pl.pos - pos) : Mathf.PI * 0.5f) + Gd.Rand(-0.6f, 0.6f);
+                        g.SpawnEnemyBullet(pos + Gd.Dir(a) * radius, Gd.Dir(a) * (spd * 0.55f), BossBulletDmg() * 1.4f, 10f, new Color(1f, 0.55f, 0.35f), 1.6f, bossName + "の火の玉");
+                        Sfx.Play("eshot", -14f, 0.6f, 0.05f);
                         break;
                     }
                 case "wall":
