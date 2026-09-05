@@ -13,6 +13,7 @@ namespace Kagura.Game
         public Color bannerCol = Color.white;
         public int bannerIcon = -1;
         public float bannerT, cutinT, callT, smallT, introT;
+        public float comboCutT; public string comboCutText = ""; public Color comboCutCol = Color.white; public int comboCutTier;
         public string callKami = ""; public bool callGreater;
         public string cutinKey = ""; public Color cutinCol = Color.white; public float cutinLen = 1.6f;
         public string smallText = ""; public Color smallCol = Color.white;
@@ -35,6 +36,8 @@ namespace Kagura.Game
             bannerT = icon < 0 ? 2.4f : 3.2f;
         }
         public void Small(string text, Color col) { smallText = text; smallCol = col; smallT = 2.2f; }
+        /// <summary>コンボの段が上がった：大きな漢字を中央に。</summary>
+        public void ComboCutin(string text, Color col, int tier) { comboCutText = text; comboCutCol = col; comboCutTier = tier; comboCutT = 1.3f; }
         public void Cutin(string key, Color col, float len = 1.6f) { cutinKey = key; cutinCol = col; cutinLen = len; cutinT = len; }
         public void CallCutin(string kami, bool greater) { callKami = kami; callGreater = greater; callT = CALL_T; }
         public void BossIntro(string name, string title, bool final, string key) { introName = name; introTitle = title; introFinal = final; introKey = key; introT = 3.2f; }
@@ -42,6 +45,7 @@ namespace Kagura.Game
         private void Update()
         {
             float dt = Time.unscaledDeltaTime;
+            comboCutT = Mathf.Max(0f, comboCutT - dt);
             _t += dt;
             bannerT = Mathf.Max(0, bannerT - dt); smallT = Mathf.Max(0, smallT - dt); introT = Mathf.Max(0, introT - dt);
             cutinT = Mathf.Max(0, cutinT - dt); callT = Mathf.Max(0, callT - dt);
@@ -67,6 +71,8 @@ namespace Kagura.Game
                     DrawTop(g); DrawBoss(g);
                     if (g.State == GameState.Play || g.State == GameState.Pause) PauseMenu.DrawGear(l.front, _t, g.State == GameState.Pause);
                 }
+                if (inGame && g.combo >= 2 && g.player != null && g.player.alive) DrawCombo(g);
+                if (comboCutT > 0f) DrawComboCutin();
                 if (cutinT > 0f) DrawCutin();
                 if (callT > 0f) DrawCallCutin();
                 if (bannerT > 0f && callT <= 0f) DrawBanner();
@@ -253,8 +259,8 @@ namespace Kagura.Game
             var pl = g.player;
             if (pl != null)
             {
-                UiKit.Coin(v, new Vector2(Gd.W - 62f, 62f), 6f);
-                UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, 68), pl.ryo + " 両", 14, Gd.WithA(Gd.C_GOLD, 0.95f), TextAnchor.MiddleRight, Gd.W - 18);
+                UiKit.Coin(v, new Vector2(Gd.W - 92f, 63f), 6.5f);
+                UiKit.Txt(layer, WorldText.Face.Display, new Vector2(Gd.W - 80f, 69f), pl.ryo + " 両", 14, Gd.WithA(Gd.C_GOLD, 0.95f), TextAnchor.MiddleLeft, 74f);
                 // 市の札の効き目（残り秒）
                 float by = 150f;
                 void Buff(string name, float sec) { if (sec <= 0f) return; UiKit.Txt(layer, WorldText.Face.Body, new Vector2(0, by), $"{name} {Mathf.CeilToInt(sec)}", 11, Gd.WithA(Gd.C_GOLD, 0.9f), TextAnchor.MiddleRight, Gd.W - 14); by += 15f; }
@@ -274,6 +280,43 @@ namespace Kagura.Game
             UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, 77), b.bossName, 13, new Color(1, 0.75f, 0.8f), TextAnchor.MiddleCenter, Gd.W);
             UiKit.Bar(v, r, b.hp / b.maxHp, new Color(1, 0.3f, 0.4f), _t, 3, new Color(1, 0.5f, 0.6f));
             for (int i = 0; i < b.Phase(); i++) v.DrawCircle(new Vector2(Gd.W - 108 + i * 10, 74), 3.5f, new Color(1, 0.85f, 0.4f));
+        }
+
+        /// <summary>現在のコンボ：波の題の下に「12 連」と段の名、残り時間の細い帯。</summary>
+        private void DrawCombo(GameManager g)
+        {
+            var v = layer.front;
+            Color col = g.ComboColor;
+            float y = 118f;
+            float pulse = 1f + 0.08f * Mathf.Max(0f, 1f - (GameManager.COMBO_WINDOW - g.comboT) * 4f);   // 倒した瞬間だけ少し大きく
+            string name = g.ComboName;
+            UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y), g.combo + " 連", 24f * pulse, Gd.WithA(col, 0.95f), TextAnchor.MiddleCenter, Gd.W);
+            if (name != "") UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + 20f), name, 14, Gd.WithA(col, 0.9f), TextAnchor.MiddleCenter, Gd.W);
+            float w = 120f, k = Mathf.Clamp01(g.comboT / GameManager.COMBO_WINDOW);
+            v.DrawRect(new Rect(Gd.W * 0.5f - w * 0.5f, y + 28f, w, 3f), new Color(0, 0, 0, 0.5f));
+            v.DrawRect(new Rect(Gd.W * 0.5f - w * 0.5f, y + 28f, w * k, 3f), Gd.WithA(col, 0.9f));
+        }
+
+        private void DrawComboCutin()
+        {
+            var v = layer.front;
+            float k = comboCutT / 1.3f;                 // 1 → 0
+            float ain = Mathf.Clamp01((1f - k) * 6f);   // 出だし
+            float a = ain * Mathf.Clamp01(k * 3f);       // 終わりに消える
+            float sc = 1f + (1f - ain) * 0.6f;           // 大きく現れて締まる
+            float y = Gd.H * 0.40f;
+            Color c = comboCutCol;
+            float size = (60f + comboCutTier * 6f) * sc;
+            v.DrawRect(new Rect(0, y - 46f, Gd.W, 92f), new Color(0, 0, 0, 0.35f * a));
+            v.DrawRect(new Rect(0, y - 46f, Gd.W, 2f), Gd.WithA(c, 0.9f * a));
+            v.DrawRect(new Rect(0, y + 44f, Gd.W, 2f), Gd.WithA(c, 0.9f * a));
+            for (int i = 0; i < 12; i++)
+            {   // 放射の筋
+                float ang = _t * 0.6f + Gd.TAU * i / 12f;
+                v.DrawLine(new Vector2(Gd.W * 0.5f, y) + Gd.Dir(ang) * 120f, new Vector2(Gd.W * 0.5f, y) + Gd.Dir(ang) * (260f + 120f * (1f - k)), Gd.WithA(c, 0.25f * a), 3f);
+            }
+            UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f), comboCutText, size, Gd.WithA(Color.white, a), TextAnchor.MiddleCenter, Gd.W);
+            UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f + 2f), comboCutText, size, Gd.WithA(c, 0.55f * a), TextAnchor.MiddleCenter, Gd.W + 3f);
         }
 
         private void DrawBanner()

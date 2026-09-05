@@ -44,6 +44,16 @@ namespace Kagura.Game
         public bool fullCall;       // ?fullcall：神招きを常に満タンにする（演出の確認用）
         public bool forceShop;      // ?shop：毎波のあとに市を出し、両を多めに持って始める（検証用）
         public ShopStall stall;
+        // コンボ：短い間隔で倒し続けると段が上がり、落とし物が少し増える。途切れると締めの演出
+        public int combo, comboTier, comboBest; public float comboT;
+        public const float COMBO_WINDOW = 1.8f;
+        private static readonly int[] ComboNeed = { 5, 10, 20, 35, 60 };
+        private static readonly string[] ComboNames = { "連撃", "猛撃", "修羅", "鬼神", "神威" };
+        private static readonly float[] ComboMults = { 1.1f, 1.2f, 1.35f, 1.5f, 1.7f };
+        private static readonly Color[] ComboCols = { new Color(0.9f, 0.95f, 1f), new Color(1f, 0.7f, 0.35f), new Color(1f, 0.35f, 0.4f), new Color(0.75f, 0.45f, 1f), new Color(1f, 0.85f, 0.4f) };
+        public float ComboMult => comboTier > 0 ? ComboMults[comboTier - 1] : 1f;
+        public string ComboName => comboTier > 0 ? ComboNames[comboTier - 1] : "";
+        public Color ComboColor => comboTier > 0 ? ComboCols[comboTier - 1] : new Color(0.9f, 0.95f, 1f);
         private readonly HashSet<int> _shopStages = new HashSet<int>();
         private readonly List<ShopOffer> _shop = new List<ShopOffer>();
         private bool _userActive;   // 一度でもタップ・キー操作があった（ブラウザの音の解禁）
@@ -209,6 +219,7 @@ namespace Kagura.Game
             runKey = runId + "-" + Random.Range(0, 1000000).ToString("000000");
             _waveActive = false; _between = 1.2f; _plan.Clear(); _planI = 0; _bossReward = false; _hitstop = 0f; _freezeT = 0f;
             _tutStep = 0; _tutT = 0f; _seenItems.Clear(); _shopStages.Clear(); if (stall != null) stall.Despawn();
+            combo = 0; comboTier = 0; comboBest = 0; comboT = 0f;
             if (forceShop) player.ryo = 80;
             stars.stage = 1; stars.speed = 1f; stars.tint = new Color(0.45f, 0.30f, 0.80f);
             overlay.visible = false;
@@ -425,6 +436,7 @@ namespace Kagura.Game
             }
             player.Tick(dt);
             if (!player.alive) return;
+            if (combo > 0) { comboT -= dt; if (comboT <= 0f) ComboEnd(); }
             var pp = player.pos;
             foreach (var pk in _pickups)
                 if (pk.Active)
@@ -746,7 +758,8 @@ namespace Kagura.Game
         {
             if (e is Boss b) { OnBossKilled(b); return; }
             Kills++;
-            Score += (int)e.score;
+            ComboHit();
+            Score += Mathf.RoundToInt(e.score * (1f + 0.1f * comboTier));
             float xpMult = 1f;
             if (player != null && player.Has("susa_p3")) xpMult += player.Val("susa_p3") * 0.01f;
             DropLoot(e.pos, e.xp * xpMult);
@@ -754,9 +767,57 @@ namespace Kagura.Game
             Combat.OnKill(e);
         }
 
+        // ---------- コンボ ----------
+
+        private void ComboHit()
+        {
+            combo++;
+            comboT = COMBO_WINDOW + Mathf.Min(0.6f, combo * 0.02f);
+            comboBest = Mathf.Max(comboBest, combo);
+            int tier = 0;
+            for (int i = 0; i < ComboNeed.Length; i++) if (combo >= ComboNeed[i]) tier = i + 1;
+            if (tier > comboTier)
+            {
+                comboTier = tier;
+                var col = ComboColor;
+                hud.ComboCutin(ComboName, col, tier);
+                Fx.Flash(Gd.WithA(col, 0.18f + 0.05f * tier), 0.3f);
+                if (player != null) { Fx.RingFx(player.pos, col, 20f, 220f + tier * 60f, 0.5f, 5f); Fx.Rays(player.pos, col, 10 + tier * 4, 30f, 360f + tier * 60f, 0.45f); }
+                switch (tier)
+                {
+                    case 1: Sfx.Play("suzu", -8f, 1.3f); break;
+                    case 2: Sfx.Play("clap", -6f); Sfx.Play("suzu", -8f, 1.5f); break;
+                    case 3: Sfx.Play("taiko", -6f, 1.1f); Sfx.Play("suzu", -6f, 1.6f); Hitstop(0.10f, 0.15f); break;
+                    default: Sfx.Play("taiko", -4f, 0.9f); Sfx.Play("flute", -8f, 1.2f); Fx.ShakeAdd(6f); Hitstop(0.14f, 0.12f); break;
+                }
+            }
+        }
+
+        /// <summary>コンボが途切れた：修羅より上なら締めの一声と音、功徳の上乗せ。</summary>
+        private void ComboEnd()
+        {
+            if (comboTier >= 3)
+            {
+                int bonus = combo * 10 * comboTier;
+                Score += bonus;
+                hud.Small($"{ComboName}　{combo} 連　功徳 +{bonus}", ComboColor);
+                Sfx.Play("taiko", -5f, 0.75f); Sfx.Play("suzu", -10f, 0.9f);
+                if (player != null) { Fx.Burst(player.pos, ComboColor, 24, 300f, 4f, 0.6f); Fx.RingFx(player.pos, ComboColor, 30f, 320f, 0.6f, 6f); }
+                Fx.Flash(Gd.WithA(ComboColor, 0.2f), 0.4f);
+            }
+            else if (comboTier >= 1)
+            {
+                int bonus = combo * 5 * comboTier;
+                Score += bonus;
+                hud.Small($"{ComboName}　{combo} 連", ComboColor);
+                Sfx.Play("suzu", -14f, 0.9f);
+            }
+            combo = 0; comboTier = 0; comboT = 0f;
+        }
+
         private void DropLoot(Vector2 pos, float xpTotal)
         {
-            float chance = Mathf.Clamp(0.30f + xpTotal * 0.03f, 0.3f, 0.8f);
+            float chance = Mathf.Clamp((0.30f + xpTotal * 0.03f) * ComboMult, 0.3f, 0.95f);
             if (Random.value < chance) { Drop(pos + new Vector2(Gd.Rand(-6, 6), Gd.Rand(-6, 6)), Pickup.XP, xpTotal / chance * 0.75f); ItemHint(Pickup.XP); }
             if (player != null && player.MainGod() != "")
             {
@@ -765,8 +826,8 @@ namespace Kagura.Game
             }
             if (player != null && player.Has("inari_u8") && Random.value < player.Val("inari_u8") * 0.01f)
                 Drop(pos + new Vector2(Gd.Rand(-14, 14), Gd.Rand(-8, 8)), Pickup.XP, xpTotal * 0.6f);
-            if (Random.value < (player != null && player.HasRelic("r_heal_drop") ? 0.09f : 0.045f)) { Drop(pos, Pickup.HEAL, 12f); ItemHint(Pickup.HEAL); }
-            float cc = 0.28f * (player != null && player.HasRelic("r_s_neko") ? 1.5f : 1f);
+            if (Random.value < (player != null && player.HasRelic("r_heal_drop") ? 0.09f : 0.045f) * ComboMult) { Drop(pos, Pickup.HEAL, 12f); ItemHint(Pickup.HEAL); }
+            float cc = 0.28f * (player != null && player.HasRelic("r_s_neko") ? 1.5f : 1f) * ComboMult;
             if (Random.value < cc) Drop(pos + new Vector2(Gd.Rand(-10, 10), Gd.Rand(-6, 6)), Pickup.COIN, 1 + Wave / 8 + (Random.value < 0.15f ? 2 : 0));
         }
 
@@ -1029,6 +1090,7 @@ namespace Kagura.Game
 
         public void OnPlayerDied()
         {
+            combo = 0; comboTier = 0; comboT = 0f;
             Music.Stop();
             State = GameState.Over;
             Time.timeScale = 1f; _hitstop = 0f;

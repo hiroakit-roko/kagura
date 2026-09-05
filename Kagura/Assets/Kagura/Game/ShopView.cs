@@ -83,7 +83,6 @@ namespace Kagura.Game
                     UiKit.Coin(L.front, new Vector2(tag.center.x - 24f, tag.center.y), 6f, pop);
                     Txt(Face.Display, new Vector2(tag.center.x - 14f, tag.center.y + 7f), o.price + " 両", 15, Gd.WithA(pc, pop));
                 }
-                Txt(Face.Bold, new Vector2(rr.x + 10, rr.y + (isItem ? 16 : 32)), "[" + (i + 1) + "]", 11, Gd.WithA(col, pop * dim * 0.9f));
             }
             var lr = LeaveRect;
             bool lsel = hover == LEAVE;
@@ -91,8 +90,6 @@ namespace Kagura.Game
             L.front.DrawRect(lr, new Color(0.09f, 0.06f, 0.14f, 0.92f * a));
             L.front.DrawRect(lr, Gd.WithA(Gd.C_GOLD, (lsel ? 1f : 0.6f) * a), false, 1.2f);
             Txt(Face.Display, new Vector2(lr.x, lr.center.y + 8f), "去る", 20, new Color(1, 1, 1, a), TextAnchor.MiddleCenter, lr.width);
-            if (GameManager.I != null && !GameManager.I.IsTouch)
-                Txt(Face.Body, new Vector2(lr.xMax - 40f, lr.center.y + 4f), "Esc", 10, new Color(1, 1, 1, 0.45f * a), TextAnchor.MiddleRight, 34f);
         }
     }
 }

@@ -218,7 +218,6 @@ namespace Kagura.Game
             if (Records.Best.clears > 0)
                 UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, ry - 8f), $"踏破 {Records.Best.clears} 回　最高功徳 {Records.Best.score}", 11, Gd.WithA(Gd.C_GOLD, 0.9f * ma), TextAnchor.MiddleCenter, Gd.W);
             string[] labels = { "はじめる", "記録を見る", Records.PlayerName.Trim() == "" ? "名を刻む" : $"名を変える（{Records.DisplayName()}）" };
-            string[] keys = { "Enter", "R", "N" };
             for (int i = 0; i < 3; i++)
             {
                 var r = MenuRect(i);
@@ -229,7 +228,6 @@ namespace Kagura.Game
                 v.DrawRect(r, Gd.WithA(col, (main ? 0.85f : 0.55f) * ma), false, 1.2f);
                 foreach (float cx in new[] { r.xMin + 6f, r.xMax - 6f }) v.DrawCircle(new Vector2(cx, r.center.y), 2f, Gd.WithA(col, 0.9f * ma));
                 UiKit.Txt(l, WorldText.Face.Display, new Vector2(r.xMin, r.center.y + 9f), labels[i], main ? 24 : 19, main ? Gd.WithA(Gd.C_GOLD, ma) : Gd.WithA(col, 0.95f * ma), TextAnchor.MiddleCenter, r.width);
-                if (!touch) UiKit.Txt(l, WorldText.Face.Body, new Vector2(r.xMax - 60f, r.center.y + 5f), keys[i], 11, new Color(1, 1, 1, 0.45f * ma), TextAnchor.MiddleRight, 48f);
             }
             UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, Gd.H - 12), versionLabel, 10, new Color(1, 1, 1, 0.45f * ma), TextAnchor.MiddleRight, Gd.W - 12f);
         }

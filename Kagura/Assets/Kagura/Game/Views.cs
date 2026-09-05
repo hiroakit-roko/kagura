@@ -91,10 +91,7 @@ namespace Kagura.Game
 
         protected static string PickHint(string verb, int n = 3)
         {
-            if (GameManager.I != null && GameManager.I.IsTouch) return "タップで" + verb;
-            string keys = "";
-            for (int i = 0; i < n; i++) keys += "[" + (i + 1) + "] ";
-            return keys + "またはタップで" + verb;
+            return "タップで" + verb;   // 数字キーの案内は出さない（スマホ優先。キーは黙って効く）
         }
 
         protected void Txt(Face f, Vector2 pos, string s, float size, Color col, TextAnchor align = TextAnchor.MiddleLeft, float width = -1f, bool shadow = true) => UiKit.Txt(L, f, pos, s, size, col, align, width, shadow);
@@ -179,7 +176,7 @@ namespace Kagura.Game
                 L.back.DrawRect(r, new Color(0.08f, 0.06f, 0.12f, 0.95f * a));
                 L.front.DrawRect(r, Gd.WithA(bc, (sel ? 1f : 0.55f) * a), false, sel ? 2f : 1.2f);
                 if (sel) L.back.DrawRect(r, Gd.WithA(bc, 0.12f * a));
-                string label = i == 0 ? (touch ? "契約する" : "契約する　[1] / Enter") : (touch ? "考え直す" : "考え直す　[2] / Esc");
+                string label = i == 0 ? "契約する" : "考え直す";
                 Txt(i == 0 ? Face.Display : Face.Bold, new Vector2(r.x, r.y + 31), label, i == 0 ? 15 : 13, new Color(1, 1, 1, a), TextAnchor.MiddleCenter, r.width);
             }
         }
@@ -226,7 +223,6 @@ namespace Kagura.Game
                 Txt(Face.Bold, new Vector2(x0 + 6, rr.y + 187), f.role, 11, Gd.WithA(Gd.Lightened(col, 0.2f), a));
                 Para(Face.Body, new Vector2(x0, rr.y + 212), f.desc, w, 11, 5, new Color(0.9f, 0.92f, 1f, a * 0.9f));
                 Txt(Face.Bold, new Vector2(x0, rr.yMax - 26), "加護　" + f.passive, 11, Gd.WithA(Gd.C_GOLD, a));
-                Txt(Face.Bold, new Vector2(rr.x + 10, rr.yMax - 10), "[" + (i + 1) + "]", 12, Gd.WithA(col, a));
             }
             Txt(Face.Body, new Vector2(0, CY + CH + 30), PickHint("選ぶ"), 14, new Color(0.85f, 0.88f, 1f, 0.9f * anim), TextAnchor.MiddleCenter, Gd.W);
         }
@@ -306,7 +302,6 @@ namespace Kagura.Game
             }
             else Txt(Face.Body, new Vector2(x0, y + 8), "詠唱と神招きは主神のみ", 11, new Color(0.85f, 0.9f, 1f, a * 0.7f));
             Txt(Face.Bold, new Vector2(x0, y + 128), "神格の伸び +" + gr + "%", 12, Gd.WithA(gr > 12 ? Gd.C_GOLD : new Color(0.85f, 0.9f, 1f), a * 0.9f));
-            Txt(Face.Bold, new Vector2(rr.x + 10, rr.yMax - 12), "[" + (i + 1) + "]", 14, Gd.WithA(col, a));
         }
 
         /// <summary>神器の実演（小さな枡の中で動く）。</summary>
@@ -441,7 +436,6 @@ namespace Kagura.Game
             Txt(Face.Bold, new Vector2(x0 + 2, rr.y + 248), "失", 12, new Color(1f, 0.6f, 0.65f, a));
             Para(Face.Body, new Vector2(x0 + 22, rr.y + 248), c.loss ?? "", w - 26, 11, 2, new Color(1f, 0.9f, 0.92f, a));
             Txt(Face.Body, new Vector2(rr.x, rr.yMax - 26), "取り消せない。一度だけ結べる", 10, Gd.WithA(col, a * 0.85f), TextAnchor.MiddleCenter, rr.width);
-            Txt(Face.Bold, new Vector2(rr.x + 10, rr.yMax - 12), "[" + (i + 1) + "]", 14, Gd.WithA(col, a));
         }
 
         /// <summary>いま迎えている神々と神格。</summary>
@@ -544,7 +538,6 @@ namespace Kagura.Game
                 Txt(Face.Bold, new Vector2(x0, rr.yMax - 33), "新しい能力  " + (owned + 1) + " / " + BoonsLogic.MAX_PER_KAMI, 13, Gd.WithA(Gd.Lightened(kc, 0.3f), a));
             }
             else if (special) Txt(Face.Body, new Vector2(rr.x, rr.yMax - 26), "重ねることはできない", 10, Gd.WithA(col, a * 0.8f), TextAnchor.MiddleCenter, rr.width);
-            Txt(Face.Bold, new Vector2(rr.x + 10, rr.yMax - 12), "[" + (i + 1) + "]", 14, Gd.WithA(col, a));
         }
     }
 
@@ -595,7 +588,6 @@ namespace Kagura.Game
                 Txt(Face.Body, rr.position + new Vector2(0, 266), k.weapon + "  威力 ×" + Fmt(p.KamiPower(id)) + " → ×" + Fmt(Boons.KamiPower(Mathf.Min(lv + 1, 10), Boons.GrowthOf(id))), 11, new Color(0.9f, 0.92f, 1f, pop * 0.9f), TextAnchor.MiddleCenter, rr.width);
                 int owned = BoonsLogic.OwnedOf(p, id).Count;
                 Txt(Face.Body, rr.position + new Vector2(0, 286), "能力 " + owned + " / " + BoonsLogic.MAX_PER_KAMI, 12, Gd.WithA(kc, pop * 0.9f), TextAnchor.MiddleCenter, rr.width);
-                Txt(Face.Bold, new Vector2(rr.x + 10, rr.yMax - 10), "[" + (i + 1) + "]", 12, Gd.WithA(kc, pop));
             }
             Txt(Face.Body, new Vector2(0, CY + CH + 30f), PickHint("選ぶ", ids.Count), 14, new Color(0.85f, 0.88f, 1f, 0.9f * anim), TextAnchor.MiddleCenter, Gd.W);
         }
@@ -643,7 +635,6 @@ namespace Kagura.Game
                 }
                 Txt(Face.Display, rr.position + new Vector2(0, 148), o.name, 20, new Color(1, 1, 1, pop), TextAnchor.MiddleCenter, rr.width);
                 Para(Face.Body, new Vector2(rr.x + 14, rr.y + 172), o.desc, rr.width - 28, 13, 3, new Color(0.92f, 0.94f, 1f, pop * 0.95f), TextAnchor.MiddleCenter);
-                Txt(Face.Bold, new Vector2(rr.x + 10, rr.yMax - 10), "[" + (i + 1) + "]", 12, Gd.WithA(Gd.C_GOLD, pop));
             }
             Txt(Face.Body, new Vector2(0, CY + CH + 30f), PickHint("選ぶ"), 14, new Color(0.85f, 0.88f, 1f, 0.9f * anim), TextAnchor.MiddleCenter, Gd.W);
         }
