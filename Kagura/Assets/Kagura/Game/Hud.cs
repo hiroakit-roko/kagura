@@ -37,7 +37,7 @@ namespace Kagura.Game
         }
         public void Small(string text, Color col) { smallText = text; smallCol = col; smallT = 2.2f; }
         /// <summary>コンボが途切れた：段の名を大きく、その下に連数と功徳を出して称える。</summary>
-        public void ComboCutin(string text, Color col, int tier, string subText = "") { comboCutText = text; comboCutSub = subText; comboCutCol = col; comboCutTier = tier; comboCutT = 1.8f; }
+        public void ComboCutin(string text, Color col, int tier, string subText = "") { comboCutText = text; comboCutSub = subText; comboCutCol = col; comboCutTier = tier; comboCutT = 1.9f; }
         public void Cutin(string key, Color col, float len = 1.6f) { cutinKey = key; cutinCol = col; cutinLen = len; cutinT = len; }
         public void CallCutin(string kami, bool greater) { callKami = kami; callGreater = greater; callT = CALL_T; }
         public void BossIntro(string name, string title, bool final, string key) { introName = name; introTitle = title; introFinal = final; introKey = key; introT = 3.2f; }
@@ -298,27 +298,69 @@ namespace Kagura.Game
             v.DrawRect(new Rect(Gd.W * 0.5f - w * 0.5f, y + 27f, w * k, 3f), Gd.WithA(col, 0.9f));
         }
 
+        /// <summary>
+        /// コンボが途切れたときの称え：明朝の縦書きで段の名を一文字ずつ現し、左に筆の一線、下に朱の落款（連数）と功徳。
+        /// 出だしは大きく滲むように、終わりは上へ抜けて消える。
+        /// </summary>
         private void DrawComboCutin()
         {
             var v = layer.front;
-            float k = comboCutT / 1.8f;                 // 1 → 0
-            float ain = Mathf.Clamp01((1f - k) * 6f);   // 出だし
-            float a = ain * Mathf.Clamp01(k * 3f);       // 終わりに消える
-            float sc = 1f + (1f - ain) * 0.6f;           // 大きく現れて締まる
-            float y = Gd.H * 0.40f;
+            const float DUR = 1.9f;
+            float e = DUR - comboCutT;                  // 経過秒
+            float fade = Mathf.Clamp01((DUR - e) / 0.35f);   // 終わりの消え
+            float drift = (1f - fade) * 26f;             // 消えながら上へ
             Color c = comboCutCol;
-            float size = (60f + comboCutTier * 6f) * sc;
-            v.DrawRect(new Rect(0, y - 46f, Gd.W, 92f), new Color(0, 0, 0, 0.35f * a));
-            v.DrawRect(new Rect(0, y - 46f, Gd.W, 2f), Gd.WithA(c, 0.9f * a));
-            v.DrawRect(new Rect(0, y + 44f, Gd.W, 2f), Gd.WithA(c, 0.9f * a));
-            for (int i = 0; i < 12; i++)
-            {   // 放射の筋
-                float ang = _t * 0.6f + Gd.TAU * i / 12f;
-                v.DrawLine(new Vector2(Gd.W * 0.5f, y) + Gd.Dir(ang) * 120f, new Vector2(Gd.W * 0.5f, y) + Gd.Dir(ang) * (260f + 120f * (1f - k)), Gd.WithA(c, 0.25f * a), 3f);
+            float cx = Gd.W * 0.5f + 10f, top = Gd.H * 0.30f;
+            float size = 84f + comboCutTier * 6f;
+            string s = comboCutText;
+            // 背の帯（縦長の暗い柱）
+            float bandA = Mathf.Clamp01(e / 0.2f) * fade;
+            float colH = size * 1.1f * s.Length + 140f;
+            v.DrawRect(new Rect(cx - 78f, top - 60f - drift, 156f, colH), new Color(0.02f, 0.01f, 0.04f, 0.55f * bandA));
+            v.DrawRect(new Rect(cx - 78f, top - 60f - drift, 156f, 1.5f), Gd.WithA(c, 0.5f * bandA));
+            v.DrawRect(new Rect(cx - 78f, top - 60f - drift + colH, 156f, 1.5f), Gd.WithA(c, 0.5f * bandA));
+            // 筆の一線：上から下へ引かれる
+            float lineK = Mathf.Clamp01(e / 0.45f);
+            float lx = cx - 62f;
+            float ly0 = top - 40f - drift, ly1 = ly0 + colH - 40f;
+            if (lineK > 0f)
+            {
+                v.DrawLine(new Vector2(lx, ly0), new Vector2(lx, Mathf.Lerp(ly0, ly1, lineK)), Gd.WithA(c, 0.9f * fade), 3f);
+                v.DrawLine(new Vector2(lx + 1.5f, ly0), new Vector2(lx + 1.5f, Mathf.Lerp(ly0, ly1, lineK)), new Color(1, 1, 1, 0.5f * fade), 1f);
+                if (lineK < 1f) v.DrawCircle(new Vector2(lx, Mathf.Lerp(ly0, ly1, lineK)), 4f, new Color(1, 1, 1, 0.9f));
             }
-            UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f), comboCutText, size, Gd.WithA(Color.white, a), TextAnchor.MiddleCenter, Gd.W);
-            UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f + 2f), comboCutText, size, Gd.WithA(c, 0.55f * a), TextAnchor.MiddleCenter, Gd.W + 3f);
-            if (comboCutSub != "") UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f + 30f), comboCutSub, 18, new Color(1, 1, 1, 0.95f * a), TextAnchor.MiddleCenter, Gd.W);
+            // 文字：一文字ずつ、大きく滲んで据わる
+            for (int i = 0; i < s.Length; i++)
+            {
+                float st = 0.12f + i * 0.16f;
+                float k = Mathf.Clamp01((e - st) / 0.28f);
+                if (k <= 0f) continue;
+                float ease = 1f - Mathf.Pow(1f - k, 3f);
+                float sc = 1.55f - 0.55f * ease;
+                float a = ease * fade;
+                var pos = new Vector2(cx, top + i * size * 1.08f + size * 0.36f - drift);
+                // 滲みの輪
+                if (k < 1f) { v.DrawArc(new Vector2(cx, pos.y - size * 0.36f), size * (0.5f + 0.5f * k), 0, Gd.TAU, 40, Gd.WithA(c, 0.5f * (1f - k)), 2f); }
+                UiKit.Txt(layer, WorldText.Face.Display, new Vector2(cx - 200f + 2f, pos.y + 3f), s[i].ToString(), size * sc, Gd.WithA(c, 0.45f * a), TextAnchor.MiddleCenter, 400f, false);
+                UiKit.Txt(layer, WorldText.Face.Display, new Vector2(cx - 200f, pos.y), s[i].ToString(), size * sc, new Color(1f, 0.98f, 0.94f, a), TextAnchor.MiddleCenter, 400f, false);
+            }
+            // 落款：朱の角印に連数、その右に功徳
+            float sealT = 0.12f + s.Length * 0.16f + 0.18f;
+            float sk = Mathf.Clamp01((e - sealT) / 0.22f);
+            if (sk > 0f && comboCutSub != "")
+            {
+                float sease = 1f - Mathf.Pow(1f - sk, 2f);
+                float ssc = 1.5f - 0.5f * sease;
+                var sc0 = new Vector2(cx, top + s.Length * size * 1.08f + 22f - drift);
+                float half = 22f * ssc;
+                var seal = new Color(0.78f, 0.12f, 0.16f, 0.95f * sease * fade);
+                v.DrawRect(new Rect(sc0.x - half, sc0.y - half, half * 2f, half * 2f), seal);
+                v.DrawRect(new Rect(sc0.x - half + 3f, sc0.y - half + 3f, half * 2f - 6f, half * 2f - 6f), new Color(1f, 0.92f, 0.9f, 0.9f * sease * fade), false, 1.2f);
+                string[] parts = comboCutSub.Split('　');
+                UiKit.Txt(layer, WorldText.Face.Display, new Vector2(sc0.x - 60f, sc0.y + 6f), parts[0], 15f * ssc, new Color(1f, 0.95f, 0.92f, sease * fade), TextAnchor.MiddleCenter, 120f, false);
+                if (parts.Length > 1)
+                    UiKit.Txt(layer, WorldText.Face.Display, new Vector2(sc0.x + half + 10f, sc0.y + 6f), parts[1], 17f, Gd.WithA(Gd.C_GOLD, sease * fade), TextAnchor.MiddleLeft, 160f);
+            }
         }
 
         private void DrawBanner()

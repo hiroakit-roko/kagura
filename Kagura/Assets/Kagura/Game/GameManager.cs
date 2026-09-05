@@ -48,7 +48,7 @@ namespace Kagura.Game
         public int combo, comboTier, comboBest; public float comboT;
         public const float COMBO_WINDOW = 1.8f;
         private static readonly int[] ComboNeed = { 5, 10, 20, 35, 60 };
-        private static readonly string[] ComboNames = { "連撃", "猛撃", "修羅", "鬼神", "神威" };
+        private static readonly string[] ComboNames = { "連撃", "猛撃", "無双", "鬼神", "神威" };   // 明朝のサブセットにある字で
         private static readonly float[] ComboMults = { 1.1f, 1.2f, 1.35f, 1.5f, 1.7f };
         private static readonly Color[] ComboCols = { new Color(0.9f, 0.95f, 1f), new Color(1f, 0.7f, 0.35f), new Color(1f, 0.35f, 0.4f), new Color(0.75f, 0.45f, 1f), new Color(1f, 0.85f, 0.4f) };
         public float ComboMult => comboTier > 0 ? ComboMults[comboTier - 1] : 1f;

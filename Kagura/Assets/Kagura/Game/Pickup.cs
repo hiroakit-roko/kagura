@@ -47,7 +47,7 @@ namespace Kagura.Game
                 {
                     _pulled = true;
                     Vector2 dir = (pl.pos - pos).normalized;
-                    vel = Vector2.Lerp(vel, dir * (340f + (rangeR - d) * 1.6f), Mathf.Clamp01(9f * dt));
+                    vel = Vector2.Lerp(vel, dir * (560f + (rangeR - d) * 2.4f), Mathf.Clamp01(12f * dt));   // 敵弾に紛れないよう速めに引き寄せる
                 }
             }
             else vel = Vector2.Lerp(vel, new Vector2(0, 60f), Mathf.Clamp01(2f * dt));
