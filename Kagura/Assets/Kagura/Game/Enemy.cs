@@ -36,9 +36,9 @@ namespace Kagura.Game
         protected Vec _vec;
         // 敵の絵（Resources/Art/enemy/<kind>.png があれば、ベクター描画の代わりに使う。無ければ従来の描画）
         private static readonly Dictionary<string, Sprite> _artCache = new Dictionary<string, Sprite>();
-        private SpriteRenderer _spr;
+        protected SpriteRenderer _spr;
         private Vec _vecTop;             // 絵の前面：状態異常・発射の予兆・体力（絵は ZEnemy+1 なので、その上に描く）
-        private Sprite _sprite;
+        protected Sprite _sprite;
 
         protected virtual void Awake()
         {

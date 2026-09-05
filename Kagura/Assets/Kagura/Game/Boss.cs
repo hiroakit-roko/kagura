@@ -11,6 +11,27 @@ namespace Kagura.Game
     public class Boss : Enemy
     {
         private static readonly string[] NAMES = { "荒魂", "百目鬼", "八岐大蛇" };
+        private static readonly string[] KEYS = { "aratama", "dodomeki", "orochi" };
+        private static readonly Dictionary<string, Sprite[]> _animCache = new Dictionary<string, Sprite[]>();
+        private Sprite[] _anim; private float _animT;
+        private const float ANIM_FPS = 12f;
+
+        /// <summary>ボスの連番（無ければ null → 従来のベクター描画）。</summary>
+        private static Sprite[] BossAnim(string key)
+        {
+            if (_animCache.TryGetValue(key, out var cached)) return cached;
+            Sprite[] frames = null;
+            var tex = Resources.Load<Texture2D>("Art/boss/" + key + "_anim");
+            if (tex != null && tex.height > 0)
+            {
+                int n = Mathf.Max(1, tex.width / tex.height);
+                float fw = tex.width / (float)n;
+                frames = new Sprite[n];
+                for (int i = 0; i < n; i++) frames[i] = Sprite.Create(tex, new Rect(fw * i, 0, fw, tex.height), new Vector2(0.5f, 0.5f), 1f);
+            }
+            _animCache[key] = frames;
+            return frames;
+        }
         private static readonly string[] TITLES = { "参道を塞ぐ荒ぶる魂", "百の眼で見張る鬼", "八つの首を持つ大蛇" };
 
         public int tier = 1;
@@ -39,6 +60,16 @@ namespace Kagura.Game
             maxHp = 1300f * (1f + (tier - 1) * 1f) * (isFinal ? 4.2f : 1f);
             hp = maxHp;
             radius = isFinal ? 70f : 56f;
+            // 絵：デフォルメの連番があればそれを動かす
+            _anim = (GameManager.I != null && !GameManager.I.enemySprites) ? null : BossAnim(KEYS[Mathf.Min(tier - 1, KEYS.Length - 1)]);
+            _animT = 0f;
+            if (_anim != null && _anim.Length > 0)
+            {
+                _sprite = _anim[0]; _spr.sprite = _sprite; _spr.enabled = true;
+                float sc = radius * 3.0f / Mathf.Max(_sprite.rect.height, 1f);
+                _spr.transform.localScale = new Vector3(sc, sc, 1f);
+                _spr.color = Color.white;
+            }
             speed = 70f;
             contactDmg = 30f;
             score = 500 * tier;
@@ -73,6 +104,7 @@ namespace Kagura.Game
 
         protected override void Behavior(float delta, GameManager g)
         {
+            if (_anim != null && _anim.Length > 0) { _animT += delta * ANIM_FPS; _spr.sprite = _anim[(int)_animT % _anim.Length]; }
             if (entering)
             {
                 pos.y = Mathf.MoveTowards(pos.y, 175f, 165f * delta);
