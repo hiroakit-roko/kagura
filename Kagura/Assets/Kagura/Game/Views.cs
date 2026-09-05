@@ -111,7 +111,7 @@ namespace Kagura.Game
 
         public void Open(string id, string r, Action ok) { kamiId = id; role = r; onOk = ok; _portrait = UiKit.Art("kami/" + id); Show(); }
         public override int Count() => 2;
-        public override Rect RectOf(int i) => new Rect(Gd.W * 0.5f + (i == 0 ? -BW - 12f : 12f), Gd.H - 150f, BW, BH);
+        public override Rect RectOf(int i) => new Rect(Gd.W * 0.5f + (i == 0 ? -BW - 12f : 12f), Gd.H - 120f, BW, BH);
 
         protected override void Draw()
         {
@@ -120,64 +120,93 @@ namespace Kagura.Game
             var col = Data.ColorOf(k.color);
             Backdrop(col);
             float a = anim;
-            var pr = new Rect(60, 60, Gd.W - 120, 300);
-            UiKit.Panel(L.back, UiKit.Grow(pr, 6), col, a, 0.9f);
+            // 下から積む：札 → 代償 → 力 → 絵。絵は上いっぱいに大きく、その下端に枠を重ねる
+            float btnY = Gd.H - 120f;
+            float y2 = btnY - 108f, y1 = y2 - 214f;
+            float artH = y1 + 44f;
+            float x0 = 48f, w = Gd.W - 96f;
             if (_portrait != null)
             {
-                L.img.DrawCover(_portrait, pr, a, 0.35f);
-                Fade(pr, 90f, a, 8, new Color(0.03f, 0.02f, 0.06f));
+                L.img.DrawCover(_portrait, new Rect(0, 0, Gd.W, artH), a, 0.12f);
+                Fade(new Rect(0, 0, Gd.W, artH), 170f, a, 10, new Color(0.03f, 0.02f, 0.06f));
+                // 左右をわずかに落として絵を中央へ導く
+                L.front.DrawRect(new Rect(0, 0, 40f, artH), new Color(0.03f, 0.02f, 0.06f, 0.35f * a));
+                L.front.DrawRect(new Rect(Gd.W - 40f, 0, 40f, artH), new Color(0.03f, 0.02f, 0.06f, 0.35f * a));
             }
             else
             {
-                L.back.DrawRect(pr, new Color(0.05f, 0.03f, 0.09f, 0.95f * a));
-                for (int i = 0; i < 14; i++) { float ang = t * 0.3f + Gd.TAU * i / 14f; L.back.DrawLine(pr.center + Gd.Dir(ang) * 70f, pr.center + Gd.Dir(ang) * 200f, Gd.WithA(col, 0.08f * a), 8f); }
-                UiKit.Emblem(L.front, k.emblem, pr.center + new Vector2(0, -20), 70f, col, Data.ColorOf(k.color2), t, a);
+                L.back.DrawRect(new Rect(0, 0, Gd.W, artH), new Color(0.05f, 0.03f, 0.09f, 0.95f * a));
+                var cc = new Vector2(Gd.W * 0.5f, artH * 0.45f);
+                for (int i = 0; i < 14; i++) { float ang = t * 0.3f + Gd.TAU * i / 14f; L.back.DrawLine(cc + Gd.Dir(ang) * 70f, cc + Gd.Dir(ang) * 260f, Gd.WithA(col, 0.08f * a), 8f); }
+                UiKit.Emblem(L.front, k.emblem, cc, 90f, col, Data.ColorOf(k.color2), t, a);
             }
-            Txt(Face.Display, new Vector2(pr.x + 16, pr.yMax - 22), k.name, 34, new Color(1, 1, 1, a));
-            Txt(Face.Body, new Vector2(pr.x + 18, pr.yMax - 6), k.kana + "　" + k.title, 12, Gd.WithA(col, a));
-            Txt(Face.Display, new Vector2(pr.xMax - 100, pr.y + 26), role + "として", 16, Gd.WithA(Gd.C_GOLD, a), TextAnchor.MiddleRight, 88);
-            Txt(Face.Body, new Vector2(0, 392), "「" + k.intro + "」", 14, new Color(0.95f, 0.93f, 1f, 0.9f * a), TextAnchor.MiddleCenter, Gd.W);
+            // 役：右上の小さな札
+            var tag = new Rect(Gd.W - 150f, 34f, 118f, 34f);
+            L.back.DrawRect(tag, new Color(0.03f, 0.02f, 0.06f, 0.7f * a));
+            L.front.DrawRect(tag, Gd.WithA(Gd.C_GOLD, 0.8f * a), false, 1.2f);
+            Txt(Face.Display, new Vector2(tag.x, tag.center.y + 6f), role + "として", 16, Gd.WithA(Gd.C_GOLD, a), TextAnchor.MiddleCenter, tag.width);
+            // 名：絵の下寄りに大きく、影つき
+            float ny = artH - 118f;
+            Txt(Face.Display, new Vector2(x0 + 2f, ny + 3f), k.name, 44, new Color(0, 0, 0, 0.6f * a), TextAnchor.MiddleLeft, w, false);
+            Txt(Face.Display, new Vector2(x0, ny), k.name, 44, new Color(1, 1, 1, a), TextAnchor.MiddleLeft, w, false);
+            Txt(Face.Bold, new Vector2(x0 + 2f, ny + 26f), k.kana + "　" + k.title, 14, Gd.WithA(Gd.Lightened(col, 0.25f), a));
+            L.front.DrawRect(new Rect(x0, ny + 38f, w, 1.5f), Gd.WithA(col, 0.7f * a));
+            Txt(Face.Body, new Vector2(x0, ny + 60f), "「" + k.intro + "」", 14, new Color(0.96f, 0.94f, 1f, 0.95f * a), TextAnchor.MiddleLeft, w);
 
-            float x0 = 60f, w = Gd.W - 120f, y = 420f;
-            UiKit.Panel(L.back, new Rect(x0 - 8, y - 6, w + 16, 190), col, a, 0.8f);
-            Txt(Face.Bold, new Vector2(x0 + 6, y + 14), "得意　" + k.role, 12, Gd.WithA(Gd.Lightened(col, 0.2f), a));
-            Txt(Face.Body, new Vector2(x0 + 6, y + 36), "神器", 11, new Color(1, 0.9f, 0.7f, a * 0.85f));
-            Txt(Face.Display, new Vector2(x0 + 40, y + 38), k.weapon, 16, new Color(1, 1, 1, a));
+            // 力の枠（半透明。絵の下端に重なる）
+            var p1 = new Rect(x0 - 10f, y1, w + 20f, 206f);
+            L.back.DrawRect(p1, new Color(0.04f, 0.03f, 0.08f, 0.78f * a));
+            L.front.DrawRect(p1, Gd.WithA(col, 0.75f * a), false, 1.5f);
+            L.front.DrawRect(new Rect(p1.x, p1.y, p1.width, 3f), Gd.WithA(col, 0.9f * a));
+            float y = y1 + 10f;
+            Color lab = Gd.WithA(Gd.Lightened(col, 0.35f), a);
+            Color txt = new Color(0.94f, 0.95f, 1f, a);
+            Txt(Face.Bold, new Vector2(x0 + 4f, y + 16f), "得意", 12, lab);
+            Txt(Face.Display, new Vector2(x0 + 52f, y + 17f), k.role, 15, txt, TextAnchor.MiddleLeft, w - 60f);
+            Txt(Face.Bold, new Vector2(x0 + 4f, y + 46f), "神器", 12, lab);
+            Txt(Face.Display, new Vector2(x0 + 52f, y + 48f), k.weapon, 20, txt, TextAnchor.MiddleLeft, w - 200f);
             int gr = Mathf.RoundToInt(Boons.GrowthOf(k.id) * 100f);
-            Txt(Face.Body, new Vector2(x0 + 6, y + 38), "神格の伸び +" + gr + "%", 11, Gd.WithA(gr > 12 ? Gd.C_GOLD : Color.white, a * 0.85f), TextAnchor.MiddleRight, w - 12);
-            Para(Face.Body, new Vector2(x0 + 6, y + 56), k.weapon_desc, w - 12, 12, 2, new Color(0.9f, 0.92f, 1f, a * 0.9f));
+            Txt(Face.Bold, new Vector2(x0 + 4f, y + 46f), "神格の伸び +" + gr + "%", 12, Gd.WithA(gr > 12 ? Gd.C_GOLD : new Color(1, 1, 1, 0.8f), a), TextAnchor.MiddleRight, w - 8f);
+            Para(Face.Body, new Vector2(x0 + 52f, y + 68f), k.weapon_desc, w - 60f, 12, 2, new Color(0.85f, 0.88f, 1f, 0.92f * a));
             if (role == "主神")
             {
-                Txt(Face.Body, new Vector2(x0 + 6, y + 96), "詠唱　" + k.cast + "：" + k.cast_desc, 11, new Color(0.9f, 0.92f, 1f, a * 0.85f), TextAnchor.MiddleLeft, w - 12);
-                Txt(Face.Body, new Vector2(x0 + 6, y + 114), "神招き　" + k.call + "：" + k.call_desc, 11, new Color(0.9f, 0.92f, 1f, a * 0.85f), TextAnchor.MiddleLeft, w - 12);
+                Txt(Face.Bold, new Vector2(x0 + 4f, y + 110f), "詠唱", 12, lab);
+                Txt(Face.Display, new Vector2(x0 + 52f, y + 111f), k.cast, 14, txt);
+                Txt(Face.Body, new Vector2(x0 + 52f + k.cast.Length * 15f + 8f, y + 110f), k.cast_desc, 11, new Color(0.85f, 0.88f, 1f, 0.9f * a), TextAnchor.MiddleLeft, w - 60f - k.cast.Length * 15f);
+                Txt(Face.Bold, new Vector2(x0 + 4f, y + 134f), "神招き", 12, lab);
+                Txt(Face.Display, new Vector2(x0 + 52f, y + 135f), k.call, 14, txt);
+                Txt(Face.Body, new Vector2(x0 + 52f + k.call.Length * 15f + 8f, y + 134f), k.call_desc, 11, new Color(0.85f, 0.88f, 1f, 0.9f * a), TextAnchor.MiddleLeft, w - 60f - k.call.Length * 15f);
             }
-            else Txt(Face.Body, new Vector2(x0 + 6, y + 98), "詠唱と神招きは主神のみ", 11, new Color(0.9f, 0.92f, 1f, a * 0.7f));
-            if (!string.IsNullOrEmpty(k.status)) Txt(Face.Body, new Vector2(x0 + 6, y + 134), "神威 " + k.status + "：" + k.status_desc, 10, new Color(0.85f, 0.9f, 1f, a * 0.85f), TextAnchor.MiddleLeft, w - 12);
-            else Txt(Face.Body, new Vector2(x0 + 6, y + 134), k.status_desc ?? "", 10, new Color(0.85f, 0.9f, 1f, a * 0.85f), TextAnchor.MiddleLeft, w - 12);
-            Txt(Face.Body, new Vector2(x0 + 6, y + 160), k.mark ?? "", 11, Gd.WithA(col, a * 0.8f));
+            else Txt(Face.Body, new Vector2(x0 + 52f, y + 122f), "詠唱と神招きは主神のみ", 12, new Color(0.85f, 0.88f, 1f, 0.7f * a));
+            Txt(Face.Bold, new Vector2(x0 + 4f, y + 160f), "神威", 12, lab);
+            if (!string.IsNullOrEmpty(k.status)) { Txt(Face.Display, new Vector2(x0 + 52f, y + 161f), k.status, 14, txt); Txt(Face.Body, new Vector2(x0 + 52f + k.status.Length * 15f + 8f, y + 160f), k.status_desc, 11, new Color(0.85f, 0.88f, 1f, 0.9f * a), TextAnchor.MiddleLeft, w - 60f - k.status.Length * 15f); }
+            else Txt(Face.Body, new Vector2(x0 + 52f, y + 160f), k.status_desc ?? "", 11, new Color(0.85f, 0.88f, 1f, 0.9f * a), TextAnchor.MiddleLeft, w - 60f);
+            Txt(Face.Body, new Vector2(x0 + 4f, y + 186f), k.mark ?? "", 11, Gd.WithA(col, 0.85f * a));
 
-            y = 626f;
+            // 代償の枠
             var red = new Color(0.85f, 0.2f, 0.3f);
-            UiKit.Panel(L.back, new Rect(x0 - 8, y - 6, w + 16, 96), red, a, 0.9f);
-            for (int i = 0; i < 5; i++) { float bx = x0 + 20f + i * (w - 40f) / 4f + Mathf.Sin(t * 0.7f + i) * 3f; L.front.DrawCircle(new Vector2(bx, y - 6f), 2f + 0.6f * (i % 2), new Color(0.7f, 0.08f, 0.15f, 0.8f * a)); }
-            Txt(Face.Display, new Vector2(x0 + 6, y + 16), "契約の代償", 14, Gd.WithA(new Color(1, 0.45f, 0.5f), a));
-            Txt(Face.Body, new Vector2(x0 + 96, y + 15), "神との契りは血判に等しい。捧げたものは、二度と戻らぬ", 10, new Color(1, 0.72f, 0.76f, 0.9f * a));
-            Txt(Face.Bold, new Vector2(x0 + 6, y + 40), "一、", 12, new Color(1, 0.7f, 0.75f, a));
-            Para(Face.Body, new Vector2(x0 + 30, y + 40), k.cost ?? "", w - 40, 12, 1, new Color(1, 0.92f, 0.94f, a));
-            Txt(Face.Bold, new Vector2(x0 + 6, y + 66), "二、", 12, new Color(1, 0.7f, 0.75f, a));
-            Para(Face.Body, new Vector2(x0 + 30, y + 66), k.flavor ?? "", w - 40, 12, 2, new Color(1, 0.92f, 0.94f, a * 0.9f));
+            var p2 = new Rect(x0 - 10f, y2, w + 20f, 96f);
+            L.back.DrawRect(p2, new Color(0.10f, 0.03f, 0.06f, 0.82f * a));
+            L.front.DrawRect(p2, Gd.WithA(red, 0.8f * a), false, 1.5f);
+            L.front.DrawRect(new Rect(p2.x, p2.y, p2.width, 3f), Gd.WithA(red, 0.9f * a));
+            Txt(Face.Display, new Vector2(x0 + 4f, y2 + 22f), "契約の代償", 16, Gd.WithA(new Color(1, 0.5f, 0.55f), a));
+            Txt(Face.Body, new Vector2(x0 + 100f, y2 + 21f), "捧げたものは二度と戻らぬ", 10, new Color(1, 0.72f, 0.76f, 0.85f * a));
+            Txt(Face.Bold, new Vector2(x0 + 4f, y2 + 48f), "一、", 13, new Color(1, 0.7f, 0.75f, a));
+            Para(Face.Body, new Vector2(x0 + 32f, y2 + 48f), k.cost ?? "", w - 40f, 12, 1, new Color(1, 0.93f, 0.95f, a));
+            Txt(Face.Bold, new Vector2(x0 + 4f, y2 + 72f), "二、", 13, new Color(1, 0.7f, 0.75f, a));
+            Para(Face.Body, new Vector2(x0 + 32f, y2 + 72f), k.flavor ?? "", w - 40f, 12, 1, new Color(1, 0.93f, 0.95f, 0.9f * a));
 
-            bool touch = GameManager.I != null && GameManager.I.IsTouch;
             for (int i = 0; i < 2; i++)
             {
                 var r = RectOf(i);
                 bool sel = hover == i;
                 var bc = i == 0 ? col : new Color(0.7f, 0.7f, 0.8f);
                 L.back.DrawRect(r, new Color(0.08f, 0.06f, 0.12f, 0.95f * a));
-                L.front.DrawRect(r, Gd.WithA(bc, (sel ? 1f : 0.55f) * a), false, sel ? 2f : 1.2f);
+                L.front.DrawRect(r, Gd.WithA(bc, (sel ? 1f : 0.6f) * a), false, sel ? 2f : 1.2f);
+                if (i == 0) L.front.DrawRect(new Rect(r.x, r.y, r.width, 3f), Gd.WithA(bc, 0.9f * a));
                 if (sel) L.back.DrawRect(r, Gd.WithA(bc, 0.12f * a));
                 string label = i == 0 ? "契約する" : "考え直す";
-                Txt(i == 0 ? Face.Display : Face.Bold, new Vector2(r.x, r.y + 31), label, i == 0 ? 15 : 13, new Color(1, 1, 1, a), TextAnchor.MiddleCenter, r.width);
+                Txt(i == 0 ? Face.Display : Face.Bold, new Vector2(r.x, r.y + 31), label, i == 0 ? 17 : 14, new Color(1, 1, 1, a), TextAnchor.MiddleCenter, r.width);
             }
         }
     }
