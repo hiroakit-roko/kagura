@@ -879,6 +879,7 @@ namespace Kagura.Game
         private void OpenKamiChoice()
         {
             PauseForChoice(ChoiceKind.Kami);
+            if (diag) Debug.Log($"[diag] choice=kami(3択) lv={player.level} gods={player.gods.Count} pending={player.pendingLevels}");
             var ids = BoonsLogic.RollKamiChoices(player, 3);
             if (forceKami != "")
             {   // "susa,suku" のように並べると、その順に主神・副神の先頭候補になる
@@ -912,6 +913,7 @@ namespace Kagura.Game
         private void OpenBoons(string reason, int minRar, string kamiId)
         {
             PauseForChoice(ChoiceKind.Boon);
+            if (diag) Debug.Log($"[diag] choice=boons lv={player.level} gods={player.gods.Count} kami={kamiId}");
             _offerReason = reason; _offerMinRar = minRar; _rerolls = 1;
             string kid = kamiId != "" ? kamiId : BoonsLogic.PickKami(player);
             if (kid == "") { player.pendingLevels = Mathf.Max(0, player.pendingLevels - 1); CloseChoice(); return; }
@@ -959,6 +961,7 @@ namespace Kagura.Game
         private void OpenLevelPick()
         {
             if (player.gods.Count == 0) { LevelPickDone(""); return; }
+            if (diag) Debug.Log($"[diag] choice=triangle(神を選ぶ) lv={player.level} gods={player.gods.Count} pending={player.pendingLevels}");
             PauseForChoice(ChoiceKind.Miki);
             Sfx.Play("levelup", -8f);
             ui.ShowMiki(new List<string>(player.gods));

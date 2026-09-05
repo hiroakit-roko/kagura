@@ -87,24 +87,27 @@ namespace Kagura.Game
             bool main = i == 0;
             var rr = UiKit.Grow(r, (sel ? 4f : 0f) - (1f - pop) * 20f);
             CardBg(rr, kc, sel, pop);
-            // 絵：上半分に神の絵、その上にデフォルメ絵を重ねる
-            float artH = main ? 170f : 140f;
-            var tex = UiKit.Art("kami/" + id);
-            var pr = new Rect(rr.x + 4, rr.y + 4, rr.width - 8, artH);
-            if (tex != null) { L.img.DrawCover(tex, pr, pop, 0.15f); Fade(pr, 70f, pop); }
-            float ir = main ? 46f : 38f;
-            KamiIcon.Draw(L, id, new Vector2(rr.center.x, pr.yMax - 6f), ir, t, pop);
+            // デフォルメ絵を大きく、後光と輪で飾る（元の絵は重ねない）
+            float ir = main ? 72f : 58f;
+            var ic = new Vector2(rr.center.x, rr.y + (main ? 122f : 100f));
+            for (int j = 0; j < 14; j++) { float ang = t * 0.3f + Gd.TAU * j / 14f; L.back.DrawLine(ic + Gd.Dir(ang) * (ir + 6f), ic + Gd.Dir(ang) * (ir + 26f + 8f * Mathf.Sin(t * 2f + j)), Gd.WithA(kc, 0.16f * pop), 5f); }
+            L.back.DrawCircle(ic, ir + 8f, Gd.WithA(kc, 0.12f * pop));
+            L.back.DrawCircle(ic, ir + 3f, new Color(0.05f, 0.03f, 0.09f, 0.9f * pop));
+            KamiIcon.Draw(L, id, ic, ir, t, pop, false);
+            L.front.DrawArc(ic, ir + 3f, 0, Gd.TAU, 48, Gd.WithA(kc, 0.9f * pop), 2.5f);
+            L.front.DrawArc(ic, ir + 9f, t * 0.8f, t * 0.8f + 2.2f, 24, Gd.WithA(kc, 0.55f * pop), 1.5f);
             Txt(Face.Body, new Vector2(rr.x + 10, rr.y + 20), main ? "主神" : "副神", 11, new Color(1, 0.9f, 0.7f, 0.9f * pop));
-            float y = pr.yMax + ir + 16f;
-            Txt(Face.Display, new Vector2(rr.x, y), k.name, main ? 20 : 17, new Color(1, 1, 1, pop), TextAnchor.MiddleCenter, rr.width);
+            float y = ic.y + ir + 30f;
+            Txt(Face.Display, new Vector2(rr.x, y), k.name, main ? 21 : 17, new Color(1, 1, 1, pop), TextAnchor.MiddleCenter, rr.width);
+            Txt(Face.Body, new Vector2(rr.x, y + 16f), k.title, 10, Gd.WithA(kc, 0.85f * pop), TextAnchor.MiddleCenter, rr.width);
             int lv = p.KamiLv(id);
             bool capped = lv >= 10;
-            Txt(Face.Bold, new Vector2(rr.x, y + 26f), capped ? "神格 " + lv + "（上限）" : "神格 " + lv + " → " + (lv + 1), main ? 16 : 14, Gd.WithA(Gd.C_GOLD, pop), TextAnchor.MiddleCenter, rr.width);
-            Txt(Face.Body, new Vector2(rr.x, y + 46f), k.weapon + "  ×" + Fmt(p.KamiPower(id)) + " → ×" + Fmt(Boons.KamiPower(Mathf.Min(lv + 1, 10), Boons.GrowthOf(id))), 11, new Color(0.9f, 0.92f, 1f, pop * 0.9f), TextAnchor.MiddleCenter, rr.width);
+            Txt(Face.Bold, new Vector2(rr.x, y + 42f), capped ? "神格 " + lv + "（上限）" : "神格 " + lv + " → " + (lv + 1), main ? 17 : 15, Gd.WithA(Gd.C_GOLD, pop), TextAnchor.MiddleCenter, rr.width);
+            Txt(Face.Body, new Vector2(rr.x, y + 62f), k.weapon + "  ×" + Fmt(p.KamiPower(id)) + " → ×" + Fmt(Boons.KamiPower(Mathf.Min(lv + 1, 10), Boons.GrowthOf(id))), 11, new Color(0.9f, 0.92f, 1f, pop * 0.9f), TextAnchor.MiddleCenter, rr.width);
             int owned = BoonsLogic.OwnedOf(p, id).Count;
             for (int j = 0; j < BoonsLogic.MAX_PER_KAMI; j++)
             {
-                var dot = new Vector2(rr.center.x + (j - 1) * 14f, y + 62f);
+                var dot = new Vector2(rr.center.x + (j - 1) * 14f, y + 80f);
                 bool filled = j < owned;
                 L.front.DrawCircle(dot, 4f, Gd.WithA(kc, (filled ? 0.95f : 0.2f) * pop));
                 if (!filled) L.front.DrawArc(dot, 4f, 0, Gd.TAU, 12, Gd.WithA(kc, 0.6f * pop), 1f);
