@@ -30,6 +30,8 @@ namespace Kagura.Game
         public readonly Dictionary<string, Weapon> weapons = new Dictionary<string, Weapon>();
         public readonly Dictionary<string, float> kamiDmg = new Dictionary<string, float>();
         public readonly List<string> relics = new List<string>();
+        public int ryo;                                   // 両（市で使う）
+        public float buffDmgT, buffRateT, buffSpeedT, slowT;   // 市の札の効き目（秒）と、時の砂の残り
         public string familiarId = "";
         public Familiar familiar, familiar2;
         public string lastHitBy = "";
@@ -101,6 +103,7 @@ namespace Kagura.Game
             foreach (var d in _drones) if (d != null) Destroy(d.gameObject); _drones.Clear();
             familiarId = ""; lastHitBy = ""; _revived = false;
             castCharges = 0; castMax = 3; shield = 0; shieldT = 0f; regenT = 0f; dashT = 0f; dashCool = 0f;
+            ryo = 0; buffDmgT = 0f; buffRateT = 0f; buffSpeedT = 0f; slowT = 0f;
             callGauge = 0f; callT = 0f; callKind = ""; callPower = 1f; hasteT = 0f; dashBuffT = 0f; fanHealCd = 0f;
             _contactCd = 0f; _miracleCd = 0f; _fireCd = 0f; _dashReadyPing = true; radius = 7f;
             pos = new Vector2(Gd.W * 0.5f, Gd.H - 170f);
@@ -130,7 +133,8 @@ namespace Kagura.Game
         public float KamiPower(string id) => Boons.KamiPower(KamiLv(id), Boons.GrowthOf(id)) * (Has("curse_fire") ? 1.3f : 1f);
         public bool HasRelic(string id) => relics.Contains(id);
         public float HitScale() => Mathf.Clamp(1f - Val("saru_u9") * 0.01f - (HasRelic("r_small") ? 0.25f : 0f), 0.4f, 1f);
-        public float BaseDamage() => 10f * (1f + (level - 1) * 0.03f) * (HasRelic("r_dmg") ? 1.10f : 1f) * dmgMult;
+        public float BaseDamage() => 10f * (1f + (level - 1) * 0.03f) * (HasRelic("r_dmg") ? 1.10f : 1f) * dmgMult
+            * (buffDmgT > 0f ? 1.35f : 1f) * (HasRelic("r_s_hannya") && hp <= maxHp * 0.3f ? 1.3f : 1f);
 
         public void SetFamiliar(string id)
         {
@@ -282,6 +286,7 @@ namespace Kagura.Game
         {
             float m = 1f + Val("saru_u3") * 0.01f;
             if (gods.Contains("saru")) m += 0.10f;
+            if (buffSpeedT > 0f) m *= 1.25f;
             if (HasRelic("r_speed")) m += 0.10f;
             if (Has("curse_wind")) m += 0.20f;
             if (familiarId == "karasu") m += 0.06f;
@@ -289,7 +294,7 @@ namespace Kagura.Game
             return baseSpeed * m * CostMult("speed");
         }
 
-        public float DashCdTime() => dashCd * (1f - Val("saru_u4") * 0.01f) * (1f - Val("saru_leg") * 0.01f) * CostMult("dash_cd") * (HasRelic("r_dash") ? 0.75f : 1f) * (Has("curse_wind") ? 0.7f : 1f);
+        public float DashCdTime() => (buffSpeedT > 0f ? 0.7f : 1f) * dashCd * (1f - Val("saru_u4") * 0.01f) * (1f - Val("saru_leg") * 0.01f) * CostMult("dash_cd") * (HasRelic("r_dash") ? 0.75f : 1f) * (Has("curse_wind") ? 0.7f : 1f);
 
         private Vector2 InputDir()
         {
@@ -462,8 +467,8 @@ namespace Kagura.Game
         // ---------- 武装 ----------
 
         public float CritChance() => Mathf.Min(critBase + Val("inari_u3") * 0.01f + (Has("curse_edge") ? 0.15f : 0f) + (HasRelic("r_crit") ? 0.08f : 0f), 0.95f);
-        public float CritMult() => critMultBase + Val("inari_u5") * 0.01f + Val("duo_tsuki_inari") * 0.01f;
-        public float FireRateMult() => 1f + (hasteT > 0f ? 0.4f : 0f);
+        public float CritMult() => critMultBase + Val("inari_u5") * 0.01f + Val("duo_tsuki_inari") * 0.01f + (HasRelic("r_s_kitsune") ? 0.4f : 0f);
+        public float FireRateMult() => 1f + (hasteT > 0f ? 0.4f : 0f) + (buffRateT > 0f ? 0.3f : 0f);
 
         private void Weapons(float dt, GameManager g)
         {
@@ -477,11 +482,28 @@ namespace Kagura.Game
             if (al || (kb != null && (kb.xKey.wasPressedThisFrame || kb.kKey.wasPressedThisFrame)) || (tu != null && tu.Take("call"))) TryCall(g);
         }
 
+        /// <summary>市の品を使う（団子・時限の札）。</summary>
+        public void UseShopItem(ShopItemDef it)
+        {
+            switch (it.kind)
+            {
+                case "heal": Heal(maxHp * it.value, true); Sfx.Play("heal", -8f); break;
+                case "maxhp": maxHp += it.value; Heal(it.value, true); Sfx.Play("levelup", -10f, 1.2f); break;
+                case "buff_dmg": buffDmgT = Mathf.Max(buffDmgT, it.sec); Sfx.Play("miki", -8f); break;
+                case "buff_rate": buffRateT = Mathf.Max(buffRateT, it.sec); Sfx.Play("cast", -10f, 1.2f); break;
+                case "buff_speed": buffSpeedT = Mathf.Max(buffSpeedT, it.sec); Sfx.Play("dash", -8f, 1.1f); break;
+                case "shield": shield = Mathf.Min(shield + Mathf.RoundToInt(it.value), 3); shieldT = 99f; Sfx.Play("shield", -8f); break;
+                case "gauge": callGauge = Mathf.Clamp01(callGauge + it.value); Sfx.Play("suzu", -6f, 1.3f); break;
+            }
+            Fx.RingFx(pos, Gd.C_GOLD, 10f, 80f, 0.35f, 3f);
+        }
+
         /// <summary>詠唱の札を拾った：1 枚増える（最大 castMax）。</summary>
         public void PickOrb()
         {
             int before = castCharges;
             castCharges = Mathf.Min(castCharges + 1, castMax);
+            if (HasRelic("r_s_kushi")) Heal(5f, true);
             var col = MainGod() != "" ? KamiColor(MainGod()) : Color.white;
             Fx.RingFx(pos, col, 8f, 50f, 0.3f, 3f);
             Sfx.Play("cast", -14f, 1.5f);
@@ -721,6 +743,8 @@ namespace Kagura.Game
         private void Upkeep(float dt)
         {
             AddCallGauge(dt * 0.022f);
+            buffDmgT = Mathf.Max(0f, buffDmgT - dt); buffRateT = Mathf.Max(0f, buffRateT - dt); buffSpeedT = Mathf.Max(0f, buffSpeedT - dt);
+            if (slowT > 0f) { slowT -= dt; if (slowT <= 0f && callKind != "slow") { GameManager.I.enemySlow = 1f; GameManager.I.enemyBulletSlow = 0f; } }
             dashBuffT = Mathf.Max(0f, dashBuffT - dt);
             fanHealCd = Mathf.Max(0f, fanHealCd - dt);
             if (Has("suku_u7"))
@@ -763,6 +787,7 @@ namespace Kagura.Game
             if (source != "") lastHitBy = source;
             d *= CostMult("taken") * (Has("curse_fire") ? 1.25f : 1f);
             if (Has("suku_u7") && InFog()) d *= 0.8f;
+            if (HasRelic("r_s_ryu")) d *= 0.88f;
             var g = GameManager.I;
             if (shield > 0)
             {
@@ -789,6 +814,7 @@ namespace Kagura.Game
             }
             hp -= d;
             iframe = 1f * (familiarId == "shiki" ? 1.25f : 1f) * (HasRelic("r_iframe") ? 1.4f : 1f);
+            if (HasRelic("r_s_toki")) { slowT = 1.5f; g.enemySlow = 0.35f; g.enemyBulletSlow = 0.6f; Fx.RingFx(pos, new Color(0.85f, 0.75f, 1f), 20f, 320f, 0.6f, 4f); Sfx.Play("suzu", -8f, 0.6f); }
             AddCallGauge(0.08f);
             Fx.ShakeAdd(9f);
             Fx.Flash(new Color(1f, 0.3f, 0.4f, 0.25f), 0.15f);

@@ -46,6 +46,14 @@ namespace Kagura.Game
                         case ChoiceKind.Boon: if (ui.boons.offers.Count > 0) ui.OnBoonChosen?.Invoke(0); break;
                         case ChoiceKind.Miki: if (ui.miki.ids.Count > 0) ui.OnMikiChosen?.Invoke(ui.miki.ids[0]); break;
                         case ChoiceKind.Relic: if (ui.relic.offers.Count > 0) ui.OnRelicChosen?.Invoke(0); break;
+                        case ChoiceKind.Shop:
+                            {
+                                int buy = -1;
+                                for (int i = 0; i < ui.shop.offers.Count; i++) if (!ui.shop.offers[i].sold && ui.shop.offers[i].price <= ui.shop.ryo) { buy = i; break; }
+                                if (buy >= 0 && _stateT < 4f) { ui.OnShopBuy?.Invoke(buy); _stateT = 1.6f; }
+                                else ui.OnShopLeave?.Invoke();
+                                break;
+                            }
                     }
                     break;
                 case GameState.Play:
@@ -59,6 +67,8 @@ namespace Kagura.Game
                         foreach (var e in g.EnemyList()) { float d = Mathf.Abs(e.pos.y - pp.y); if (d < best) { best = d; wantX = e.pos.x; } }
                         // 勾玉が近くにあればそちらへ
                         float wantY = Gd.H * (0.74f + 0.10f * Mathf.Sin(_t * 0.31f));
+                        // 市の屋台が流れてきたら触れに行く
+                        if (g.stall != null && g.stall.Active && g.stall.pos.y > 120f) { wantX = g.stall.pos.x; wantY = g.stall.pos.y; }
                         var dir = Vector2.zero;
                         float dx = pp.x - wantX, dy = pp.y - wantY;
                         if (dx > 14f) dir.x = -1f; else if (dx < -14f) dir.x = 1f;

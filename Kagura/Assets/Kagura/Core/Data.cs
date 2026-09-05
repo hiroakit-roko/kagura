@@ -65,6 +65,22 @@ namespace Kagura.Core
         public string name;
         public string mark;
         public string desc;
+        public bool shop;        // 市で売る神宝（討伐の褒賞には出ない）
+        public int rar;          // 市の神宝の格：1 並 / 2 稀 / 3 秘
+        public int price;        // 両
+    }
+
+    /// <summary>市の品（団子・時限の札）。kind: heal / maxhp / buff_dmg / buff_rate / buff_speed / shield / gauge。</summary>
+    [Serializable]
+    public class ShopItemDef
+    {
+        public string id;
+        public string name;
+        public string desc;
+        public int price;
+        public string kind;
+        public float value;
+        public float sec;
     }
 
     /// <summary>禍（契約の代償として選ぶ呪い）。</summary>

@@ -341,10 +341,24 @@ namespace Kagura.Game
         }
 
         /// <summary>アイテムの形（Godot 版 Pickup.draw_shape）。原点中心。kind: 0=勾玉 1=団子 3=札</summary>
+        /// <summary>小判（両）。横長の楕円に縁と四角い穴。</summary>
+        public static void Coin(Vec v, Vector2 c, float r, float a = 1f, float spin = 0f)
+        {
+            float w = r * 1.35f * Mathf.Abs(Mathf.Cos(spin)) + r * 0.15f, h = r;
+            var gold = new Color(1f, 0.84f, 0.35f, a); var dark = new Color(0.55f, 0.38f, 0.08f, a);
+            v.DrawEllipse(c, w, h, dark);
+            v.DrawEllipse(c, w * 0.85f, h * 0.82f, gold);
+            v.DrawRect(new Rect(c.x - w * 0.22f, c.y - h * 0.22f, w * 0.44f, h * 0.44f), dark);
+            v.DrawEllipse(c + new Vector2(-w * 0.3f, -h * 0.35f), w * 0.22f, h * 0.18f, new Color(1, 1, 1, 0.7f * a));
+        }
+
         public static void PickupShape(Vec ci, int kind, Color c, float t, float pulse = 1f)
         {
             switch (kind)
             {
+                case 4:
+                    Coin(ci, Vector2.zero, 8f * pulse, 1f, t * 3f);
+                    break;
                 case 0:
                     {
                         float r = 6.5f * pulse;

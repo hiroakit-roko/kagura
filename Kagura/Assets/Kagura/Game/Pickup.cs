@@ -5,7 +5,7 @@ namespace Kagura.Game
     /// <summary>勾玉（経験値）／団子（HP 回復）／詠唱の札。マグネット範囲で吸い寄せる（Godot 版 pickup.gd）。</summary>
     public class Pickup : MonoBehaviour
     {
-        public const int XP = 0, HEAL = 1, MIKI = 2, ORB = 3;
+        public const int XP = 0, HEAL = 1, MIKI = 2, ORB = 3, COIN = 4;
 
         public int kind;
         public float value = 3f;
@@ -24,6 +24,7 @@ namespace Kagura.Game
             vel = new Vector2(Gd.Rand(-70, 70), Gd.Rand(-130, -50));
             life = 14f;
             if (k == ORB) { life = 9999f; vel = new Vector2(Gd.Rand(-40, 40), Gd.Rand(-60, -20)); }
+            if (k == COIN) life = 18f;
             Active = true;
             gameObject.SetActive(true);
             transform.position = Gd.ToWorld(pos);

@@ -699,10 +699,12 @@ namespace Kagura.Game
         public MikiView miki;
         public RelicView relic;
         public StoryView story;
+        public ShopView shop;
 
         public Action<string> OnKamiChosen, OnFamiliarChosen, OnMikiChosen;
         public Action<int> OnBoonChosen, OnRelicChosen;
-        public Action OnReroll, OnStoryDone;
+        public Action OnReroll, OnStoryDone, OnShopLeave;
+        public Action<int> OnShopBuy;
 
         public static Views Create(Transform parent)
         {
@@ -711,11 +713,11 @@ namespace Kagura.Game
             var v = go.AddComponent<Views>();
             var tr = go.transform;
             v.confirm = new ConfirmView(tr); v.familiar = new FamiliarView(tr); v.kami = new KamiChoiceView(tr);
-            v.boons = new BoonsView(tr); v.miki = new MikiView(tr); v.relic = new RelicView(tr); v.story = new StoryView(tr);
+            v.boons = new BoonsView(tr); v.miki = new MikiView(tr); v.relic = new RelicView(tr); v.story = new StoryView(tr); v.shop = new ShopView(tr);
             return v;
         }
 
-        private IEnumerable<ChoiceView> All() { yield return confirm; yield return familiar; yield return kami; yield return boons; yield return miki; yield return relic; yield return story; }
+        private IEnumerable<ChoiceView> All() { yield return confirm; yield return familiar; yield return kami; yield return boons; yield return miki; yield return relic; yield return story; yield return shop; }
         public bool ChoiceVisible { get { foreach (var v in All()) if (v.visible) return true; return false; } }
         public void HideCards() { foreach (var v in All()) v.Hide(); }
 
@@ -725,6 +727,7 @@ namespace Kagura.Game
         public void ShowBoons(string kid, List<Offer> offers, int rerolls, string title) { HideCards(); boons.Open(kid, offers, rerolls, title); }
         public void ShowMiki(List<string> ids) { HideCards(); miki.Open(ids); }
         public void ShowRelics(List<RelicDef> offers) { HideCards(); relic.Open(offers); }
+        public void ShowShop(List<ShopOffer> offers, int ryo) { HideCards(); shop.Open(offers, ryo); }
         public void AskContract(string kid, string role, Action ok) { kami.Hide(); boons.Hide(); confirm.Open(kid, role, ok); }
 
         private void Update()
@@ -808,6 +811,13 @@ namespace Kagura.Game
             {
                 if (click.x >= 0) idx = relic.CardAt(click);
                 if (idx >= 0 && idx < relic.offers.Count) { Sfx.Play("select", -8f); Fx.ShakeAdd(3f); OnRelicChosen?.Invoke(idx); }
+            }
+            else if (shop.visible)
+            {
+                if (click.x >= 0) idx = shop.CardAt(click);
+                bool leave = idx == ShopView.LEAVE || (kb != null && (kb.escapeKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame));
+                if (leave) { OnShopLeave?.Invoke(); return; }
+                if (idx >= 0 && idx < shop.offers.Count) { Sfx.Play("select", -10f); OnShopBuy?.Invoke(idx); }
             }
         }
     }

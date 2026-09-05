@@ -106,5 +106,86 @@
     "name": "使い魔の分身",
     "mark": "双",
     "desc": "使い魔がもう 1 匹付いてくる"
+  },
+  {
+    "id": "r_s_neko",
+    "name": "招き猫",
+    "mark": "猫",
+    "desc": "両が落ちる確率 +50%",
+    "shop": true,
+    "rar": 1,
+    "price": 15
+  },
+  {
+    "id": "r_s_senryo",
+    "name": "千両箱",
+    "mark": "箱",
+    "desc": "波を越えるごとに +3 両",
+    "shop": true,
+    "rar": 1,
+    "price": 15
+  },
+  {
+    "id": "r_s_kushi",
+    "name": "巫女の櫛",
+    "mark": "櫛",
+    "desc": "詠唱の札を拾うと HP 5 回復",
+    "shop": true,
+    "rar": 1,
+    "price": 12
+  },
+  {
+    "id": "r_s_kitsune",
+    "name": "狐の面",
+    "mark": "狐",
+    "desc": "会心の威力 +40%",
+    "shop": true,
+    "rar": 2,
+    "price": 28
+  },
+  {
+    "id": "r_s_hannya",
+    "name": "般若の面",
+    "mark": "般",
+    "desc": "HP 30% 以下で威力 +30%",
+    "shop": true,
+    "rar": 2,
+    "price": 28
+  },
+  {
+    "id": "r_s_tengu",
+    "name": "天狗の羽団扇",
+    "mark": "天",
+    "desc": "疾走中に触れた敵弾を消す",
+    "shop": true,
+    "rar": 2,
+    "price": 26
+  },
+  {
+    "id": "r_s_ryu",
+    "name": "龍の鱗",
+    "mark": "龍",
+    "desc": "受けるダメージ -12%",
+    "shop": true,
+    "rar": 3,
+    "price": 45
+  },
+  {
+    "id": "r_s_hidama",
+    "name": "火の玉の壺",
+    "mark": "火",
+    "desc": "敵を倒すと 15% で爆発が起きる",
+    "shop": true,
+    "rar": 3,
+    "price": 42
+  },
+  {
+    "id": "r_s_toki",
+    "name": "時の砂",
+    "mark": "時",
+    "desc": "被弾すると 1.5 秒のあいだ敵と敵弾が遅くなる",
+    "shop": true,
+    "rar": 3,
+    "price": 48
   }
 ]

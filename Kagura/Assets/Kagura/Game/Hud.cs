@@ -250,6 +250,18 @@ namespace Kagura.Game
             v.DrawColoredPolygon(new[] { new Vector2(cx + 46, 27), new Vector2(cx + 50, 23), new Vector2(cx + 54, 27), new Vector2(cx + 50, 31) }, Gd.WithA(UiKit.GOLD, 0.9f));
             UiKit.Txt(layer, WorldText.Face.Body, new Vector2(0, 22), "功徳", 10, new Color(0.85f, 0.8f, 0.95f, 0.85f), TextAnchor.MiddleRight, Gd.W - 18);
             UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, 42), g.Score.ToString(), 18, new Color(1, 1, 1, 0.95f), TextAnchor.MiddleRight, Gd.W - 18);
+            var pl = g.player;
+            if (pl != null)
+            {
+                UiKit.Coin(v, new Vector2(Gd.W - 62f, 62f), 6f);
+                UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, 68), pl.ryo + " 両", 14, Gd.WithA(Gd.C_GOLD, 0.95f), TextAnchor.MiddleRight, Gd.W - 18);
+                // 市の札の効き目（残り秒）
+                float by = 150f;
+                void Buff(string name, float sec) { if (sec <= 0f) return; UiKit.Txt(layer, WorldText.Face.Body, new Vector2(0, by), $"{name} {Mathf.CeilToInt(sec)}", 11, Gd.WithA(Gd.C_GOLD, 0.9f), TextAnchor.MiddleRight, Gd.W - 14); by += 15f; }
+                Buff("御神酒", pl.buffDmgT); Buff("早矢", pl.buffRateT); Buff("韋駄天", pl.buffSpeedT);
+                if (g.stall != null && g.stall.Active)
+                    UiKit.Txt(layer, WorldText.Face.Display, new Vector2(g.stall.LabelPos.x - 14f, g.stall.LabelPos.y + 7f), "市", 16, Gd.C_INK, TextAnchor.MiddleCenter, 28f, false);
+            }
         }
 
         private void DrawBoss(GameManager g)

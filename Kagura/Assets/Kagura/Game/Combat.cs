@@ -364,6 +364,15 @@ namespace Kagura.Game
             }
             if (Has("suku_u9") && en.st.hangoverStacks > 0 && Random.value < Val("suku_u9") * 0.01f)
                 GameManager.I.SpawnZone(en.pos, "fog", 52f, 2.2f, 0f, new Color(0.62f, 1f, 0.55f));
+            if (p.HasRelic("r_s_hidama") && Random.value < 0.15f)
+            {   // 火の玉の壺：倒した敵が爆ぜて周りを焼く
+                var fc = new Color(1f, 0.55f, 0.25f);
+                Fx.Burst(en.pos, fc, 14, 240f, 4f, 0.45f); Fx.RingFx(en.pos, fc, 10f, 90f, 0.3f, 4f); Fx.Puff(en.pos, 10f, 80f, Gd.WithA(fc, 0.8f), 0.3f);
+                Sfx.Play("boom", -10f, 1.1f, 0.1f); Fx.ShakeAdd(3f);
+                float bd = p.BaseDamage() * 1.5f;
+                foreach (var o in GameManager.I.EnemyList().ToArray())
+                    if (o != en && o.Active && Vector2.Distance(o.pos, en.pos) <= 90f) Hit(o, bd, o.pos, new HitOpts { tag = "burst", kami = "", dir = Vector2.down });
+            }
         }
 
         public static void OnErase(Bullet b) { if (b.kami == "susa") Fx.Sparks(b.pos, Vector2.up, new Color(0.35f, 0.82f, 0.95f), 2, 160f); }

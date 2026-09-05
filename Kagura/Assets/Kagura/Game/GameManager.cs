@@ -7,7 +7,7 @@ using Kagura.Core;
 namespace Kagura.Game
 {
     public enum GameState { Title, Play, Choice, Pause, Over, Clear }
-    public enum ChoiceKind { None, Story, Familiar, Kami, Boon, Miki, Relic }
+    public enum ChoiceKind { None, Story, Familiar, Kami, Boon, Miki, Relic, Shop }
 
     /// <summary>
     /// ゲーム全体の進行（Godot 版 game.gd の移植）。座標は Godot px（横 640、上が 0）。
@@ -42,6 +42,10 @@ namespace Kagura.Game
         public string forceKami = "";
         public string forceBoon = "";
         public bool fullCall;       // ?fullcall：神招きを常に満タンにする（演出の確認用）
+        public bool forceShop;      // ?shop：毎波のあとに市を出し、両を多めに持って始める（検証用）
+        public ShopStall stall;
+        private readonly HashSet<int> _shopStages = new HashSet<int>();
+        private readonly List<ShopOffer> _shop = new List<ShopOffer>();
         private bool _userActive;   // 一度でもタップ・キー操作があった（ブラウザの音の解禁）
         public bool enemySprites = true;
 
@@ -127,6 +131,9 @@ namespace Kagura.Game
             ui.OnMikiChosen = OnMikiChosen;
             ui.OnRelicChosen = OnRelicChosen;
             ui.OnStoryDone = OnStoryDone;
+            ui.OnShopBuy = OnShopBuy;
+            ui.OnShopLeave = OnShopLeave;
+            stall = ShopStall.Create(transform);
             PostFx.Setup(_cam);
             string url = Application.absoluteURL ?? "";
             if (url.Contains("autoplay") || url.Contains("cleartest"))
@@ -142,6 +149,7 @@ namespace Kagura.Game
                 var bm = System.Text.RegularExpressions.Regex.Match(url, @"boon=(\w+)");
                 if (bm.Success) forceBoon = bm.Groups[1].Value;
                 fullCall = url.Contains("fullcall");
+                forceShop = url.Contains("shop");
             }
             enemySprites = !url.Contains("vector");   // ?vector で従来のベクター描画に戻せる
             ShowTitle();
@@ -200,7 +208,8 @@ namespace Kagura.Game
             runId = (int)(System.DateTimeOffset.UtcNow.ToUnixTimeSeconds() % int.MaxValue);
             runKey = runId + "-" + Random.Range(0, 1000000).ToString("000000");
             _waveActive = false; _between = 1.2f; _plan.Clear(); _planI = 0; _bossReward = false; _hitstop = 0f; _freezeT = 0f;
-            _tutStep = 0; _tutT = 0f; _seenItems.Clear();
+            _tutStep = 0; _tutT = 0f; _seenItems.Clear(); _shopStages.Clear(); if (stall != null) stall.Despawn();
+            if (forceShop) player.ryo = 80;
             stars.stage = 1; stars.speed = 1f; stars.tint = new Color(0.45f, 0.30f, 0.80f);
             overlay.visible = false;
             ui.HideCards();
@@ -341,7 +350,7 @@ namespace Kagura.Game
                     pauseMenu.HandleInput(tap, tapPx, held, heldPx, kb);
                     return;
                 case GameState.Choice:
-                    if (kb != null && kb.escapeKey.wasPressedThisFrame && !ui.confirm.visible) { ShowTitle(); return; }
+                    if (kb != null && kb.escapeKey.wasPressedThisFrame && !ui.confirm.visible && !ui.shop.visible) { ShowTitle(); return; }
                     return;
             }
             if (kb != null && (kb.pKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame)) { TogglePause(); return; }
@@ -425,6 +434,11 @@ namespace Kagura.Game
                     if (pk.Active && (pk.pos - pp).sqrMagnitude <= rr * rr) Collect(pk);
                 }
             foreach (var z in _zones) if (z.Active) z.Tick(dt, this);
+            if (stall != null && stall.Active)
+            {
+                stall.Tick(dt);
+                if (stall.Active && Vector2.Distance(stall.pos, pp) <= ShopStall.R + player.radius) { stall.Despawn(); OpenShop(); return; }
+            }
             if (boss != null && boss.Active) boss.Tick(dt, this);
             for (int ei = 0; ei < _enemies.Count; ei++) { var e = _enemies[ei]; if (e.Active) e.Tick(dt, this); }
             for (int bi = 0; bi < _pBullets.Count; bi++) { var b = _pBullets[bi]; if (b.Active) b.Tick(dt); }
@@ -461,6 +475,7 @@ namespace Kagura.Game
                     if (SegDist2(b.prevPos, b.pos, pp) <= r * r)
                     {
                         b.Vanish("player-hit");   // 無敵中でも弾は消える（Godot と同じ）
+                        if (player.dashT > 0f && player.HasRelic("r_s_tengu")) { Fx.Sparks(b.pos, Vector2.down, new Color(0.9f, 0.85f, 1f), 3, 200f); continue; }
                         if (player.iframe > 0f || player.dashT > 0f) continue;
                         player.TakeDamage(b.damage, b.source);
                         if (!player.alive) break;
@@ -571,8 +586,10 @@ namespace Kagura.Game
                 if (player.HasRelic("r_heal_wave")) player.Heal(player.maxHp * 0.08f, true);
                 Score += 50 * Wave;
             }
+            if (player != null && player.alive && player.HasRelic("r_s_senryo")) { player.ryo += 3; Fx.Number(player.pos + new Vector2(0, -60), "+3 両", Gd.C_GOLD, 14f); }
             if (_bossReward) { _bossReward = false; OpenRelics(); return; }
             hud.Banner($"第 {Wave} 波　祓い清め", $"功徳 +{50 * Wave}　HP +6", Gd.C_HP);
+            MaybeSpawnShop();
             Sfx.Play("suzu", -10f);
         }
 
@@ -714,6 +731,10 @@ namespace Kagura.Game
                 case Pickup.ORB:
                     player.PickOrb();
                     break;
+                case Pickup.COIN:
+                    player.ryo += Mathf.RoundToInt(pk.value);
+                    Sfx.Play("pickup", -16f, Gd.Rand(1.4f, 1.7f), 0.03f);
+                    break;
             }
             Fx.Burst(pk.pos, pk.ColorOf(), 5, 110f, 2.5f, 0.28f, true);
             pk.Despawn();
@@ -745,6 +766,8 @@ namespace Kagura.Game
             if (player != null && player.Has("inari_u8") && Random.value < player.Val("inari_u8") * 0.01f)
                 Drop(pos + new Vector2(Gd.Rand(-14, 14), Gd.Rand(-8, 8)), Pickup.XP, xpTotal * 0.6f);
             if (Random.value < (player != null && player.HasRelic("r_heal_drop") ? 0.09f : 0.045f)) { Drop(pos, Pickup.HEAL, 12f); ItemHint(Pickup.HEAL); }
+            float cc = 0.28f * (player != null && player.HasRelic("r_s_neko") ? 1.5f : 1f);
+            if (Random.value < cc) Drop(pos + new Vector2(Gd.Rand(-10, 10), Gd.Rand(-6, 6)), Pickup.COIN, 1 + Wave / 8 + (Random.value < 0.15f ? 2 : 0));
         }
 
         private void OnBossKilled(Boss b)
@@ -770,6 +793,7 @@ namespace Kagura.Game
             hud.Banner("討伐", b.bossName + "　+" + (int)b.score, new Color(1, 0.85f, 0.4f));
             for (int i = 0; i < 10; i++) DropLoot(b.pos + new Vector2(Gd.Rand(-70, 70), Gd.Rand(-70, 70)), b.xp / 10f);
             for (int i = 0; i < 2; i++) Drop(b.pos + new Vector2(Gd.Rand(-50, 50), 0), Pickup.HEAL, 18f);
+            for (int i = 0; i < 5; i++) Drop(b.pos + new Vector2(Gd.Rand(-60, 60), Gd.Rand(-30, 30)), Pickup.COIN, 4);
             DropOrb(b.pos);
         }
 
@@ -889,6 +913,64 @@ namespace Kagura.Game
             if (choice != ChoiceKind.Miki) return;
             Sfx.Play("suzu", -8f, 1.2f);
             LevelPickDone(id);
+        }
+
+        // ---------- 市 ----------
+
+        /// <summary>波を越えたあと、段ごとに 1 回だけ稀に屋台が流れてくる。ボスの 2 つ前の波までに出なければそこで出す。</summary>
+        private void MaybeSpawnShop()
+        {
+            if (player == null || !player.alive || Stages.IsBossWave(Wave + 1)) return;
+            int stg = Stages.StageOf(Wave);
+            bool must = (Wave % Stages.StageLen) == Stages.StageLen - 2;
+            if (!forceShop && (_shopStages.Contains(stg) || Wave < 2 || (!must && Random.value > 0.28f))) return;
+            _shopStages.Add(stg);
+            stall.Spawn(new Vector2(Gd.Rand(140f, Gd.W - 140f), -70f));
+            hud.Banner("市が来た", "触れると入れる", Gd.C_GOLD);
+            Sfx.Play("suzu", -6f, 1.4f);
+        }
+
+        private void OpenShop()
+        {
+            PauseForChoice(ChoiceKind.Shop);
+            _shop.Clear();
+            var items = Data.ShopItems;
+            var heals = items.Where(i => i.kind == "heal" || i.kind == "maxhp").ToList();
+            var timed = items.Where(i => i.kind != "heal" && i.kind != "maxhp").ToList();
+            if (heals.Count > 0) { var it = heals[Random.Range(0, heals.Count)]; _shop.Add(new ShopOffer { type = "item", item = it, price = it.price }); }
+            if (timed.Count > 0) { var it = timed[Random.Range(0, timed.Count)]; _shop.Add(new ShopOffer { type = "item", item = it, price = it.price }); }
+            var pool = Data.Relics.Where(r => r.shop && !player.relics.Contains(r.id)).ToList();
+            for (int k = 0; k < 3 && pool.Count > 0; k++)
+            {
+                // 格ごとの重み：並 55 / 稀 33 / 秘 12
+                float total = 0f; foreach (var r in pool) total += RarWeight(r.rar);
+                float roll = Random.value * total; RelicDef pick = pool[pool.Count - 1];
+                foreach (var r in pool) { roll -= RarWeight(r.rar); if (roll <= 0f) { pick = r; break; } }
+                pool.Remove(pick);
+                _shop.Add(new ShopOffer { type = "relic", relic = pick, price = pick.price });
+            }
+            Sfx.Play("suzu", -6f, 1.2f);
+            ui.ShowShop(_shop, player.ryo);
+        }
+        private static float RarWeight(int rar) => rar >= 3 ? 0.12f : rar == 2 ? 0.33f : 0.55f;
+
+        private void OnShopBuy(int idx)
+        {
+            if (choice != ChoiceKind.Shop || idx < 0 || idx >= _shop.Count) return;
+            var o = _shop[idx];
+            if (o.sold || player.ryo < o.price) { Sfx.Play("clap", -16f, 0.7f); return; }
+            player.ryo -= o.price; o.sold = true;
+            if (o.type == "item") player.UseShopItem(o.item);
+            else { player.relics.Add(o.relic.id); player.OnBoonsChanged(); Sfx.Play("levelup", -6f, 1.1f); }
+            ui.shop.ryo = player.ryo;
+            Fx.Flash(Gd.WithA(Gd.C_GOLD, 0.25f), 0.3f);
+        }
+
+        private void OnShopLeave()
+        {
+            if (choice != ChoiceKind.Shop) return;
+            Sfx.Play("clap", -12f);
+            CloseChoice();
         }
 
         private void OpenRelics()

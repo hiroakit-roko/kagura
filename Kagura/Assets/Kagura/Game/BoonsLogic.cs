@@ -148,7 +148,7 @@ namespace Kagura.Game
 
         public static List<RelicDef> OfferRelics(Player p, int n = 3)
         {
-            var pool = Data.Relics.Where(r => !p.relics.Contains(r.id)).ToList();
+            var pool = Data.Relics.Where(r => !r.shop && !p.relics.Contains(r.id)).ToList();
             Shuffle(pool);
             return pool.Take(n).ToList();
         }

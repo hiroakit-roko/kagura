@@ -11,6 +11,7 @@ namespace Kagura.Game
         private static List<KamiDef> _kami;
         private static List<BoonDef> _boons;
         private static List<RelicDef> _relics;
+        private static List<ShopItemDef> _shopItems;
         private static List<CurseDef> _curses;
         private static readonly Dictionary<string, KamiDef> _kamiById = new Dictionary<string, KamiDef>();
         private static readonly Dictionary<string, BoonDef> _boonById = new Dictionary<string, BoonDef>();
@@ -21,6 +22,7 @@ namespace Kagura.Game
         public static List<KamiDef> Kami { get { Load(); return _kami; } }
         public static List<BoonDef> Boons { get { Load(); return _boons; } }
         public static List<RelicDef> Relics { get { Load(); return _relics; } }
+        public static List<ShopItemDef> ShopItems { get { Load(); return _shopItems; } }
         public static List<CurseDef> Curses { get { Load(); return _curses; } }
 
         private static T Read<T>(string name)
@@ -36,6 +38,7 @@ namespace Kagura.Game
             _kami = Read<List<KamiDef>>("kami") ?? new List<KamiDef>();
             _boons = Read<List<BoonDef>>("boons") ?? new List<BoonDef>();
             _relics = Read<List<RelicDef>>("relics") ?? new List<RelicDef>();
+            _shopItems = Read<List<ShopItemDef>>("shop_items") ?? new List<ShopItemDef>();
             _curses = Read<List<CurseDef>>("curses") ?? new List<CurseDef>();
             foreach (var k in _kami) _kamiById[k.id] = k;
             foreach (var b in _boons) _boonById[b.id] = b;
