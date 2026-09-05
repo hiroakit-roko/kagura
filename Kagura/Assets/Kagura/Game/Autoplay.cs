@@ -43,7 +43,13 @@ namespace Kagura.Game
                             if (ui.confirm.visible) { ui.confirm.Hide(); ui.confirm.onOk?.Invoke(); }
                             else if (ui.kami.ids.Count > 0) { ui.kami.Hide(); ui.AskContract(ui.kami.ids[0], ui.kami.role, () => ui.OnKamiChosen?.Invoke(ui.kami.ids[0])); _stateT = 0.8f; }
                             break;
-                        case ChoiceKind.Boon: if (ui.boons.offers.Count > 0) ui.OnBoonChosen?.Invoke(0); break;
+                        case ChoiceKind.Boon:
+                            {
+                                int pick = -1;
+                                for (int i = 0; i < ui.boons.offers.Count; i++) if (ui.boons.Selectable(i) && BoonsLogic.CanTake(p, ui.boons.offers[i])) { pick = i; break; }
+                                if (pick >= 0) ui.OnBoonChosen?.Invoke(pick);
+                                break;
+                            }
                         case ChoiceKind.Miki: if (ui.miki.ids.Count > 0) ui.OnMikiChosen?.Invoke(ui.miki.ids[0]); break;
                         case ChoiceKind.Relic: if (ui.relic.offers.Count > 0) ui.OnRelicChosen?.Invoke(0); break;
                         case ChoiceKind.Shop:

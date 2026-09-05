@@ -47,7 +47,7 @@ namespace Kagura.Game
             if (sp != null)
             {
                 _spr.sprite = sp;
-                float sc = R * 2.6f / Mathf.Max(sp.rect.height, 1f);
+                float sc = R * 2.0f / Mathf.Max(sp.rect.height, 1f);
                 _spr.transform.localScale = new Vector3(sc, sc, 1f);
             }
             transform.position = Gd.ToWorld(pos);

@@ -916,14 +916,14 @@ namespace Kagura.Game
             string kid = kamiId != "" ? kamiId : BoonsLogic.PickKami(player);
             if (kid == "") { player.pendingLevels = Mathf.Max(0, player.pendingLevels - 1); CloseChoice(); return; }
             _offerKami = kid;
-            _offers = BoonsLogic.MakeOffer(player, kid, 3, minRar);
+            _offers = BoonsLogic.MakeOfferSplit(player, kid, minRar);
             if (forceBoon != "" && !player.Has(forceBoon))
-            {   // ?boon=xxx：その恩恵を先頭に（検証用。autoplay は先頭を選ぶ）
-                int fi = _offers.FindIndex(o => o.Id == forceBoon);
-                if (fi > 0) { var o = _offers[fi]; _offers.RemoveAt(fi); _offers.Insert(0, o); }
-                else if (fi < 0) { var def = Data.Boon(forceBoon); if (def != null && def.kami == kid) _offers.Insert(0, new Offer { type = "boon", boon = def, kami = kid, rar = Mathf.Max(minRar, 1) }); }
+            {   // ?boon=xxx：その恩恵を上段の先頭に（検証用。autoplay は先頭を選ぶ）
+                int fi = _offers.FindIndex(o => o != null && o.Id == forceBoon);
+                if (fi > 0 && fi < 3) { var o = _offers[fi]; _offers.RemoveAt(fi); _offers.Insert(0, o); }
+                else if (fi < 0) { var def = Data.Boon(forceBoon); if (def != null && def.kami == kid) { _offers.RemoveAt(2); _offers.Insert(0, new Offer { type = "upgrade", boon = def, kami = kid, rar = def.tier ?? Mathf.Max(minRar, 1) }); } }
             }
-            if (_offers.Count == 0) { player.pendingLevels = Mathf.Max(0, player.pendingLevels - 1); CloseChoice(); return; }
+            if (!_offers.Any(o => BoonsLogic.CanTake(player, o))) { player.pendingLevels = Mathf.Max(0, player.pendingLevels - 1); CloseChoice(); return; }
             Sfx.Play("levelup", -8f);
             ui.ShowBoons(kid, _offers, _rerolls, "神との邂逅");
         }
@@ -933,7 +933,7 @@ namespace Kagura.Game
             if (choice != ChoiceKind.Boon || _rerolls <= 0) return;
             _rerolls--;
             Sfx.Play("clap", -6f);
-            _offers = BoonsLogic.MakeOffer(player, _offerKami, 3, _offerMinRar);
+            _offers = BoonsLogic.MakeOfferSplit(player, _offerKami, _offerMinRar);
             ui.ShowBoons(_offerKami, _offers, _rerolls, ui.boons.title);
         }
 
@@ -941,6 +941,7 @@ namespace Kagura.Game
         {
             if (choice != ChoiceKind.Boon || idx < 0 || idx >= _offers.Count) return;
             var o = _offers[idx];
+            if (!BoonsLogic.CanTake(player, o)) { Sfx.Play("clap", -16f, 0.7f); return; }
             BoonsLogic.Take(player, o);
             if (o.type == "curse") { hud.Banner(o.curse.name, o.curse.desc, new Color(1, 0.4f, 0.5f)); Sfx.Play("doom", -8f, 0.8f); }
             else
@@ -957,7 +958,7 @@ namespace Kagura.Game
         /// <summary>レベルアップ：強化する神を選ぶ → その神の神格が 1 上がる → その神の能力 3 枚を抽選。</summary>
         private void OpenLevelPick()
         {
-            if (player.gods.Count <= 1) { LevelPickDone(player.MainGod()); return; }
+            if (player.gods.Count == 0) { LevelPickDone(""); return; }
             PauseForChoice(ChoiceKind.Miki);
             Sfx.Play("levelup", -8f);
             ui.ShowMiki(new List<string>(player.gods));

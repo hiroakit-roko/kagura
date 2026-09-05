@@ -83,6 +83,8 @@ namespace Kagura.Game
         public static List<BoonDef> DuosFor(Player p, string kamiId)
         {
             var outL = new List<BoonDef>();
+            // 双神は主神の恩恵として 1 つだけ（似た効果が並ばないように）
+            if (kamiId != p.MainGod() || p.boons.Keys.Any(id => id.StartsWith("duo_"))) return outL;
             foreach (var b in Data.Boons)
             {
                 if (string.IsNullOrEmpty(b.kami2) || p.boons.ContainsKey(b.id)) continue;
@@ -126,6 +128,43 @@ namespace Kagura.Game
             nLv = Mathf.Min(lvs.Count, remaining - nNew);
             for (int i = 0; i < nNew; i++) { var b = DrawNew(p, news, kamiId); outL.Add(new Offer { type = "upgrade", boon = b, rar = b.tier ?? 0, kami = kamiId }); }
             for (int i = 0; i < nLv; i++) { var b = lvs[i]; outL.Add(new Offer { type = "upgrade", boon = b, rar = p.boons[b.id].rar, kami = kamiId }); }
+        }
+
+        /// <summary>
+        /// 恩恵の画面用：上段に新しい候補 3（伝説・双神・禍が混ざる）、下段にその神の能力 3 枠（持っている順、空は null）。
+        /// 枠がいっぱいでも上段には候補を出す（選べないが見える）。返る一覧は 6 つ。
+        /// </summary>
+        public static List<Offer> MakeOfferSplit(Player p, string kamiId, int minRar = 0)
+        {
+            var top = new List<Offer>();
+            var leg = LegendaryFor(p, kamiId);
+            var duos = DuosFor(p, kamiId);
+            if (leg != null && Random.value < 0.5f) top.Add(new Offer { type = "legendary", boon = leg, rar = (int)Rarity.Legendary, kami = kamiId });
+            else if (duos.Count > 0 && Random.value < 0.6f) { var d = duos[Random.Range(0, duos.Count)]; top.Add(new Offer { type = "duo", boon = d, rar = (int)Rarity.Duo, kami = d.kami }); }
+            else if (GameManager.I.Wave >= 4 && Random.value < 0.14f)
+            {
+                var avail = Data.Curses.Where(c => !p.boons.ContainsKey(c.id)).ToList();
+                if (avail.Count > 0) top.Add(new Offer { type = "curse", curse = avail[Random.Range(0, avail.Count)], rar = (int)Rarity.Heroic, kami = kamiId });
+            }
+            var news = UpgradesOf(kamiId).Where(b => !p.boons.ContainsKey(b.id)).ToList();
+            if (minRar > 0) { var hi = news.Where(b => (b.tier ?? 0) >= minRar).ToList(); if (hi.Count > 0) news = hi; }
+            while (top.Count < 3 && news.Count > 0) { var b = DrawNew(p, news, kamiId); top.Add(new Offer { type = "upgrade", boon = b, rar = b.tier ?? 0, kami = kamiId }); }
+            while (top.Count < 3) top.Add(null);
+            var owned = OwnedOf(p, kamiId);
+            var bottom = new List<Offer>();
+            foreach (var b in owned) bottom.Add(new Offer { type = "upgrade", boon = b, rar = p.boons[b.id].rar, kami = kamiId });
+            while (bottom.Count < MAX_PER_KAMI) bottom.Add(null);
+            top.AddRange(bottom.Take(MAX_PER_KAMI));
+            return top;
+        }
+
+        /// <summary>その候補をいま受け取れるか（新しい能力は枠が空いているとき、強化は上限まで）。</summary>
+        public static bool CanTake(Player p, Offer o)
+        {
+            if (o == null) return false;
+            if (o.type == "curse" || o.type == "legendary" || o.type == "duo") return true;
+            if (p.boons.TryGetValue(o.boon.id, out var cur)) return cur.lv < o.boon.MaxLevel;
+            return OwnedOf(p, o.boon.kami).Count < MAX_PER_KAMI;
         }
 
         public static void Take(Player p, Offer o)
