@@ -126,9 +126,13 @@ namespace Kagura.Game
             int k = i % per;
             float sx = (k % _cols) * _fw, sy = (k / _cols) * _fh;
             DrawCoverPart(tex, sx, sy, _fw, _fh, 1f);
-            // 最後のコマに着いたら、同じ構図の高解像度の絵へ溶かし込む
+            // 最後のコマに着いたら、同じ構図の高解像度の絵へ溶かし込む。ひと呼吸だけ画面をうっすら白くして、切り替わりを馴染ませる
             if (i >= _animeN - 1 && _final != null)
-                DrawCoverPart(_final, 0, 0, _final.width, _final.height, Mathf.Clamp01(_afterT / 0.6f));
+            {
+                DrawCoverPart(_final, 0, 0, _final.width, _final.height, Mathf.Clamp01((_afterT - 0.15f) / 0.5f));
+                float wk = _afterT < 0.25f ? _afterT / 0.25f : Mathf.Max(0f, 1f - (_afterT - 0.25f) / 0.7f);
+                if (wk > 0f) _layer.front.DrawRect(new Rect(0, 0, Gd.W, Gd.H), new Color(1f, 0.97f, 0.92f, 0.7f * wk));
+            }
         }
 
         /// <summary>テクスチャの一部（左上 sx,sy・大きさ fw×fh）を画面いっぱいに敷く（cover、顔のある上寄せ）。</summary>

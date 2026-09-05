@@ -780,9 +780,8 @@ namespace Kagura.Game
             {
                 comboTier = tier;
                 var col = ComboColor;
-                hud.ComboCutin(ComboName, col, tier);
-                Fx.Flash(Gd.WithA(col, 0.18f + 0.05f * tier), 0.3f);
-                if (player != null) { Fx.RingFx(player.pos, col, 20f, 220f + tier * 60f, 0.5f, 5f); Fx.Rays(player.pos, col, 10 + tier * 4, 30f, 360f + tier * 60f, 0.45f); }
+                Fx.Flash(Gd.WithA(col, 0.08f + 0.03f * tier), 0.25f);
+                if (player != null) { Fx.RingFx(player.pos, col, 20f, 160f + tier * 40f, 0.45f, 4f); Fx.Rays(player.pos, col, 8 + tier * 2, 24f, 150f + tier * 30f, 0.35f); }
                 switch (tier)
                 {
                     case 1: Sfx.Play("suzu", -8f, 1.3f); break;
@@ -796,21 +795,18 @@ namespace Kagura.Game
         /// <summary>コンボが途切れた：修羅より上なら締めの一声と音、功徳の上乗せ。</summary>
         private void ComboEnd()
         {
-            if (comboTier >= 3)
+            if (comboTier >= 1)
             {
-                int bonus = combo * 10 * comboTier;
+                int bonus = combo * (comboTier >= 3 ? 10 : 5) * comboTier;
                 Score += bonus;
-                hud.Small($"{ComboName}　{combo} 連　功徳 +{bonus}", ComboColor);
-                Sfx.Play("taiko", -5f, 0.75f); Sfx.Play("suzu", -10f, 0.9f);
-                if (player != null) { Fx.Burst(player.pos, ComboColor, 24, 300f, 4f, 0.6f); Fx.RingFx(player.pos, ComboColor, 30f, 320f, 0.6f, 6f); }
-                Fx.Flash(Gd.WithA(ComboColor, 0.2f), 0.4f);
-            }
-            else if (comboTier >= 1)
-            {
-                int bonus = combo * 5 * comboTier;
-                Score += bonus;
-                hud.Small($"{ComboName}　{combo} 連", ComboColor);
-                Sfx.Play("suzu", -14f, 0.9f);
+                hud.ComboCutin(ComboName, ComboColor, comboTier, $"{combo} 連　功徳 +{bonus}");
+                if (comboTier >= 3)
+                {
+                    Sfx.Play("taiko", -5f, 0.75f); Sfx.Play("suzu", -10f, 0.9f);
+                    if (player != null) { Fx.Burst(player.pos, ComboColor, 24, 300f, 4f, 0.6f); Fx.RingFx(player.pos, ComboColor, 30f, 320f, 0.6f, 6f); }
+                    Fx.Flash(Gd.WithA(ComboColor, 0.2f), 0.4f);
+                }
+                else { Sfx.Play("suzu", -10f, 0.9f); Sfx.Play("clap", -14f); }
             }
             combo = 0; comboTier = 0; comboT = 0f;
         }

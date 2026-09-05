@@ -13,7 +13,7 @@ namespace Kagura.Game
         public Color bannerCol = Color.white;
         public int bannerIcon = -1;
         public float bannerT, cutinT, callT, smallT, introT;
-        public float comboCutT; public string comboCutText = ""; public Color comboCutCol = Color.white; public int comboCutTier;
+        public float comboCutT; public string comboCutText = "", comboCutSub = ""; public Color comboCutCol = Color.white; public int comboCutTier;
         public string callKami = ""; public bool callGreater;
         public string cutinKey = ""; public Color cutinCol = Color.white; public float cutinLen = 1.6f;
         public string smallText = ""; public Color smallCol = Color.white;
@@ -36,8 +36,8 @@ namespace Kagura.Game
             bannerT = icon < 0 ? 2.4f : 3.2f;
         }
         public void Small(string text, Color col) { smallText = text; smallCol = col; smallT = 2.2f; }
-        /// <summary>コンボの段が上がった：大きな漢字を中央に。</summary>
-        public void ComboCutin(string text, Color col, int tier) { comboCutText = text; comboCutCol = col; comboCutTier = tier; comboCutT = 1.3f; }
+        /// <summary>コンボが途切れた：段の名を大きく、その下に連数と功徳を出して称える。</summary>
+        public void ComboCutin(string text, Color col, int tier, string subText = "") { comboCutText = text; comboCutSub = subText; comboCutCol = col; comboCutTier = tier; comboCutT = 1.8f; }
         public void Cutin(string key, Color col, float len = 1.6f) { cutinKey = key; cutinCol = col; cutinLen = len; cutinT = len; }
         public void CallCutin(string kami, bool greater) { callKami = kami; callGreater = greater; callT = CALL_T; }
         public void BossIntro(string name, string title, bool final, string key) { introName = name; introTitle = title; introFinal = final; introKey = key; introT = 3.2f; }
@@ -290,17 +290,18 @@ namespace Kagura.Game
             float y = 118f;
             float pulse = 1f + 0.08f * Mathf.Max(0f, 1f - (GameManager.COMBO_WINDOW - g.comboT) * 4f);   // 倒した瞬間だけ少し大きく
             string name = g.ComboName;
-            UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y), g.combo + " 連", 24f * pulse, Gd.WithA(col, 0.95f), TextAnchor.MiddleCenter, Gd.W);
-            if (name != "") UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + 20f), name, 14, Gd.WithA(col, 0.9f), TextAnchor.MiddleCenter, Gd.W);
+            UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y), g.combo + " 連" + (name != "" ? "　" + name : ""), 24f * pulse, Gd.WithA(col, 0.95f), TextAnchor.MiddleCenter, Gd.W);
+            if (g.comboTier > 0)
+                UiKit.Txt(layer, WorldText.Face.Body, new Vector2(0, y + 18f), $"落とし物 ×{g.ComboMult:0.00}　功徳 +{g.comboTier * 10}%", 11, Gd.WithA(col, 0.85f), TextAnchor.MiddleCenter, Gd.W);
             float w = 120f, k = Mathf.Clamp01(g.comboT / GameManager.COMBO_WINDOW);
-            v.DrawRect(new Rect(Gd.W * 0.5f - w * 0.5f, y + 28f, w, 3f), new Color(0, 0, 0, 0.5f));
-            v.DrawRect(new Rect(Gd.W * 0.5f - w * 0.5f, y + 28f, w * k, 3f), Gd.WithA(col, 0.9f));
+            v.DrawRect(new Rect(Gd.W * 0.5f - w * 0.5f, y + 27f, w, 3f), new Color(0, 0, 0, 0.5f));
+            v.DrawRect(new Rect(Gd.W * 0.5f - w * 0.5f, y + 27f, w * k, 3f), Gd.WithA(col, 0.9f));
         }
 
         private void DrawComboCutin()
         {
             var v = layer.front;
-            float k = comboCutT / 1.3f;                 // 1 → 0
+            float k = comboCutT / 1.8f;                 // 1 → 0
             float ain = Mathf.Clamp01((1f - k) * 6f);   // 出だし
             float a = ain * Mathf.Clamp01(k * 3f);       // 終わりに消える
             float sc = 1f + (1f - ain) * 0.6f;           // 大きく現れて締まる
@@ -317,6 +318,7 @@ namespace Kagura.Game
             }
             UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f), comboCutText, size, Gd.WithA(Color.white, a), TextAnchor.MiddleCenter, Gd.W);
             UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f + 2f), comboCutText, size, Gd.WithA(c, 0.55f * a), TextAnchor.MiddleCenter, Gd.W + 3f);
+            if (comboCutSub != "") UiKit.Txt(layer, WorldText.Face.Display, new Vector2(0, y + size * 0.36f + 30f), comboCutSub, 18, new Color(1, 1, 1, 0.95f * a), TextAnchor.MiddleCenter, Gd.W);
         }
 
         private void DrawBanner()
