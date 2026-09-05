@@ -65,7 +65,7 @@ namespace Kagura.Game
         public void Setup(string k, int w, Vector2 p)
         {
             kind = k; wave = w; pos = p; _lastPos = p; t = 0f; fireT = 0f; flash = 0f; state = 0; _stateT = 0f; _spawnIn = 0.35f;
-            kb = Vector2.zero; _kbHitCd = 0f; _ruptureAcc = 0f; _hangT = 0f; lastTag = "";
+            kb = Vector2.zero; _kbHitCd = 0f; _ruptureAcc = 0f; _hangT = 0f; lastTag = ""; _chillFrac = 0f;
             st.Clear();
             _phase = Random.value * Gd.TAU;
             _dir = Random.value < 0.5f ? 1f : -1f;
@@ -202,8 +202,16 @@ namespace Kagura.Game
             st.hangoverT = 4f;
             st.hangoverDps = Mathf.Max(st.hangoverDps, dps);
         }
+        private float _chillFrac;   // ボス：冷気は半分の速さで溜まる（端数を持ち越す）
         public void AddChill(int stacks)
         {
+            if (isBoss)
+            {
+                // ボス戦では冷気の効きを半減：段数が半分ずつしか溜まらないので、鈍化も砕けの頻度も半分になる
+                _chillFrac += stacks * 0.5f;
+                stacks = Mathf.FloorToInt(_chillFrac); _chillFrac -= stacks;
+                if (stacks <= 0) { st.chillT = 5f; return; }
+            }
             st.chillStacks += stacks; st.chillT = 5f;
             if (st.chillStacks >= Combat.CHILL_MAX) { st.chillStacks = 0; Combat.Shatter(this); }
         }
