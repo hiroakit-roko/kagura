@@ -100,13 +100,16 @@ namespace Kagura.Game
 
         // ---------- 題目 ----------
 
+        private const float BlockX = 56f;
+        private static float BlockW => Gd.W - BlockX * 2f;
+
         public Rect MenuRect(int i)
         {
-            float w = Gd.W - 140f;
+            // 記録表と同じ幅で揃える（BlockX / BlockW）
             float h = i == 0 ? 58f : 48f;
             float y = Gd.H - 62f - 48f - 48f - 58f - 12f * 2f;
             for (int j = 0; j < i; j++) y += (j == 0 ? 58f : 48f) + 12f;
-            return new Rect(70f, y, w, h);
+            return new Rect(BlockX, y, BlockW, h);
         }
 
         public int MenuAt(Vector2 px)
@@ -210,13 +213,12 @@ namespace Kagura.Game
             var rows = Records.Entries;
             int cnt3 = Mathf.Min(rows.Count, 3);
             float rh = 26f + 20f * Mathf.Max(cnt3, 1);
-            float ry = MenuRect(0).yMin - rh - 34f;
+            float ry = MenuRect(0).yMin - rh - 24f;
             DrawRecords(ry, 3, -1, 0.95f * ma);
             if (Records.Best.clears > 0)
                 UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, ry - 8f), $"踏破 {Records.Best.clears} 回　最高功徳 {Records.Best.score}", 11, Gd.WithA(Gd.C_GOLD, 0.9f * ma), TextAnchor.MiddleCenter, Gd.W);
             string[] labels = { "はじめる", "記録を見る", Records.PlayerName.Trim() == "" ? "名を刻む" : $"名を変える（{Records.DisplayName()}）" };
             string[] keys = { "Enter", "R", "N" };
-            float blink = 0.75f + 0.25f * Mathf.Sin(_t * 4f);
             for (int i = 0; i < 3; i++)
             {
                 var r = MenuRect(i);
@@ -224,9 +226,9 @@ namespace Kagura.Game
                 Color col = main ? Gd.C_GOLD : new Color(0.8f, 0.8f, 0.95f);
                 v.DrawRect(UiKit.Grow(r, 3f), new Color(0, 0, 0, 0.45f * ma));
                 v.DrawRect(r, main ? new Color(0.16f, 0.11f, 0.08f, 0.95f * ma) : new Color(0.09f, 0.06f, 0.14f, 0.92f * ma));
-                v.DrawRect(r, Gd.WithA(col, (main ? blink : 0.55f) * ma), false, main ? 2f : 1.2f);
+                v.DrawRect(r, Gd.WithA(col, (main ? 0.85f : 0.55f) * ma), false, 1.2f);
                 foreach (float cx in new[] { r.xMin + 6f, r.xMax - 6f }) v.DrawCircle(new Vector2(cx, r.center.y), 2f, Gd.WithA(col, 0.9f * ma));
-                UiKit.Txt(l, WorldText.Face.Display, new Vector2(r.xMin, r.center.y + 9f), labels[i], main ? 24 : 19, main ? new Color(1, 1, 1, ma) : Gd.WithA(col, 0.95f * ma), TextAnchor.MiddleCenter, r.width);
+                UiKit.Txt(l, WorldText.Face.Display, new Vector2(r.xMin, r.center.y + 9f), labels[i], main ? 24 : 19, main ? Gd.WithA(Gd.C_GOLD, ma) : Gd.WithA(col, 0.95f * ma), TextAnchor.MiddleCenter, r.width);
                 if (!touch) UiKit.Txt(l, WorldText.Face.Body, new Vector2(r.xMax - 60f, r.center.y + 5f), keys[i], 11, new Color(1, 1, 1, 0.45f * ma), TextAnchor.MiddleRight, 48f);
             }
             UiKit.Txt(l, WorldText.Face.Body, new Vector2(0, Gd.H - 12), versionLabel, 10, new Color(1, 1, 1, 0.45f * ma), TextAnchor.MiddleRight, Gd.W - 12f);
@@ -238,7 +240,7 @@ namespace Kagura.Game
             var l = _layer; var v = l.front;
             var rows = Records.Entries;
             int cnt = Mathf.Min(rows.Count, n);
-            float x0 = 36f, w = Gd.W - 72f;
+            float x0 = BlockX, w = BlockW;
             float h = 26f + 20f * Mathf.Max(cnt, 1);
             UiKit.Panel(v, new Rect(x0, y0, w, h), Gd.C_GOLD, a, 0.78f);
             UiKit.Txt(l, WorldText.Face.Display, new Vector2(x0 + 12, y0 + 17), "この端末の記録", 12, Gd.WithA(Gd.C_GOLD, a));
