@@ -111,19 +111,19 @@
     "id": "r_s_neko",
     "name": "招き猫",
     "mark": "猫",
-    "desc": "両が落ちる確率 +50%",
+    "desc": "両が落ちる確率 +30%",
     "shop": true,
-    "rar": 1,
-    "price": 15
+    "rar": 2,
+    "price": 26
   },
   {
     "id": "r_s_senryo",
     "name": "千両箱",
     "mark": "箱",
-    "desc": "波を越えるごとに +3 両",
+    "desc": "波を越えるごとに +2 両",
     "shop": true,
-    "rar": 1,
-    "price": 15
+    "rar": 2,
+    "price": 26
   },
   {
     "id": "r_s_kushi",
@@ -187,5 +187,59 @@
     "shop": true,
     "rar": 3,
     "price": 48
+  },
+  {
+    "id": "r_s_hyouka",
+    "name": "氷華の簪",
+    "mark": "氷",
+    "desc": "冷気の鈍りが 1.5 倍",
+    "shop": true,
+    "rar": 2,
+    "price": 28
+  },
+  {
+    "id": "r_s_chishio",
+    "name": "血潮の刃",
+    "mark": "血",
+    "desc": "裂傷のダメージ +60%",
+    "shop": true,
+    "rar": 2,
+    "price": 28
+  },
+  {
+    "id": "r_s_hiakari",
+    "name": "日光の鏡",
+    "mark": "鏡",
+    "desc": "暴露した敵への威力 +15%",
+    "shop": true,
+    "rar": 2,
+    "price": 28
+  },
+  {
+    "id": "r_s_sakazuki",
+    "name": "酔いの盃",
+    "mark": "盃",
+    "desc": "酩酊の段の上限 +3",
+    "shop": true,
+    "rar": 2,
+    "price": 26
+  },
+  {
+    "id": "r_s_fam_kiba",
+    "name": "使い魔の牙",
+    "mark": "牙",
+    "desc": "使い魔の弾が敵を 1 体貫く",
+    "shop": true,
+    "rar": 2,
+    "price": 26
+  },
+  {
+    "id": "r_s_fam_mamori",
+    "name": "使い魔の御守",
+    "mark": "守",
+    "desc": "使い魔が敵を倒すと HP 2 回復",
+    "shop": true,
+    "rar": 3,
+    "price": 40
   }
 ]

@@ -772,7 +772,7 @@ namespace Kagura.Game
         private void ComboHit()
         {
             combo++;
-            comboT = COMBO_WINDOW + Mathf.Min(0.6f, combo * 0.02f);
+            comboT = COMBO_WINDOW + Mathf.Min(0.6f, combo * 0.02f) + (player != null ? player.Val("saru_u7") : 0f);   // 追い風：猶予が伸びる
             comboBest = Mathf.Max(comboBest, combo);
             int tier = 0;
             for (int i = 0; i < ComboNeed.Length; i++) if (combo >= ComboNeed[i]) tier = i + 1;

@@ -854,9 +854,9 @@
     "kami": "saru",
     "tier": 1,
     "name": "追い風",
-    "desc": "疾走してから 3 秒は刃のダメージ +{v}",
-    "base": 40.0,
-    "fmt": "pct",
+    "desc": "コンボの猶予 +{v}",
+    "base": 0.5,
+    "fmt": "sec",
     "maxlv": 3
   },
   {
@@ -883,11 +883,11 @@
     "id": "saru_u8",
     "kami": "saru",
     "tier": 2,
-    "name": "疾風の刃",
-    "desc": "疾走すると周囲へ風の刃を {v} 本放つ",
-    "base": 6.0,
-    "fmt": "num",
-    "maxlv": 2
+    "name": "風の勢い",
+    "desc": "コンボの段ごとに威力 +{v}",
+    "base": 5.0,
+    "fmt": "pct",
+    "maxlv": 3
   },
   {
     "id": "saru_leg",

@@ -134,7 +134,8 @@ namespace Kagura.Game
         public bool HasRelic(string id) => relics.Contains(id);
         public float HitScale() => Mathf.Clamp(1f - Val("saru_u9") * 0.01f - (HasRelic("r_small") ? 0.25f : 0f), 0.4f, 1f);
         public float BaseDamage() => 10f * (1f + (level - 1) * 0.03f) * (HasRelic("r_dmg") ? 1.10f : 1f) * dmgMult
-            * (buffDmgT > 0f ? 1.35f : 1f) * (HasRelic("r_s_hannya") && hp <= maxHp * 0.3f ? 1.3f : 1f);
+            * (buffDmgT > 0f ? 1.35f : 1f) * (HasRelic("r_s_hannya") && hp <= maxHp * 0.3f ? 1.3f : 1f)
+            * (1f + (GameManager.I != null ? GameManager.I.comboTier : 0) * Val("saru_u8") * 0.01f);   // 風の勢い：コンボの段ごとに威力
 
         public void SetFamiliar(string id)
         {
@@ -407,17 +408,6 @@ namespace Kagura.Game
             g.Hitstop(0.03f, 0.3f);
             dashBuffT = 3f;
             _dashHit.Clear();
-            if (Has("saru_u8"))
-            {
-                int n = Mathf.RoundToInt(Val("saru_u8"));
-                float d = BaseDamage() * 0.8f * KamiPower("saru");
-                for (int i = 0; i < n; i++)
-                {
-                    float a = Gd.TAU * i / n + Gd.Angle(dir);
-                    var b = g.SpawnPlayerBullet(pos + Gd.Dir(a) * 14f, Gd.Dir(a) * 820f, d, KamiColor("saru"), 4.5f, 11);
-                    b.kami = "saru"; b.tag = "wind"; b.critChance = CritChance(); b.pierce = 1;
-                }
-            }
         }
 
         // ---------- 残像 ----------

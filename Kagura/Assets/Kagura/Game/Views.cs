@@ -349,7 +349,7 @@ namespace Kagura.Game
         public List<RelicDef> offers = new List<RelicDef>();
         private const float CW = 190f, CH = 250f, CY = 300f;
         public RelicView(Transform parent) : base(parent, "relic") { }
-        public void Open(List<RelicDef> o) { offers = o; Show(); }
+        public void Open(List<RelicDef> o) { offers = o; Show(); RarityFx.Reveal(2); }
         public override int Count() => offers.Count;
         public override Rect RectOf(int i) => Row(i, offers.Count, CW, CH, CY);
 
@@ -367,6 +367,7 @@ namespace Kagura.Game
                 if (pop <= 0f) continue;
                 var rr = UiKit.Grow(r, (sel ? 3f : 0f) - (1f - pop) * 20f);
                 CardBg(rr, Gd.C_GOLD, sel, pop);
+                RarityFx.Frame(L, rr, Gd.C_GOLD, 2, t, pop);
                 var c = rr.position + new Vector2(rr.width * 0.5f, 74);
                 var tex = UiKit.Art("relic/" + o.id);
                 if (tex != null)

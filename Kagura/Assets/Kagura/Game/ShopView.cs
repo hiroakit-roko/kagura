@@ -27,7 +27,12 @@ namespace Kagura.Game
         public const int LEAVE = 99;
         public ShopView(Transform parent) : base(parent, "shop") { }
 
-        public void Open(List<ShopOffer> o, int money) { offers = o; ryo = money; Show(); }
+        public void Open(List<ShopOffer> o, int money)
+        {
+            offers = o; ryo = money; Show();
+            int best = 0; foreach (var x in o) if (x.type == "relic") best = Mathf.Max(best, x.relic.rar);
+            RarityFx.Reveal(best);   // 並 1 / 稀 2 / 秘 3
+        }
         public override int Count() => offers.Count;
         public override Rect RectOf(int i) => i < 2 ? Row(i, 2, IW, IH, IY, 16f) : Row(i - 2, 3, RW, RH, RY, 10f);
         public Rect LeaveRect => new Rect(Gd.W * 0.5f - 110f, RY + RH + 26f, 220f, 50f);
@@ -57,6 +62,7 @@ namespace Kagura.Game
                 Color col = o.type == "relic" ? RarColor(o.relic.rar) : Gd.C_GOLD;
                 var rr = UiKit.Grow(r, (sel ? 3f : 0f) - (1f - pop) * 20f);
                 CardBg(rr, col, sel, pop * dim);
+                if (o.type == "relic" && !o.sold) RarityFx.Frame(L, rr, col, o.relic.rar, t, pop * dim);
                 bool isItem = o.type == "item";
                 float artH = isItem ? 84f : 120f;
                 var tex = UiKit.Art((isItem ? "item/" : "relic/") + o.Id);

@@ -127,7 +127,7 @@ namespace Kagura.Game
             if (st.rupture > 0f)
             {
                 _ruptureAcc += Vector2.Distance(pos, _lastPos);
-                if (_ruptureAcc >= 24f) { _ruptureAcc -= 24f; Combat.StatusDamage(this, Combat.RuptureDmg(), "rupture"); }
+                if (_ruptureAcc >= 24f) { _ruptureAcc -= 24f; Combat.StatusDamage(this, Combat.RuptureDmg() * (g.player != null && g.player.HasRelic("r_s_chishio") ? 1.6f : 1f), "rupture"); }
             }
             _lastPos = pos;
             if (!Active) return;
@@ -162,7 +162,7 @@ namespace Kagura.Game
         public float FireMult()
         {
             float m = 1f;
-            if (st.chillStacks > 0) m *= 1f - Mathf.Min(0.1f * st.chillStacks, isBoss ? 0.25f : 0.5f);
+            if (st.chillStacks > 0) m *= 1f - Mathf.Min(0.1f * ChillBoost() * st.chillStacks, isBoss ? 0.25f : 0.5f);
             if (st.hangoverStacks > 0) m *= 1f - (isBoss ? 0.1f : 0.2f);
             return m;
         }
@@ -170,7 +170,7 @@ namespace Kagura.Game
         public float SpeedMult()
         {
             float m = 1f;
-            if (st.chillStacks > 0) m *= 1f - Mathf.Min(0.12f * st.chillStacks, isBoss ? 0.3f : 0.6f);
+            if (st.chillStacks > 0) m *= 1f - Mathf.Min(0.12f * ChillBoost() * st.chillStacks, isBoss ? 0.3f : 0.6f);
             if (st.hangoverStacks > 0) m *= 1f - Combat.HangoverSlow();
             if (st.charm > 0f) m *= 0.6f;
             if (st.sunslow > 0f) { var pl = P(); if (pl != null) m *= 1f - Mathf.Min(pl.Val("ama_u6") * 0.01f, isBoss ? 0.25f : 0.5f); }
@@ -185,6 +185,7 @@ namespace Kagura.Game
             return m;
         }
 
+        private static float ChillBoost() => GameManager.I != null && GameManager.I.player != null && GameManager.I.player.HasRelic("r_s_hyouka") ? 1.5f : 1f;
         public void AddExposed(float sec) => st.exposed = Mathf.Max(st.exposed, sec);
         public void AddRupture(float sec) => st.rupture = Mathf.Max(st.rupture, sec);
         public void AddJolt(float sec) => st.jolted = Mathf.Max(st.jolted, sec);

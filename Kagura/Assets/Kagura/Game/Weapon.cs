@@ -333,7 +333,6 @@ namespace Kagura.Game
             float rate = 1f + p.Val("saru_u1") * 0.01f;
             cd = Rate(0.13f / rate);
             float dmg = BaseDmg() * 0.45f * Power() * (1f + p.Val("saru_u2") * 0.01f);
-            if (p.Has("saru_u7") && p.dashBuffT > 0f) dmg *= 1f + p.Val("saru_u7") * 0.01f;
             int n = 1 + Lv / 4 + (p.Has("saru_u5") ? Mathf.RoundToInt(p.Val("saru_u5")) : 0);
             int pierce = p.Has("saru_u6") ? Mathf.RoundToInt(p.Val("saru_u6")) : 0;
             _alt = (_alt + 1) % 2;

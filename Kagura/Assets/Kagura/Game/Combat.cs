@@ -58,7 +58,7 @@ namespace Kagura.Game
             var st = en.st;
 
             float mult = 1f;
-            if (st.exposed > 0f) mult *= 1.20f + Val("ama_u4") * 0.01f;
+            if (st.exposed > 0f) mult *= 1.20f + Val("ama_u4") * 0.01f + (HasRelicP("r_s_hiakari") ? 0.15f : 0f);
             if (st.weak > 0f && Has("uzume_u3")) mult *= 1f + Val("uzume_u3") * 0.01f;
             if (st.chillStacks > 0 && Has("iza_u5")) mult *= 1f + Val("iza_u5") * 0.01f;
             if (st.frozen > 0f) mult *= 1.5f;
@@ -183,7 +183,8 @@ namespace Kagura.Game
             if (Has("duo_ama_uzume")) w += Val("duo_ama_uzume") * 0.01f;
             return Mathf.Min(w, 0.8f);
         }
-        public static int HangoverMax() => 5 + (Has("suku_u4") ? Mathf.RoundToInt(Val("suku_u4")) : 0);
+        public static int HangoverMax() => 5 + (Has("suku_u4") ? Mathf.RoundToInt(Val("suku_u4")) : 0) + (HasRelicP("r_s_sakazuki") ? 3 : 0);
+        private static bool HasRelicP(string id) { var p = P(); return p != null && p.HasRelic(id); }
         public static float HangoverSlow() => 0.20f;
         public static float HangoverDps()
         {
@@ -364,6 +365,7 @@ namespace Kagura.Game
             }
             if (Has("suku_u9") && en.st.hangoverStacks > 0 && Random.value < Val("suku_u9") * 0.01f)
                 GameManager.I.SpawnZone(en.pos, "fog", 52f, 2.2f, 0f, new Color(0.62f, 1f, 0.55f));
+            if (p.HasRelic("r_s_fam_mamori") && en.lastTag == "familiar") p.Heal(2f, true);
             if (p.HasRelic("r_s_hidama") && Random.value < 0.15f)
             {   // 火の玉の壺：倒した敵が爆ぜて周りを焼く
                 var fc = new Color(1f, 0.55f, 0.25f);

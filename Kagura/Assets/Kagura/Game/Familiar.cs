@@ -62,7 +62,7 @@ namespace Kagura.Game
                     {
                         _cd = Rate(0.22f);
                         var b = g.SpawnPlayerBullet(from, new Vector2(Gd.Rand(-20, 20), -1000f), Dmg(), col, 3.5f, 0);
-                        b.tag = "familiar"; b.trailLen = 18f; b.critChance = p.CritChance();
+                        b.tag = "familiar"; if (p.HasRelic("r_s_fam_kiba")) b.pierce = Mathf.Max(b.pierce, 1); b.trailLen = 18f; b.critChance = p.CritChance();
                         break;
                     }
                 case "neko":
@@ -71,7 +71,7 @@ namespace Kagura.Game
                     {
                         float a = -Mathf.PI * 0.5f + (i - 1) * 16f * Mathf.Deg2Rad;
                         var b = g.SpawnPlayerBullet(from, Gd.Dir(a) * 720f, Dmg() * 0.7f, col, 3.5f, 0);
-                        b.tag = "familiar"; b.critChance = p.CritChance();
+                        b.tag = "familiar"; if (p.HasRelic("r_s_fam_kiba")) b.pierce = Mathf.Max(b.pierce, 1); b.critChance = p.CritChance();
                     }
                     break;
                 case "shiki":
@@ -80,7 +80,7 @@ namespace Kagura.Game
                         var target = Combat.NearestEnemy(pos, 900f);
                         Vector2 dir = target != null ? (target.pos - from).normalized : Vector2.down;
                         var b = g.SpawnPlayerBullet(from, dir * 420f, Dmg() * 1.3f, col, 5f, 12);
-                        b.tag = "familiar"; b.homing = 4.5f; b.critChance = p.CritChance();
+                        b.tag = "familiar"; if (p.HasRelic("r_s_fam_kiba")) b.pierce = Mathf.Max(b.pierce, 1); b.homing = 4.5f; b.critChance = p.CritChance();
                         break;
                     }
             }

@@ -25,6 +25,46 @@ namespace Kagura.Game
         }
     }
 
+    /// <summary>格の高い候補が出たときの盛り上げ：枠のきらめきと音。</summary>
+    public static class RarityFx
+    {
+        /// <summary>画面を開いたとき：いちばん高い格に応じて音と閃き。rar は RarityTable の番号（伝説 4、双神 5）。</summary>
+        public static void Reveal(int rar)
+        {
+            if (rar >= 4) { Sfx.Play("taiko", -6f, 1.1f); Sfx.Play("flute", -6f, 1.3f); Fx.Flash(new Color(1f, 0.85f, 0.4f, 0.28f), 0.5f); Fx.ShakeAdd(3f); }
+            else if (rar == 3) { Sfx.Play("flute", -6f, 1.2f); Sfx.Play("suzu", -8f, 1.3f); Fx.Flash(new Color(1f, 0.6f, 0.5f, 0.22f), 0.4f); }
+            else if (rar == 2) { Sfx.Play("flute", -8f, 1.1f); Fx.Flash(new Color(0.8f, 0.5f, 1f, 0.18f), 0.35f); }
+            else if (rar == 1) { Sfx.Play("suzu", -10f, 1.4f); }
+        }
+
+        /// <summary>札の縁のきらめき：脈打つ二重の枠と、縁を巡る光の粒（稀以上で使う）。</summary>
+        public static void Frame(UiLayer L, Rect r, Color col, int rar, float t, float a)
+        {
+            if (rar < 1) return;
+            float pulse = 0.5f + 0.5f * Mathf.Sin(t * (3f + rar));
+            L.front.DrawRect(UiKit.Grow(r, 3f + 2f * pulse), Gd.WithA(col, (0.25f + 0.35f * pulse) * a), false, 1.5f);
+            if (rar >= 2)
+            {
+                L.back.DrawRect(UiKit.Grow(r, 8f), Gd.WithA(col, 0.06f * a));
+                int n = 2 + rar;
+                float per = 2f * (r.width + r.height);
+                for (int i = 0; i < n; i++)
+                {
+                    float d = Mathf.Repeat(t * (60f + rar * 20f) + i * per / n, per);
+                    Vector2 p;
+                    if (d < r.width) p = new Vector2(r.xMin + d, r.yMin);
+                    else if (d < r.width + r.height) p = new Vector2(r.xMax, r.yMin + (d - r.width));
+                    else if (d < 2f * r.width + r.height) p = new Vector2(r.xMax - (d - r.width - r.height), r.yMax);
+                    else p = new Vector2(r.xMin, r.yMax - (d - 2f * r.width - r.height));
+                    L.front.DrawCircle(p, 3f, Gd.WithA(Color.white, 0.9f * a));
+                    L.front.DrawCircle(p, 6f, Gd.WithA(col, 0.35f * a));
+                }
+            }
+            if (rar >= 4)
+                for (int j = 0; j < 12; j++) { float ang = t * 0.6f + Gd.TAU * j / 12f; var c = r.center; L.back.DrawLine(c + Gd.Dir(ang) * r.width * 0.5f, c + Gd.Dir(ang) * r.width * (0.7f + 0.1f * pulse), Gd.WithA(col, 0.14f * a), 10f); }
+        }
+    }
+
     // =====================================================================
     /// <summary>神を選ぶ（位上がり）：主神を上に、副神を左右下に置いた三角の配置。主神だけのときも同じ画面で選ぶ。</summary>
     public class MikiView : ChoiceView
@@ -127,7 +167,13 @@ namespace Kagura.Game
         public int rerolls;
         private const float CW = 192f, CH = 236f, CY = 216f, CY2 = 480f, GAP = 10f;
         public BoonsView(Transform parent) : base(parent, "boons") { }
-        public void Open(string kid, List<Offer> o, int r, string ttl) { kamiId = kid; offers = o; rerolls = r; title = ttl; Show(); }
+        public void Open(string kid, List<Offer> o, int r, string ttl)
+        {
+            kamiId = kid; offers = o; rerolls = r; title = ttl; Show();
+            int best = 0;
+            for (int i = 0; i < 3 && i < o.Count; i++) if (o[i] != null && o[i].type != "curse") best = Mathf.Max(best, o[i].rar);
+            RarityFx.Reveal(best);
+        }
         public override int Count() => offers.Count;
         public override Rect RectOf(int i) => i < 3 ? Row(i, 3, CW, CH, CY, GAP) : Row(i - 3, 3, CW, CH, CY2, GAP);
         public Rect RerollRect() => new Rect(Gd.W * 0.5f - 90f, CY2 + CH + 14f, 180f, 34f);
@@ -212,6 +258,7 @@ namespace Kagura.Game
             float a = pop * dim, x0 = rr.x + 12f, w = rr.width - 24f;
             CardBg(rr, col, sel && can, a);
             bool special = o.type == "legendary" || o.type == "duo";
+            if (!bottom && can) RarityFx.Frame(L, rr, col, rar, t, a);
             if (special)
                 for (int j = 0; j < 10; j++) { float ang = t * 0.5f + Gd.TAU * j / 10f; var c = rr.center; L.back.DrawLine(c + Gd.Dir(ang) * rr.width * 0.55f, c + Gd.Dir(ang) * rr.width * 0.75f, Gd.WithA(col, 0.12f * a), 8f); }
             L.back.DrawRect(new Rect(rr.x, rr.y + 3, rr.width, 26f), Gd.WithA(col, (sel ? 0.30f : 0.20f) * a));
